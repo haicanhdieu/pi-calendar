@@ -1,0 +1,50 @@
+# Python / MicroPython caches and compiled modules
+__pycache__/
+*.py[cod]
+*$py.class
+*.mpy
+
+# Local Python environments and package/build output
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# Secrets and local environment configuration
+.env
+.env.*
+!.env.example
+
+# macOS / Windows / Linux desktop noise
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor and MicroPython upload-tool state
+.idea/
+.vscode/
+.micropico/
+.picowgo/
+project.pico-go
+
+# Generated Raspberry Pi Pico firmware/build artifacts
+*.uf2
+*.elf
+*.hex
+*.map
+
+# Test, coverage, and local tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.bmad-loop/runs/
+.bmad-loop/cache/
+.bmad-loop/policy.toml
+_bmad/render/

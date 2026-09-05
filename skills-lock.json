@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "raspberry-pi-pico2": {
+      "source": "sammcj/agentic-coding",
+      "sourceType": "github",
+      "skillPath": "skills/raspberry-pi/SKILL.md",
+      "computedHash": "a95b271be333db41b6695223dbf1c94195723aab5bd9c49dd6e958c5426a3a80"
+    }
+  }
+}
