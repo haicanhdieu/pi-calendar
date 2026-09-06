@@ -3,7 +3,7 @@
 
 ## pi-calendar
 
-Firmware and planning repository for a Raspberry Pi Pico W clock and calendar device. This block carries only rules and pointers: what the product is, how it is built, and every technical decision live in `docs/` and in the BMAD artifacts under `_bmad-output/<prd-slug>/`. Read those before changing anything; do not restate them here.
+Firmware and planning repository for a Raspberry Pi Pico W clock and calendar device. This block carries only rules and pointers: read the active PRD artifacts and `docs/` for product, hardware, design, and project-structure decisions before changing anything; do not restate them here.
 
 ## Policy
 
@@ -18,6 +18,7 @@ Firmware and planning repository for a Raspberry Pi Pico W clock and calendar de
 
 - Hardware and product source of truth: `docs/`
 - Per-PRD planning, implementation, and test artifacts, including briefs: `_bmad-output/<prd-slug>/`
+- Project folder structure: `_bmad-output/<prd-slug>/architecture/project-structure.md`
 - BMAD configuration and workflow scripts: `_bmad/config.toml` and `_bmad/scripts/`
 - Firmware entry point: `main.py`
 - BMAD loop state and policy: `.bmad-loop/`

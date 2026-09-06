@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Pi Calendar Clock — Color Directions</title>
+<style>
+  body { background:#e8e8e8; font-family:-apple-system,Helvetica,Arial,sans-serif; padding:24px; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  .sub { color:#555; font-size:13px; margin-bottom:24px; }
+  .variant { margin-bottom:36px; }
+  .vhead { font-size:15px; font-weight:600; margin-bottom:2px; }
+  .vreg { font-size:12px; color:#666; margin-bottom:10px; }
+  .chips { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .chip { font-size:11px; padding:3px 8px; border-radius:4px; border:1px solid rgba(0,0,0,.15); font-family:monospace; }
+  .screens { display:flex; gap:16px; }
+  .screen { width:320px; height:240px; border-radius:6px; border:8px solid #111; box-shadow:0 4px 10px rgba(0,0,0,.25); display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; }
+  .time { font-size:56px; font-weight:700; letter-spacing:1px; font-variant-numeric: tabular-nums; }
+  .cal-dow { font-size:22px; font-weight:600; }
+  .cal-day { font-size:64px; font-weight:700; line-height:1; }
+  .cal-month { font-size:20px; }
+  .unsynced { position:absolute; top:8px; right:10px; font-size:11px; padding:2px 6px; border-radius:3px; }
+</style>
+</head>
+<body>
+<h1>Pi Calendar Clock — Color Direction Options</h1>
+<div class="sub">Each pair: Clock view (left) + Calendar view (right), mocked at true 320×240 landscape on the 2.4" ILI9341. Pick a direction to refine, or mix.</div>
+
+<!-- A: Midnight Amber -->
+<div class="variant">
+  <div class="vhead">A — Midnight Amber</div>
+  <div class="vreg">Classic desk-clock / radio-alarm register. Warm, calm, easy on eyes at night.</div>
+  <div class="chips">
+    <span class="chip" style="background:#0a0a0a;color:#fff">bg #0a0a0a</span>
+    <span class="chip" style="background:#ffb238;color:#000">digits #ffb238</span>
+    <span class="chip" style="background:#8a5a10;color:#fff">secondary #8a5a10</span>
+    <span class="chip" style="background:#ff4d4d;color:#fff">unsynced #ff4d4d</span>
+  </div>
+  <div class="screens">
+    <div class="screen" style="background:#0a0a0a;color:#ffb238;">
+      <div class="time">14:07</div>
+    </div>
+    <div class="screen" style="background:#0a0a0a;color:#ffb238;">
+      <div class="cal-dow" style="color:#8a5a10">SATURDAY</div>
+      <div class="cal-day">05</div>
+      <div class="cal-month" style="color:#8a5a10">SEPTEMBER 2026</div>
+      <div class="unsynced" style="background:#ff4d4d;color:#0a0a0a">UNSYNCED</div>
+    </div>
+  </div>
+</div>
+
+<!-- B: Terminal Cyan -->
+<div class="variant">
+  <div class="vhead">B — Terminal Cyan</div>
+  <div class="vreg">Cool, technical, slightly retro-computing register. Reads crisp under any room light.</div>
+  <div class="chips">
+    <span class="chip" style="background:#000814;color:#fff">bg #000814</span>
+    <span class="chip" style="background:#5ee7ff;color:#000">digits #5ee7ff</span>
+    <span class="chip" style="background:#2a6b78;color:#fff">secondary #2a6b78</span>
+    <span class="chip" style="background:#ffcc00;color:#000">unsynced #ffcc00</span>
+  </div>
+  <div class="screens">
+    <div class="screen" style="background:#000814;color:#5ee7ff;">
+      <div class="time">14:07</div>
+    </div>
+    <div class="screen" style="background:#000814;color:#5ee7ff;">
+      <div class="cal-dow" style="color:#2a6b78">SATURDAY</div>
+      <div class="cal-day">05</div>
+      <div class="cal-month" style="color:#2a6b78">SEPTEMBER 2026</div>
+      <div class="unsynced" style="background:#ffcc00;color:#000814">UNSYNCED</div>
+    </div>
+  </div>
+</div>
+
+<!-- C: Paper White -->
+<div class="variant">
+  <div class="vhead">C — Paper White</div>
+  <div class="vreg">Bright, daytime-desk register — reads like a printed page, not a gadget.</div>
+  <div class="chips">
+    <span class="chip" style="background:#fafaf7;color:#000;border-color:#ccc">bg #fafaf7</span>
+    <span class="chip" style="background:#1a1a1a;color:#fff">digits #1a1a1a</span>
+    <span class="chip" style="background:#8a8a80;color:#fff">secondary #8a8a80</span>
+    <span class="chip" style="background:#c0392b;color:#fff">unsynced #c0392b</span>
+  </div>
+  <div class="screens">
+    <div class="screen" style="background:#fafaf7;color:#1a1a1a;">
+      <div class="time">14:07</div>
+    </div>
+    <div class="screen" style="background:#fafaf7;color:#1a1a1a;">
+      <div class="cal-dow" style="color:#8a8a80">SATURDAY</div>
+      <div class="cal-day">05</div>
+      <div class="cal-month" style="color:#8a8a80">SEPTEMBER 2026</div>
+      <div class="unsynced" style="background:#c0392b;color:#fafaf7">UNSYNCED</div>
+    </div>
+  </div>
+</div>
+
+<!-- D: Deep Forest -->
+<div class="variant">
+  <div class="vhead">D — Deep Forest Mono-green</div>
+  <div class="vreg">Old-CRT / instrument-panel register. Muted, focused, single-hue.</div>
+  <div class="chips">
+    <span class="chip" style="background:#031406;color:#fff">bg #031406</span>
+    <span class="chip" style="background:#3dff7a;color:#000">digits #3dff7a</span>
+    <span class="chip" style="background:#1c6b38;color:#fff">secondary #1c6b38</span>
+    <span class="chip" style="background:#ff6b3d;color:#000">unsynced #ff6b3d</span>
+  </div>
+  <div class="screens">
+    <div class="screen" style="background:#031406;color:#3dff7a;">
+      <div class="time">14:07</div>
+    </div>
+    <div class="screen" style="background:#031406;color:#3dff7a;">
+      <div class="cal-dow" style="color:#1c6b38">SATURDAY</div>
+      <div class="cal-day">05</div>
+      <div class="cal-month" style="color:#1c6b38">SEPTEMBER 2026</div>
+      <div class="unsynced" style="background:#ff6b3d;color:#031406">UNSYNCED</div>
+    </div>
+  </div>
+</div>
+
+<!-- E: Slate & Coral -->
+<div class="variant">
+  <div class="vhead">E — Slate &amp; Coral</div>
+  <div class="vreg">Modern-object register, less "electronics," more designed furniture piece.</div>
+  <div class="chips">
+    <span class="chip" style="background:#20242c;color:#fff">bg #20242c</span>
+    <span class="chip" style="background:#f4f1ea;color:#000">digits #f4f1ea</span>
+    <span class="chip" style="background:#ff6f61;color:#fff">accent #ff6f61</span>
+    <span class="chip" style="background:#ff6f61;color:#fff">unsynced #ff6f61</span>
+  </div>
+  <div class="screens">
+    <div class="screen" style="background:#20242c;color:#f4f1ea;">
+      <div class="time">14:07</div>
+    </div>
+    <div class="screen" style="background:#20242c;color:#f4f1ea;">
+      <div class="cal-dow" style="color:#ff6f61">SATURDAY</div>
+      <div class="cal-day">05</div>
+      <div class="cal-month" style="color:#ff6f61">SEPTEMBER 2026</div>
+      <div class="unsynced" style="background:#ff6f61;color:#20242c">UNSYNCED</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

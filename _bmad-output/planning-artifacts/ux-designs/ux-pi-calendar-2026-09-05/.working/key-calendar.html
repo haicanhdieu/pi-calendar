@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Pi Calendar Clock — Calendar View</title>
+<style>
+/*
+  Governs: EXPERIENCE.md Component Patterns (Calendar View), State Patterns
+  (synced / unsynced, today highlight, adjacent-month dimming), DESIGN.md
+  Colors + Typography. Physical target: 2.4in ILI9341, 320x240 landscape.
+*/
+body { background:#ccc; font-family:-apple-system,Helvetica,Arial,sans-serif; padding:24px; }
+h1 { font-size:16px; margin:0 0 4px; }
+.sub { color:#555; font-size:12px; margin-bottom:20px; }
+.row { display:flex; gap:20px; }
+.frame { width:320px; height:240px; border-radius:6px; border:10px solid #111; box-shadow:0 4px 12px rgba(0,0,0,.3); background:#031406; position:relative; overflow:hidden; padding:10px 12px; box-sizing:border-box; }
+.caption { font-size:12px; color:#333; margin-top:8px; width:320px; }
+
+.month-label { color:#3dff7a; font-size:16px; font-weight:700; letter-spacing:2px; text-align:center; margin-bottom:6px; }
+.grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.dow { color:#1c6b38; font-size:11px; text-align:center; font-weight:700; padding-bottom:3px; }
+.day { color:#3dff7a; font-size:14px; text-align:center; padding:3px 0; border-radius:3px; font-family:-apple-system,'Helvetica Neue',Arial,sans-serif; font-weight:600; }
+.day.dim { color:#0d3318; }
+.day.today { background:#3dff7a; color:#031406; font-weight:700; }
+
+.badge { position:absolute; top:8px; right:10px; font-size:10px; letter-spacing:1px; font-weight:700; padding:2px 7px; border-radius:3px; background:#ff6b3d; color:#031406; }
+</style>
+</head>
+<body>
+<h1>Calendar View — 320×240 landscape</h1>
+<div class="sub">Full current-month grid, Monday-start week, weekday header row, today cell filled solid. Adjacent-month overflow days dimmed.</div>
+
+<div class="row">
+  <div>
+    <div class="frame">
+      <div class="month-label">SEPTEMBER 2026</div>
+      <div class="grid">
+        <div class="dow">M</div><div class="dow">T</div><div class="dow">W</div><div class="dow">T</div><div class="dow">F</div><div class="dow">S</div><div class="dow">S</div>
+        <div class="day dim">31</div><div class="day">1</div><div class="day">2</div><div class="day">3</div><div class="day">4</div><div class="day today">5</div><div class="day">6</div>
+        <div class="day">7</div><div class="day">8</div><div class="day">9</div><div class="day">10</div><div class="day">11</div><div class="day">12</div><div class="day">13</div>
+        <div class="day">14</div><div class="day">15</div><div class="day">16</div><div class="day">17</div><div class="day">18</div><div class="day">19</div><div class="day">20</div>
+        <div class="day">21</div><div class="day">22</div><div class="day">23</div><div class="day">24</div><div class="day">25</div><div class="day">26</div><div class="day">27</div>
+        <div class="day">28</div><div class="day">29</div><div class="day">30</div><div class="day dim">1</div><div class="day dim">2</div><div class="day dim">3</div><div class="day dim">4</div>
+      </div>
+    </div>
+    <div class="caption"><b>Synced state.</b> Today (Sep 5) filled solid; Aug/Oct overflow dimmed.</div>
+  </div>
+
+  <div>
+    <div class="frame">
+      <div class="badge">UNSYNCED</div>
+      <div class="month-label">SEPTEMBER 2026</div>
+      <div class="grid">
+        <div class="dow">M</div><div class="dow">T</div><div class="dow">W</div><div class="dow">T</div><div class="dow">F</div><div class="dow">S</div><div class="dow">S</div>
+        <div class="day dim">31</div><div class="day">1</div><div class="day">2</div><div class="day">3</div><div class="day">4</div><div class="day today">5</div><div class="day">6</div>
+        <div class="day">7</div><div class="day">8</div><div class="day">9</div><div class="day">10</div><div class="day">11</div><div class="day">12</div><div class="day">13</div>
+        <div class="day">14</div><div class="day">15</div><div class="day">16</div><div class="day">17</div><div class="day">18</div><div class="day">19</div><div class="day">20</div>
+        <div class="day">21</div><div class="day">22</div><div class="day">23</div><div class="day">24</div><div class="day">25</div><div class="day">26</div><div class="day">27</div>
+        <div class="day">28</div><div class="day">29</div><div class="day">30</div><div class="day dim">1</div><div class="day dim">2</div><div class="day dim">3</div><div class="day dim">4</div>
+      </div>
+    </div>
+    <div class="caption"><b>Unsynced state.</b> Same grid, badge only — "today" highlight uses last-known date, could be stale if unsynced long enough.</div>
+  </div>
+</div>
+
+</body>
+</html>
