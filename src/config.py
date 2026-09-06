@@ -69,6 +69,7 @@ FONT_SCALES = {
 # Clock layout metrics (320×240 landscape)
 CLOCK_SS_GAP_PX = 8
 CLOCK_DATE_GAP_PX = 14
+CLOCK_LUNAR_GAP_PX = 6
 CLOCK_PLACEHOLDER_HHMM = "--:--"
 
 # Calendar layout metrics (320×240 landscape) — pad Y/X, cell gap, label gaps

@@ -1,6 +1,7 @@
 """Dirty-region Clock view renderer (FR3 / UX-DR1–3/9)."""
 
 from src import config
+from src.calendar.lunar import gregorian_to_lunar
 
 # Precomputed digit strings — steady-state SS path never formats new strs.
 _SS_STRINGS = (
@@ -137,6 +138,23 @@ def _format_date(local):
     )
 
 
+def _format_lunar(local):
+    """AL · D/M or AL · D/M+ (leap); None when local is absent."""
+    if local is None:
+        return None
+    try:
+        lunar_day, lunar_month, is_leap = gregorian_to_lunar(
+            local.year, local.month, local.day
+        )
+    except ValueError:
+        # Out-of-range years: omit lunar line rather than abort redraw.
+        return None
+    text = "AL · " + str(lunar_day) + "/" + str(lunar_month)
+    if is_leap:
+        text = text + "+"
+    return text
+
+
 class ClockView:
     """Centered 24-hour Clock renderer over DisplayPort only."""
 
@@ -146,6 +164,7 @@ class ClockView:
             "hhmm": None,
             "ss": None,
             "date": None,
+            "lunar": None,
             "hour": None,
             "minute": None,
             "second": None,
@@ -164,6 +183,10 @@ class ClockView:
             "date_y": 0,
             "date_w": 0,
             "date_h": 0,
+            "lunar_x": 0,
+            "lunar_y": 0,
+            "lunar_w": 0,
+            "lunar_h": 0,
             "valid": False,
         }
 
@@ -180,6 +203,7 @@ class ClockView:
                 _format_hhmm(local),
                 _format_ss(local),
                 _format_date(local),
+                _format_lunar(local),
             )
             self._remember_local(local)
             return
@@ -222,6 +246,7 @@ class ClockView:
             _format_hhmm(local),
             _format_ss(local),
             _format_date(local),
+            _format_lunar(local),
         )
         self._remember_local(local)
 
@@ -246,7 +271,7 @@ class ClockView:
         cache["day"] = local.day
         cache["weekday"] = local.weekday
 
-    def _layout(self, hhmm, ss, date):
+    def _layout(self, hhmm, ss, date, lunar):
         display = self._display
         hhmm_w, hhmm_h = display.measure_text(hhmm, config.FONT_TIME)
         if ss is None:
@@ -263,9 +288,17 @@ class ClockView:
         if date is not None:
             date_w, date_h = display.measure_text(date, config.FONT_DATE)
             block_h = time_h + config.CLOCK_DATE_GAP_PX + date_h
+            if lunar is not None:
+                lunar_w, lunar_h = display.measure_text(lunar, config.FONT_DATE)
+                block_h = block_h + config.CLOCK_LUNAR_GAP_PX + lunar_h
+            else:
+                lunar_w = 0
+                lunar_h = 0
         else:
             date_w = 0
             date_h = 0
+            lunar_w = 0
+            lunar_h = 0
             block_h = time_h
 
         origin_x = (display.width - row_w) // 2
@@ -280,6 +313,8 @@ class ClockView:
             ss_y = origin_y + (hhmm_h - ss_h)
         date_x = (display.width - date_w) // 2
         date_y = origin_y + time_h + config.CLOCK_DATE_GAP_PX
+        lunar_x = (display.width - lunar_w) // 2
+        lunar_y = date_y + date_h + config.CLOCK_LUNAR_GAP_PX
         return (
             hhmm_x,
             hhmm_y,
@@ -293,9 +328,13 @@ class ClockView:
             date_y,
             date_w,
             date_h,
+            lunar_x,
+            lunar_y,
+            lunar_w,
+            lunar_h,
         )
 
-    def _full_redraw(self, hhmm, ss, date):
+    def _full_redraw(self, hhmm, ss, date, lunar):
         display = self._display
         cache = self._cache
         display.fill_rect(
@@ -319,7 +358,11 @@ class ClockView:
             date_y,
             date_w,
             date_h,
-        ) = self._layout(hhmm, ss, date)
+            lunar_x,
+            lunar_y,
+            lunar_w,
+            lunar_h,
+        ) = self._layout(hhmm, ss, date, lunar)
 
         display.draw_text(hhmm, hhmm_x, hhmm_y, config.FONT_TIME, config.COLOR_PRIMARY)
 
@@ -333,9 +376,15 @@ class ClockView:
                 date, date_x, date_y, config.FONT_DATE, config.COLOR_SECONDARY
             )
 
+        if lunar is not None:
+            display.draw_text(
+                lunar, lunar_x, lunar_y, config.FONT_DATE, config.COLOR_SECONDARY
+            )
+
         cache["hhmm"] = hhmm
         cache["ss"] = ss
         cache["date"] = date
+        cache["lunar"] = lunar
         cache["hhmm_x"] = hhmm_x
         cache["hhmm_y"] = hhmm_y
         cache["ss_x"] = ss_x
@@ -346,6 +395,10 @@ class ClockView:
         cache["date_y"] = date_y
         cache["date_w"] = date_w
         cache["date_h"] = date_h
+        cache["lunar_x"] = lunar_x
+        cache["lunar_y"] = lunar_y
+        cache["lunar_w"] = lunar_w
+        cache["lunar_h"] = lunar_h
         cache["valid"] = True
 
     def _redraw_ss(self, ss):

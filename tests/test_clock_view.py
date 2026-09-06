@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from src import config
+from src.device.display.font import FONT_5X7
 from src.time.model import TRUST_SYNCED, TRUST_UNSYNCED, DateTime, TimeSnapshot
 from src.ui.clock_view import ClockView
 from src.ui.components import badge_rect, draw_unsynced_badge
@@ -108,30 +109,54 @@ def test_synced_valid_local_draws_time_date_no_badge():
     assert "14:07" in labels
     assert "32" in labels
     assert "Sat · Sep 6 2026" in labels
+    assert "AL · 25/7" in labels
     assert config.BADGE_TEXT not in labels
 
     hhmm = next(t for t in texts if t[1] == "14:07")
     ss = next(t for t in texts if t[1] == "32")
     date = next(t for t in texts if t[1] == "Sat · Sep 6 2026")
+    lunar = next(t for t in texts if t[1] == "AL · 25/7")
     assert hhmm[4] == config.FONT_TIME
     assert hhmm[5] == config.COLOR_PRIMARY
     assert ss[4] == config.FONT_SECONDS
     assert ss[5] == config.COLOR_SECONDARY
     assert date[4] == config.FONT_DATE
     assert date[5] == config.COLOR_SECONDARY
+    assert lunar[4] == config.FONT_DATE
+    assert lunar[5] == config.COLOR_SECONDARY
     # SS sits to the right of HH:MM with fixed gap; HH:MM origin is left of SS.
     assert hhmm[2] < ss[2]
     assert ss[2] == hhmm[2] + display.measure_text("14:07", config.FONT_TIME)[0] + (
         config.CLOCK_SS_GAP_PX
     )
+    # Lunar line sits under Gregorian date with named gap; both centered.
+    assert lunar[3] == date[3] + display.measure_text(
+        "Sat · Sep 6 2026", config.FONT_DATE
+    )[1] + config.CLOCK_LUNAR_GAP_PX
+    lunar_w, _ = display.measure_text("AL · 25/7", config.FONT_DATE)
+    assert lunar[2] == (config.SCREEN_WIDTH - lunar_w) // 2
 
-    hhmm_w, _ = display.measure_text("14:07", config.FONT_TIME)
-    ss_w, _ = display.measure_text("00", config.FONT_SECONDS)
+    hhmm_w, hhmm_h = display.measure_text("14:07", config.FONT_TIME)
+    ss_w, ss_h = display.measure_text("00", config.FONT_SECONDS)
     row_w = hhmm_w + config.CLOCK_SS_GAP_PX + ss_w
     assert row_w <= config.SCREEN_WIDTH
     assert hhmm[2] == (config.SCREEN_WIDTH - row_w) // 2
     assert hhmm[2] >= 0
     assert hhmm[2] + row_w <= config.SCREEN_WIDTH
+    # Vertical centering of time + date + lunar; HH:MM scale unchanged.
+    assert config.FONT_SCALE_TIME == 9
+    date_h = display.measure_text("Sat · Sep 6 2026", config.FONT_DATE)[1]
+    lunar_h = display.measure_text("AL · 25/7", config.FONT_DATE)[1]
+    time_h = hhmm_h if hhmm_h >= ss_h else ss_h
+    block_h = (
+        time_h
+        + config.CLOCK_DATE_GAP_PX
+        + date_h
+        + config.CLOCK_LUNAR_GAP_PX
+        + lunar_h
+    )
+    assert hhmm[3] == (config.SCREEN_HEIGHT - block_h) // 2
+    assert block_h <= config.SCREEN_HEIGHT
 
 
 def test_seconds_only_tick_dirties_ss_without_shifting_hhmm():
@@ -140,6 +165,7 @@ def test_seconds_only_tick_dirties_ss_without_shifting_hhmm():
     view.render(_snapshot(_local(second=32), TRUST_SYNCED))
     hhmm_first = next(t for t in _texts(display.ops) if t[1] == "14:07")
     hhmm_origin = (hhmm_first[2], hhmm_first[3])
+    lunar_first = next(t for t in _texts(display.ops) if t[1].startswith("AL · "))
 
     display.clear_ops()
     view.render(_snapshot(_local(second=33), TRUST_SYNCED))
@@ -163,6 +189,22 @@ def test_seconds_only_tick_dirties_ss_without_shifting_hhmm():
         config.FONT_TIME,
         config.COLOR_PRIMARY,
     ) not in ops
+    # Seconds-only path must not redraw or reformat lunar/date lines.
+    assert not any(t[1].startswith("AL · ") for t in texts)
+    assert not any("Sep" in t[1] for t in texts)
+    assert view._cache["lunar"] == lunar_first[1]
+
+
+def test_cold_no_local_omits_gregorian_and_lunar_date_lines():
+    display = FakeDisplayPort()
+    view = ClockView(display)
+    view.render(
+        TimeSnapshot(utc=None, local=None, trust=TRUST_UNSYNCED, sync_age_ms=None)
+    )
+    labels = [t[1] for t in _texts(display.ops)]
+    assert config.CLOCK_PLACEHOLDER_HHMM in labels
+    assert not any(" · " in label and label.startswith(("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")) for label in labels)
+    assert not any(label.startswith("AL · ") for label in labels)
 
 
 def test_minute_rollover_full_redraws_hhmm():
@@ -207,6 +249,7 @@ def test_cold_no_local_shows_placeholder_and_badge():
     assert config.BADGE_TEXT in labels
     # No usable date line content required.
     assert not any("2026" in label for label in labels)
+    assert not any(label.startswith("AL · ") for label in labels)
 
     badge = next(t for t in _texts(display.ops) if t[1] == config.BADGE_TEXT)
     assert badge[4] == config.FONT_BADGE
@@ -223,6 +266,45 @@ def test_cold_no_local_shows_placeholder_and_badge():
         bh,
         config.COLOR_UNSYNCED,
     ) in display.ops
+
+
+def test_leap_lunar_month_draws_plus_suffix():
+    display = FakeDisplayPort()
+    view = ClockView(display)
+    # 2025-07-25 → lunar 1/6 leap (Hồ Ngọc Đức)
+    local = _local(year=2025, month=7, day=25, weekday=4)
+    view.render(_snapshot(local, TRUST_SYNCED))
+    labels = [t[1] for t in _texts(display.ops)]
+    assert "AL · 1/6+" in labels
+    lunar = next(t for t in _texts(display.ops) if t[1] == "AL · 1/6+")
+    assert lunar[4] == config.FONT_DATE
+    assert lunar[5] == config.COLOR_SECONDARY
+
+
+def test_day_change_full_redraws_lunar_line():
+    display = FakeDisplayPort()
+    view = ClockView(display)
+    view.render(_snapshot(_local(day=6, weekday=5), TRUST_SYNCED))
+    assert "AL · 25/7" in [t[1] for t in _texts(display.ops)]
+
+    display.clear_ops()
+    # Next Gregorian day: Sunday 2026-09-07 → lunar 26/7
+    view.render(_snapshot(_local(day=7, weekday=6), TRUST_SYNCED))
+
+    fills = _fills(display.ops)
+    assert any(
+        f[1] == 0 and f[2] == 0 and f[3] == display.width and f[4] == display.height
+        for f in fills
+    )
+    labels = [t[1] for t in _texts(display.ops)]
+    assert "AL · 26/7" in labels
+    assert "AL · 25/7" not in labels
+    assert "Sun · Sep 7 2026" in labels
+
+
+def test_font_5x7_has_slash_and_plus_glyphs():
+    assert "/" in FONT_5X7
+    assert "+" in FONT_5X7
 
 
 def test_unsynced_with_local_keeps_layout_and_draws_badge():
