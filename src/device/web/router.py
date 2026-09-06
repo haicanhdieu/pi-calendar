@@ -1,6 +1,7 @@
-"""Allowlisted setup HTTP routing and form→candidate mapping (pure)."""
+"""Allowlisted setup/config HTTP routing (pure)."""
 
-from src.device.web.http_parse import parse_form_urlencoded
+from src import config
+from src.device.web.http_parse import cookie_header_value, parse_form_urlencoded
 from src.device.web import pages
 from src.provisioning.validation import validate_setup_form_fields
 
@@ -8,18 +9,36 @@ ACTION_RESPOND = "respond"
 ACTION_SCAN = "scan"
 ACTION_CONNECT = "connect"
 ACTION_HOLD = "hold"
+ACTION_LOGIN_KDF = "login_kdf"
 
 
 class RouteResult:
     """Outcome of routing one completed request."""
 
-    __slots__ = ("action", "response", "candidate", "error_code")
+    __slots__ = (
+        "action",
+        "response",
+        "candidate",
+        "error_code",
+        "password",
+        "renew_session_id",
+    )
 
-    def __init__(self, action, response=None, candidate=None, error_code=None):
+    def __init__(
+        self,
+        action,
+        response=None,
+        candidate=None,
+        error_code=None,
+        password=None,
+        renew_session_id=None,
+    ):
         self.action = action
         self.response = response
         self.candidate = candidate
         self.error_code = error_code
+        self.password = password
+        self.renew_session_id = renew_session_id
 
 
 class SetupCandidate:
@@ -64,6 +83,80 @@ def route_setup_request(request, mode, candidate_active):
         return RouteResult(ACTION_RESPOND, pages.response_unsupported())
 
     return RouteResult(ACTION_RESPOND, pages.response_not_found())
+
+
+def route_config_request(request, mode, session_table, now, kdf_busy):
+    """
+    Route Config login/settings requests (``STATION_ONLINE`` only).
+
+    ``session_table`` is the coordinator-owned table. Login POST returns
+    ``ACTION_LOGIN_KDF`` with a password bytearray (caller owns wipe). Concurrent
+    KDF admission returns fixed ``503 Busy``.
+    """
+    if mode != "STATION_ONLINE":
+        return RouteResult(ACTION_RESPOND, pages.response_not_found())
+
+    method = request.method
+    path = request.path
+
+    if path == "/login" and method == "GET":
+        return RouteResult(ACTION_RESPOND, pages.response_login_page())
+
+    if path == "/login" and method == "POST":
+        return _route_login_post(request, kdf_busy)
+
+    if path in ("/", "/settings") and method == "GET":
+        return _route_protected_get(request, session_table, now)
+
+    if path in ("/", "/settings", "/login"):
+        return RouteResult(ACTION_RESPOND, pages.response_unsupported())
+
+    return RouteResult(ACTION_RESPOND, pages.response_not_found())
+
+
+def _route_protected_get(request, session_table, now):
+    raw_cookie = request.headers.get("cookie")
+    token = cookie_header_value(raw_cookie, config.SESSION_COOKIE_NAME)
+    if token is None:
+        return RouteResult(ACTION_RESPOND, pages.response_redirect_login())
+
+    entry = session_table.lookup(token, now)
+    if entry is None:
+        return RouteResult(
+            ACTION_RESPOND, pages.response_redirect_login(clear_cookie=True)
+        )
+
+    return RouteResult(
+        ACTION_RESPOND,
+        pages.response_settings_page(),
+        renew_session_id=entry.encoded_id,
+    )
+
+
+def _route_login_post(request, kdf_busy):
+    if kdf_busy:
+        return RouteResult(
+            ACTION_RESPOND, pages.response_busy(), error_code="busy"
+        )
+
+    ctype = request.headers.get("content-type", "")
+    if ctype and "application/x-www-form-urlencoded" not in ctype.lower():
+        return RouteResult(ACTION_RESPOND, pages.response_bad_request())
+
+    fields = parse_form_urlencoded(request.body)
+    if fields is None:
+        return RouteResult(ACTION_RESPOND, pages.response_bad_request())
+
+    # Drop body reference ASAP; only retain password bytes for the KDF job.
+    password = fields.get("password", "")
+    if not isinstance(password, str):
+        password = str(password)
+    password_ba = bytearray(password.encode("utf-8"))
+    password = None
+    fields = None
+    request.body = b""
+
+    return RouteResult(ACTION_LOGIN_KDF, password=password_ba)
 
 
 def _route_connect(request, candidate_active):

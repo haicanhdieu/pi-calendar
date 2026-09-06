@@ -69,6 +69,33 @@ def parse_form_urlencoded(body):
     return result
 
 
+def cookie_header_value(cookie_header, name):
+    """
+    Return the value of ``name`` from a raw ``Cookie`` header, or ``None``.
+
+    Parses ``name=value`` pairs separated by ``;``. Matching is case-sensitive
+    on the cookie name (checked-in ``pc_session``).
+    """
+    if not cookie_header or not name:
+        return None
+    if not isinstance(cookie_header, str):
+        try:
+            cookie_header = str(cookie_header)
+        except Exception:
+            return None
+    target = str(name)
+    for part in cookie_header.split(";"):
+        piece = part.strip()
+        if not piece:
+            continue
+        if "=" not in piece:
+            continue
+        key, value = piece.split("=", 1)
+        if key.strip() == target:
+            return value.strip()
+    return None
+
+
 def _percent_decode(text):
     out = bytearray()
     i = 0

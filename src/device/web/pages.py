@@ -311,25 +311,216 @@ def _js_string(value):
     return "'" + escaped + "'"
 
 
-def http_response(status_code, reason, body, content_type="text/html; charset=utf-8"):
+_CONFIG_CSS = """
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#12161c;color:#e8ecf1;font-family:-apple-system,"Segoe UI",Roboto,sans-serif;
+padding:20px;max-width:480px;margin:0 auto;min-height:100vh}
+h1{font-size:20px;font-weight:700;margin-bottom:28px}
+.login-wrap{display:flex;flex-direction:column;justify-content:center;min-height:70vh}
+.login-card{display:flex;flex-direction:column;gap:16px}
+.login-card h1{text-align:center;margin-bottom:12px}
+.field{margin-bottom:0}
+label{font-size:13px;font-weight:600;display:block;margin-bottom:8px}
+.pw{display:flex;align-items:center;min-height:44px;background:#1b212a;border:1px solid #2a323d;
+border-radius:10px;padding:12px 15px}
+.pw:focus-within{border:2px solid #7c6cf6;padding:11px 14px}
+.pw.error{border:2px solid #ff5c5c;padding:11px 14px}
+.pw input{border:none;background:transparent;color:#e8ecf1;font-size:15px;width:100%;outline:none;
+font-family:inherit}
+.toggle{font-size:13px;font-weight:600;color:#7c6cf6;background:none;border:none;
+flex-shrink:0;padding-left:12px;min-height:44px;cursor:pointer}
+.btn{width:100%;min-height:44px;border:none;border-radius:10px;background:#7c6cf6;color:#0a0f16;
+font-size:15px;font-weight:700;font-family:inherit;padding:13px 0;cursor:pointer;margin-top:4px}
+.banner{min-height:44px;border-radius:999px;padding:11px 16px;font-size:14px;font-weight:600;
+display:flex;align-items:center;justify-content:center;background:#1b212a;color:#ff5c5c;
+border:1px solid #ff5c5c;text-align:center}
+.settings-list{display:flex;flex-direction:column;gap:10px}
+.settings-row{background:#1b212a;border:1px solid #2a323d;border-radius:14px;overflow:hidden}
+.settings-row-head{min-height:44px;padding:14px 16px;display:flex;align-items:center;
+justify-content:space-between;font-size:15px;font-weight:600;color:#e8ecf1;width:100%;
+background:none;border:none;font-family:inherit;cursor:pointer;text-align:left}
+.chevron{color:#9aa5b1;font-size:13px}
+.settings-row-body{padding:4px 16px 20px;border-top:1px solid #2a323d;display:none}
+.settings-row.open .settings-row-body{display:block}
+.settings-row.open .chevron{transform:rotate(0deg)}
+.theme-option{margin-top:12px;min-height:44px;display:flex;align-items:center;
+justify-content:space-between;background:#12161c;border:1px solid #2a323d;border-radius:10px;
+padding:12px 15px;opacity:.6}
+.theme-option-label{font-size:15px;color:#9aa5b1}
+.theme-check{width:20px;height:20px;border-radius:50%;background:#2a323d;color:#9aa5b1;
+font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.theme-note{font-size:13px;color:#9aa5b1;margin-top:10px;line-height:1.5}
+.settings-row .pw{background:#12161c;margin-top:0}
+.settings-row .input-label{margin:16px 0 8px}
+"""
+
+_LOGIN_JS = """
+(function(){
+var input=document.getElementById("admin-password");
+var toggle=document.getElementById("toggle-admin");
+if(toggle&&input){
+  toggle.addEventListener("click",function(){
+    var show=input.type==="password";
+    input.type=show?"text":"password";
+    toggle.textContent=show?"Hide":"Show";
+    toggle.setAttribute("aria-label",show?"Hide Admin password":"Show Admin password");
+  });
+}
+})();
+"""
+
+_SETTINGS_JS = """
+(function(){
+var rows=document.querySelectorAll(".settings-row");
+for(var i=0;i<rows.length;i++){
+  (function(row){
+    var head=row.querySelector(".settings-row-head");
+    if(!head) return;
+    head.addEventListener("click",function(){
+      row.classList.toggle("open");
+      var open=row.classList.contains("open");
+      head.setAttribute("aria-expanded",open?"true":"false");
+    });
+  })(rows[i]);
+}
+var input=document.getElementById("new-password");
+var toggle=document.getElementById("toggle-new");
+if(toggle&&input){
+  toggle.addEventListener("click",function(){
+    var show=input.type==="password";
+    input.type=show?"text":"password";
+    toggle.textContent=show?"Hide":"Show";
+    toggle.setAttribute("aria-label",show?"Hide new password":"Show new password");
+  });
+}
+})();
+"""
+
+
+def login_page_html(incorrect=False):
+    """Password-only Config login form (no username)."""
+    banner = ""
+    pw_class = "pw"
+    if incorrect:
+        banner = (
+            '<div class="banner" aria-live="polite">Incorrect password</div>'
+        )
+        pw_class = "pw error"
+    return (
+        "<!DOCTYPE html><html lang=\"en\"><head>"
+        "<meta charset=\"UTF-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+        "<title>Pi Calendar Log In</title>"
+        "<style>" + _CONFIG_CSS + "</style></head><body>"
+        '<div class="login-wrap"><div class="login-card">'
+        "<h1>Log In</h1>"
+        + banner
+        + '<form method="POST" action="/login">'
+        '<div class="field">'
+        '<label for="admin-password">Admin Password</label>'
+        '<div class="' + pw_class + '">'
+        '<input id="admin-password" name="password" type="password" '
+        'autocomplete="current-password" value="">'
+        '<button type="button" class="toggle" id="toggle-admin" '
+        'aria-label="Show Admin password">Show</button>'
+        "</div></div>"
+        '<button type="submit" class="btn">Log In</button>'
+        "</form></div></div>"
+        "<script>" + _LOGIN_JS + "</script>"
+        "</body></html>"
+    )
+
+
+def settings_page_html():
+    """Authenticated mobile flat settings shell (password/theme POST deferred)."""
+    return (
+        "<!DOCTYPE html><html lang=\"en\"><head>"
+        "<meta charset=\"UTF-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+        "<title>Pi Calendar Settings</title>"
+        "<style>" + _CONFIG_CSS + "</style></head><body>"
+        "<h1>Device Settings</h1>"
+        '<div class="settings-list">'
+        '<div class="settings-row" id="row-password">'
+        '<button type="button" class="settings-row-head" aria-expanded="false" '
+        'aria-controls="body-password">'
+        "<span>Admin Password</span><span class=\"chevron\">▾</span></button>"
+        '<div class="settings-row-body" id="body-password">'
+        '<label class="input-label" for="new-password">New Password</label>'
+        '<div class="pw">'
+        '<input id="new-password" name="new_password" type="password" '
+        'autocomplete="new-password" value="">'
+        '<button type="button" class="toggle" id="toggle-new" '
+        'aria-label="Show new password">Show</button>'
+        "</div>"
+        '<button type="button" class="btn" id="save-password">Save</button>'
+        "</div></div>"
+        '<div class="settings-row" id="row-theme">'
+        '<button type="button" class="settings-row-head" aria-expanded="false" '
+        'aria-controls="body-theme">'
+        "<span>Color Scheme</span><span class=\"chevron\">▾</span></button>"
+        '<div class="settings-row-body" id="body-theme">'
+        '<div class="theme-option" aria-disabled="true">'
+        '<span class="theme-option-label">Forest &amp; Amber</span>'
+        '<span class="theme-check">✓</span></div>'
+        '<div class="theme-note">Only theme available in this version.</div>'
+        "</div></div></div>"
+        "<script>" + _SETTINGS_JS + "</script>"
+        "</body></html>"
+    )
+
+
+def http_response(
+    status_code,
+    reason,
+    body,
+    content_type="text/html; charset=utf-8",
+    location=None,
+    set_cookie=None,
+):
     """Build a fixed HTTP/1.0 response bytes (Connection: close)."""
     if isinstance(body, str):
         body_bytes = body.encode("utf-8")
     else:
         body_bytes = body or b""
+    extra = ""
+    if location is not None:
+        extra += "Location: {loc}\r\n".format(loc=location)
+    if set_cookie is not None:
+        if isinstance(set_cookie, (list, tuple)):
+            for cookie in set_cookie:
+                extra += "Set-Cookie: {c}\r\n".format(c=cookie)
+        else:
+            extra += "Set-Cookie: {c}\r\n".format(c=set_cookie)
     header = (
         "HTTP/1.0 {code} {reason}\r\n"
         "Content-Type: {ctype}\r\n"
         "Content-Length: {length}\r\n"
         "Connection: close\r\n"
+        "{extra}"
         "\r\n"
     ).format(
         code=int(status_code),
         reason=reason,
         ctype=content_type,
         length=len(body_bytes),
+        extra=extra,
     )
     return header.encode("ascii") + body_bytes
+
+
+def session_cookie_value(session_id, clear=False):
+    """Build the ``Set-Cookie`` attribute string for the Config session."""
+    from src import config
+
+    name = config.SESSION_COOKIE_NAME
+    if clear:
+        return "{name}=; Max-Age=0; HttpOnly; SameSite=Strict; Path=/".format(
+            name=name
+        )
+    return "{name}={value}; HttpOnly; SameSite=Strict; Path=/".format(
+        name=name, value=session_id
+    )
 
 
 def response_setup_page(state=None):
@@ -370,6 +561,31 @@ def response_too_large():
 
 def response_unsupported():
     return http_response(405, "Method Not Allowed", "Method Not Allowed")
+
+
+def response_redirect_login(clear_cookie=False):
+    cookie = session_cookie_value("", clear=True) if clear_cookie else None
+    return http_response(
+        302, "Found", "", location="/login", set_cookie=cookie
+    )
+
+
+def response_login_page(incorrect=False):
+    return http_response(200, "OK", login_page_html(incorrect=incorrect))
+
+
+def response_settings_page():
+    return http_response(200, "OK", settings_page_html())
+
+
+def response_login_success(session_id):
+    return http_response(
+        302,
+        "Found",
+        "",
+        location="/settings",
+        set_cookie=session_cookie_value(session_id),
+    )
 
 
 def response_join_failure(ssid, admin_password=""):

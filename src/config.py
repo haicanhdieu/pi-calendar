@@ -120,6 +120,12 @@ HTTP_PER_TICK_BYTES = 512
 HTTP_LISTEN_PORT = 80
 HTTP_LISTEN_BACKLOG = 1
 
+# Config auth / sessions (AD-5 / story 2.1)
+SESSION_IDLE_MS = 900_000
+SESSION_MAX = 4
+SESSION_COOKIE_NAME = "pc_session"
+KDF_ROUNDS_PER_TICK = 200
+
 # Story 1.4 flashable proof harness (src/device/network/proof.py)
 NETWORK_PROOF_MODE = False
 PROOF_RESULT_TIMEOUT_MS = 10_000

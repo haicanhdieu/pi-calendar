@@ -203,6 +203,8 @@ def test_pure_modules_forbid_device_imports():
         "src/provisioning/validation.py",
         "src/provisioning/verifier.py",
         "src/provisioning/scan.py",
+        "src/provisioning/session.py",
+        "src/provisioning/kdf_job.py",
         "src/device/network/models.py",
         "src/device/web/http_parse.py",
         "src/device/web/router.py",

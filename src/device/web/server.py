@@ -1,4 +1,4 @@
-"""Bounded incremental HTTP server for SETUP_AP (socket I/O injected).
+"""Bounded incremental HTTP server for setup/config (socket I/O injected).
 
 Owns listen/client sockets only. Pure parse/route/page policy lives in sibling
 modules. Never imports ``machine``/``network``; ``socket`` is injected or
@@ -10,8 +10,10 @@ from src.device.web.http_parse import IncrementalHttpParser
 from src.device.web import pages
 from src.device.web.router import (
     ACTION_CONNECT,
+    ACTION_LOGIN_KDF,
     ACTION_RESPOND,
     ACTION_SCAN,
+    route_config_request,
     route_setup_request,
     scan_response,
 )
@@ -112,13 +114,20 @@ class SetupHttpServer:
                 pass
         return held
 
-    def tick(self, mode, candidate_active, scan_fn):
+    def tick(
+        self,
+        mode,
+        candidate_active,
+        scan_fn,
+        session_table=None,
+        now_ticks=None,
+        kdf_busy=False,
+    ):
         """
         Advance one bounded unit of HTTP work.
 
-        Returns ``(\"connect\", candidate)`` when a Connect POST should start a
-        join, otherwise ``None``. ``scan_fn`` is called only for GET /scan and
-        must return an iterable of SSID strings.
+        Setup mode may return ``(\"connect\", candidate)``. Config mode may
+        return ``(\"login_kdf\", password_bytearray)``. Otherwise ``None``.
         """
         if self._listen is None:
             return None
@@ -134,14 +143,22 @@ class SetupHttpServer:
         for client in list(self._clients):
             if client.held or client.closing:
                 continue
-            result = self._read_client(client, mode, candidate_active, scan_fn)
+            result = self._read_client(
+                client,
+                mode,
+                candidate_active,
+                scan_fn,
+                session_table,
+                now_ticks,
+                kdf_busy,
+            )
             if result is not None:
                 return result
             return None
         return None
 
     def queue_held_response(self, response_bytes):
-        """Flush a terminal response to the held Connect client."""
+        """Flush a terminal response to the held Connect/login client."""
         client = self._held_client
         if client is None:
             return False
@@ -189,7 +206,7 @@ class SetupHttpServer:
         self._clients.append(client)
 
     def _poll_held_peer(self, client):
-        """Release held Connect slot when the peer closes mid-join."""
+        """Release held Connect/login slot when the peer closes mid-work."""
         try:
             data = client.sock.recv(self._per_tick_bytes)
         except OSError as exc:
@@ -203,7 +220,16 @@ class SetupHttpServer:
         if not data:
             self._close_client(client)
 
-    def _read_client(self, client, mode, candidate_active, scan_fn):
+    def _read_client(
+        self,
+        client,
+        mode,
+        candidate_active,
+        scan_fn,
+        session_table,
+        now_ticks,
+        kdf_busy,
+    ):
         try:
             data = client.sock.recv(self._per_tick_bytes)
         except OSError as exc:
@@ -227,6 +253,13 @@ class SetupHttpServer:
         if request is None:
             return None
 
+        if mode == "STATION_ONLINE":
+            return self._dispatch_config(
+                client, request, session_table, now_ticks, kdf_busy
+            )
+        return self._dispatch_setup(client, request, mode, candidate_active, scan_fn)
+
+    def _dispatch_setup(self, client, request, mode, candidate_active, scan_fn):
         routed = route_setup_request(request, mode, candidate_active)
         if routed.action == ACTION_RESPOND:
             client.outbox = routed.response
@@ -255,6 +288,56 @@ class SetupHttpServer:
         client.out_offset = 0
         client.closing = True
         return None
+
+    def _dispatch_config(self, client, request, session_table, now_ticks, kdf_busy):
+        if session_table is None or now_ticks is None:
+            client.outbox = pages.response_not_found()
+            client.out_offset = 0
+            client.closing = True
+            return None
+        routed = route_config_request(
+            request,
+            "STATION_ONLINE",
+            session_table,
+            now_ticks,
+            kdf_busy=bool(kdf_busy) or self._held_client is not None,
+        )
+        if routed.action == ACTION_RESPOND:
+            if routed.renew_session_id is not None:
+                try:
+                    session_table.renew(routed.renew_session_id, now_ticks)
+                except Exception:
+                    pass
+            client.outbox = routed.response
+            client.out_offset = 0
+            client.closing = True
+            return None
+        if routed.action == ACTION_LOGIN_KDF:
+            # Body already cleared on the request; drop parser copy too.
+            try:
+                client.parser.body = b""
+            except Exception:
+                pass
+            if self._held_client is not None:
+                self._wipe_password(routed.password)
+                client.outbox = pages.response_busy()
+                client.out_offset = 0
+                client.closing = True
+                return None
+            client.held = True
+            self._held_client = client
+            return ("login_kdf", routed.password)
+        self._wipe_password(getattr(routed, "password", None))
+        client.outbox = pages.response_not_found()
+        client.out_offset = 0
+        client.closing = True
+        return None
+
+    @staticmethod
+    def _wipe_password(password):
+        if isinstance(password, bytearray):
+            for i in range(len(password)):
+                password[i] = 0
 
     def _write_client(self, client):
         outbox = client.outbox

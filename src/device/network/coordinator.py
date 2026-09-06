@@ -33,7 +33,13 @@ from src.device.network.models import (
 )
 from src.device.settings_store import SettingsCommitError
 from src.device.web import pages
+from src.provisioning.kdf_job import (
+    PURPOSE_LOGIN_VERIFY,
+    VERIFY_OK,
+    KdfJob,
+)
 from src.provisioning.scan import ssids_from_scan_rows
+from src.provisioning.session import SessionTable
 from src.time.model import DateTime
 from src import ticks as default_ticks
 
@@ -89,6 +95,9 @@ class NetworkCoordinator:
         self._station_started = False
         self._station_next_attempt = None
         self._station_attempt_armed = False
+        self._sessions = SessionTable(ticks_module=self._ticks)
+        self._kdf_job = None
+        self._kdf_correlation = 0
 
     def _resolve_boot_mode(self):
         store = self._settings_store
@@ -138,6 +147,8 @@ class NetworkCoordinator:
             return
         if self._mode == MODE_STATION_ONLINE and self._settings_store is not None:
             if self._watch_station_drop(now):
+                return
+            if self._tick_station_config(now):
                 return
         if self._command is None:
             taken = self._mailbox.try_take_command()
@@ -329,8 +340,145 @@ class NetworkCoordinator:
         except Exception:
             # Treat WLAN probe failure as a drop requiring reconnect.
             pass
+        self._abort_config_auth()
         self._arm_store_station_attempt(now, 0)
         return True
+
+    def _abort_config_auth(self):
+        """Cancel mid-flight login KDF and drop held Config HTTP clients."""
+        job = self._kdf_job
+        self._kdf_job = None
+        if job is not None:
+            try:
+                job.cancel()
+            except Exception:
+                pass
+        if self._http is not None:
+            try:
+                self._http.close_all()
+            except Exception:
+                pass
+
+    def _tick_station_config(self, now):
+        """
+        Serve Config HTTP and advance at most one KDF job while online.
+
+        Returns True when this tick consumed the config-auth budget (so the
+        mailbox NTP path should wait). Idle HTTP with no KDF returns False.
+        """
+        kdf_active = self._kdf_job is not None
+        if kdf_active:
+            result = self._kdf_job.step(config.KDF_ROUNDS_PER_TICK)
+            if result is not None:
+                self._finish_login_kdf(result, now)
+
+        http = self._http
+        if http is None:
+            return kdf_active
+
+        if not http.ensure_listening():
+            return kdf_active
+
+        action = http.tick(
+            MODE_STATION_ONLINE,
+            candidate_active=False,
+            scan_fn=None,
+            session_table=self._sessions,
+            now_ticks=now,
+            kdf_busy=self._kdf_job is not None,
+        )
+        if action is None:
+            return kdf_active
+        kind, payload = action
+        if kind != "login_kdf":
+            return True
+        if self._kdf_job is not None:
+            self._wipe_bytearray(payload)
+            http.queue_held_response(pages.response_busy())
+            return True
+        self._start_login_kdf(payload, now)
+        return True
+
+    def _start_login_kdf(self, password_ba, now):
+        salt_hex, verifier_hex = self._load_admin_verifier()
+        self._kdf_correlation = int(self._kdf_correlation) + 1
+        if salt_hex is None or verifier_hex is None:
+            self._wipe_bytearray(password_ba)
+            if self._http is not None:
+                self._http.queue_held_response(
+                    pages.response_login_page(incorrect=True)
+                )
+            return
+        self._kdf_job = KdfJob(
+            self._kdf_correlation,
+            PURPOSE_LOGIN_VERIFY,
+            password_ba,
+            salt_hex,
+            verifier_hex,
+        )
+        # Password ownership transferred into the job (wiped on terminal).
+        if self._kdf_job.done:
+            self._finish_login_kdf(self._kdf_job.result, now)
+
+    def _finish_login_kdf(self, result, now):
+        job = self._kdf_job
+        self._kdf_job = None
+        if job is not None and not job.done:
+            try:
+                job.cancel()
+            except Exception:
+                pass
+
+        http = self._http
+        held = http is not None and http.has_held_client
+        if result == VERIFY_OK and held:
+            session_id = self._sessions.create(now)
+            if session_id is None:
+                response = pages.response_busy()
+            else:
+                response = pages.response_login_success(session_id)
+            if not http.queue_held_response(response):
+                # Peer closed between create and queue — drop orphan session.
+                if session_id is not None:
+                    self._sessions._entries = [
+                        e
+                        for e in self._sessions._entries
+                        if e.encoded_id != session_id
+                    ]
+            return
+
+        if result == VERIFY_OK and not held:
+            # Peer aborted mid-KDF: wipe already done via job terminal; no session.
+            return
+
+        response = pages.response_login_page(incorrect=True)
+        if held:
+            http.queue_held_response(response)
+
+    def _load_admin_verifier(self):
+        store = self._settings_store
+        if store is None:
+            return None, None
+        try:
+            settings = store.load()
+        except Exception:
+            return None, None
+        if not settings:
+            return None, None
+        version = settings.get("admin_verifier_version")
+        salt = settings.get("admin_salt")
+        verifier = settings.get("admin_verifier")
+        if version != "pbkdf2-sha256-v1":
+            return None, None
+        if not salt or not verifier:
+            return None, None
+        return str(salt), str(verifier)
+
+    @staticmethod
+    def _wipe_bytearray(buf):
+        if isinstance(buf, bytearray):
+            for i in range(len(buf)):
+                buf[i] = 0
 
     def _tick_setup_ap(self, now):
         """Activate open setup AP, serve setup HTTP, run one candidate join."""
