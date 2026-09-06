@@ -38,28 +38,45 @@ FONT_TIME = "time"
 FONT_SECONDS = "seconds"
 FONT_DATE = "date"
 FONT_BADGE = "badge"
+FONT_MONTH = "month"
+FONT_WEEKDAY = "weekday"
+FONT_DAY = "day"
 
 # 5×7 bitmap cell metrics (matches src.device.display.font)
 FONT_CELL_WIDTH = 6
 FONT_CELL_HEIGHT = 8
 
 # Integer scales near UX ~88/~30/~14/~10 px; time=9 so HH:MM+gap+SS fits in 320.
+# Calendar: month ~16px, weekday ~11px, day ~14px (nearest integer scales).
 FONT_SCALE_TIME = 9  # 72 px (~88; scale 11 overflows 320 with SS)
 FONT_SCALE_SECONDS = 4  # 32 px (~30)
 FONT_SCALE_DATE = 2  # 16 px (~14)
 FONT_SCALE_BADGE = 1  # 8 px (~10)
+FONT_SCALE_MONTH = 2  # 16 px
+FONT_SCALE_WEEKDAY = 1  # 8 px (~11)
+FONT_SCALE_DAY = 2  # 16 px (~14)
 
 FONT_SCALES = {
     FONT_TIME: FONT_SCALE_TIME,
     FONT_SECONDS: FONT_SCALE_SECONDS,
     FONT_DATE: FONT_SCALE_DATE,
     FONT_BADGE: FONT_SCALE_BADGE,
+    FONT_MONTH: FONT_SCALE_MONTH,
+    FONT_WEEKDAY: FONT_SCALE_WEEKDAY,
+    FONT_DAY: FONT_SCALE_DAY,
 }
 
 # Clock layout metrics (320×240 landscape)
 CLOCK_SS_GAP_PX = 8
 CLOCK_DATE_GAP_PX = 14
 CLOCK_PLACEHOLDER_HHMM = "--:--"
+
+# Calendar layout metrics (320×240 landscape) — pad Y/X, cell gap, label gaps
+CALENDAR_PAD_Y = 10
+CALENDAR_PAD_X = 12
+CALENDAR_GAP = 2
+CALENDAR_LABEL_GAP = 6
+CALENDAR_HEADER_GAP = 4
 
 # Unsynced badge — fixed top-right, no reserved slot when hidden
 BADGE_TEXT = "UNSYNCED"

@@ -10,6 +10,7 @@ from src import config
 from src.time.model import TRUST_SYNCED, TRUST_UNSYNCED, DateTime, TimeSnapshot
 from src.ui.clock_view import ClockView
 from src.ui.components import badge_rect, draw_unsynced_badge
+from src.ui.compositor import UiCompositor
 from src.ui.display_port import FakeDisplayPort
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -64,9 +65,11 @@ def _fills(ops):
 
 
 def test_ui_modules_import_under_cpython():
-    from src.ui import clock_view, components, display_port
+    from src.ui import calendar_view, clock_view, components, compositor, display_port
 
     assert callable(clock_view.ClockView)
+    assert callable(calendar_view.CalendarView)
+    assert callable(compositor.UiCompositor)
     assert callable(components.draw_unsynced_badge)
     assert display_port.FakeDisplayPort is not None
 
@@ -193,8 +196,10 @@ def test_identical_rerender_is_noop():
 def test_cold_no_local_shows_placeholder_and_badge():
     display = FakeDisplayPort()
     view = ClockView(display)
-    view.render(
-        TimeSnapshot(utc=None, local=None, trust=TRUST_UNSYNCED, sync_age_ms=None)
+    compositor = UiCompositor(display)
+    compositor.render(
+        view,
+        TimeSnapshot(utc=None, local=None, trust=TRUST_UNSYNCED, sync_age_ms=None),
     )
 
     labels = [t[1] for t in _texts(display.ops)]
@@ -225,8 +230,8 @@ def test_unsynced_with_local_keeps_layout_and_draws_badge():
     synced = FakeDisplayPort()
     local = _local()
 
-    ClockView(synced).render(_snapshot(local, TRUST_SYNCED))
-    ClockView(display).render(_snapshot(local, TRUST_UNSYNCED))
+    UiCompositor(synced).render(ClockView(synced), _snapshot(local, TRUST_SYNCED))
+    UiCompositor(display).render(ClockView(display), _snapshot(local, TRUST_UNSYNCED))
 
     synced_texts = {
         (t[1], t[2], t[3], t[4], t[5])
@@ -255,11 +260,12 @@ def test_synced_after_unsynced_drops_badge_and_full_invalidates():
     """Trust flip with a second change must invalidate, not take the SS-only path."""
     display = FakeDisplayPort()
     view = ClockView(display)
-    view.render(_snapshot(_local(second=32), TRUST_UNSYNCED))
+    compositor = UiCompositor(display)
+    compositor.render(view, _snapshot(_local(second=32), TRUST_UNSYNCED))
     assert any(t[1] == config.BADGE_TEXT for t in _texts(display.ops))
 
     display.clear_ops()
-    view.render(_snapshot(_local(second=33), TRUST_SYNCED))
+    compositor.render(view, _snapshot(_local(second=33), TRUST_SYNCED))
 
     fills = _fills(display.ops)
     assert any(
@@ -270,6 +276,14 @@ def test_synced_after_unsynced_drops_badge_and_full_invalidates():
     assert config.BADGE_TEXT not in labels
     assert "14:07" in labels
     assert "33" in labels
+
+
+def test_clock_view_alone_does_not_draw_badge():
+    display = FakeDisplayPort()
+    ClockView(display).render(
+        TimeSnapshot(utc=None, local=None, trust=TRUST_UNSYNCED, sync_age_ms=None)
+    )
+    assert config.BADGE_TEXT not in [t[1] for t in _texts(display.ops)]
 
 
 def test_draw_unsynced_badge_hidden_draws_nothing():
@@ -294,3 +308,6 @@ def test_font_ids_are_stable_config_names():
     assert config.FONT_SCALES[config.FONT_SECONDS] == config.FONT_SCALE_SECONDS
     assert config.FONT_SCALES[config.FONT_DATE] == config.FONT_SCALE_DATE
     assert config.FONT_SCALES[config.FONT_BADGE] == config.FONT_SCALE_BADGE
+    assert config.FONT_SCALES[config.FONT_MONTH] == config.FONT_SCALE_MONTH
+    assert config.FONT_SCALES[config.FONT_WEEKDAY] == config.FONT_SCALE_WEEKDAY
+    assert config.FONT_SCALES[config.FONT_DAY] == config.FONT_SCALE_DAY

@@ -4,6 +4,7 @@ from src import config
 from src import ticks as default_ticks
 from src.time.model import TRUST_UNSYNCED
 from src.time.service import make_snapshot
+from src.ui.compositor import UiCompositor
 
 VIEW_CLOCK = "clock"
 
@@ -47,11 +48,15 @@ class App:
         clock_view,
         ticks_module=None,
         log=None,
+        compositor=None,
     ):
         self._clock = clock_port
         self._view = clock_view
         self._ticks = ticks_module if ticks_module is not None else default_ticks
         self._log = log if log is not None else print
+        if compositor is None:
+            compositor = UiCompositor(clock_view._display)
+        self._compositor = compositor
         self.state = AppState()
         self._booted = False
         self._last_snapshot = None
@@ -124,7 +129,7 @@ class App:
         utc = self._clock.read_utc()
         snapshot = make_snapshot(utc, self.state.trust, self.state.sync_age_ms)
         self._last_snapshot = snapshot
-        self._view.render(snapshot)
+        self._compositor.render(self._view, snapshot)
         self.state.redraw_deadline = t.ticks_add(now, config.CLOCK_REDRAW_MS)
 
     def run_forever(self, sleep_ms_fn=None):

@@ -161,8 +161,8 @@ def test_renderer_cannot_mutate_app_trust_or_view():
     app.step(now_ticks=ft.now)
     trust_before = app.state.trust
     view_before = app.state.active_view
-    view._cache["badge"] = True
     view._cache["valid"] = False
+    app._compositor._prev_badge = True
     assert app.state.trust == trust_before
     assert app.state.active_view == view_before
 

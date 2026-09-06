@@ -1,8 +1,6 @@
 """Dirty-region Clock view renderer (FR3 / UX-DR1–3/9)."""
 
 from src import config
-from src.time.model import TRUST_UNSYNCED
-from src.ui.components import draw_unsynced_badge
 
 # Precomputed digit strings — steady-state SS path never formats new strs.
 _SS_STRINGS = (
@@ -148,7 +146,6 @@ class ClockView:
             "hhmm": None,
             "ss": None,
             "date": None,
-            "badge": None,
             "hour": None,
             "minute": None,
             "second": None,
@@ -176,26 +173,20 @@ class ClockView:
 
     def render(self, snapshot):
         cache = self._cache
-        show_badge = snapshot.trust == TRUST_UNSYNCED
         local = snapshot.local
-
-        # Badge visibility change invalidates base so pixels under badge restore.
-        if cache["valid"] and cache["badge"] is not None and cache["badge"] != show_badge:
-            self.invalidate()
 
         if not cache["valid"]:
             self._full_redraw(
                 _format_hhmm(local),
                 _format_ss(local),
                 _format_date(local),
-                show_badge,
             )
-            self._remember_local(local, show_badge)
+            self._remember_local(local)
             return
 
         # Identical content: no-op (avoids full redraw fallthrough).
         if local is None:
-            if not cache["has_local"] and cache["badge"] == show_badge:
+            if not cache["has_local"]:
                 return
         elif (
             cache["has_local"]
@@ -206,7 +197,6 @@ class ClockView:
             and cache["month"] == local.month
             and cache["day"] == local.day
             and cache["weekday"] == local.weekday
-            and cache["badge"] == show_badge
         ):
             return
 
@@ -232,13 +222,11 @@ class ClockView:
             _format_hhmm(local),
             _format_ss(local),
             _format_date(local),
-            show_badge,
         )
-        self._remember_local(local, show_badge)
+        self._remember_local(local)
 
-    def _remember_local(self, local, show_badge):
+    def _remember_local(self, local):
         cache = self._cache
-        cache["badge"] = show_badge
         if local is None:
             cache["has_local"] = False
             cache["hour"] = None
@@ -307,7 +295,7 @@ class ClockView:
             date_h,
         )
 
-    def _full_redraw(self, hhmm, ss, date, show_badge):
+    def _full_redraw(self, hhmm, ss, date):
         display = self._display
         cache = self._cache
         display.fill_rect(
@@ -344,8 +332,6 @@ class ClockView:
             display.draw_text(
                 date, date_x, date_y, config.FONT_DATE, config.COLOR_SECONDARY
             )
-
-        draw_unsynced_badge(display, show_badge)
 
         cache["hhmm"] = hhmm
         cache["ss"] = ss
