@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-06-2026 00:00
-last_updated: 09-06-2026 13:25
+last_updated: 09-06-2026 13:45
 project: pi-calendar
 project_key: NOKEY
 tracking_system: file-system
@@ -43,8 +43,8 @@ development_status:
   1-5-synchronize-clock-time-without-blocking-the-display: backlog
   epic-1-retrospective: optional
 
-  epic-2: in-progress
+  epic-2: done
   2-1-generate-a-correct-gregorian-month-model: done
   2-2-render-the-current-month-calendar-view: done
-  2-3-rotate-views-and-handle-local-date-transitions: backlog
+  2-3-rotate-views-and-handle-local-date-transitions: done
   epic-2-retrospective: optional

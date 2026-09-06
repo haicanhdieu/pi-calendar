@@ -7,6 +7,7 @@ from src.credentials import credentials_valid
 from src.device.clock_port import RtcClockPort
 from src.device.display import ILI9341
 from src.device.display.adapter import Ili9341DisplayPort
+from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
 from src.ui.compositor import UiCompositor
 
@@ -45,11 +46,13 @@ def main():
 
     display_port = Ili9341DisplayPort(display)
     clock_view = ClockView(display_port)
+    calendar_view = CalendarView(display_port)
     compositor = UiCompositor(display_port)
     clock_port = RtcClockPort()
     app = App(
         clock_port=clock_port,
         clock_view=clock_view,
+        calendar_view=calendar_view,
         compositor=compositor,
     )
 
