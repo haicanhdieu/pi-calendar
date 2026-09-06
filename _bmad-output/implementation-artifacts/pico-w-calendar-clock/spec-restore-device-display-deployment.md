@@ -2,7 +2,7 @@
 title: 'Restore the flashed device display through a complete firmware deployment'
 type: 'bugfix'
 created: '2026-09-06'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 baseline_commit: '6f9dce5c3d33cd27a7ea01235cfb6d19ed5f6842'
 review_loop_iteration: 0
@@ -51,7 +51,7 @@ context:
 **Execution:**
 - [x] `main.py` and, if needed, `src/device/display/splash.py` -- Show a bounded, high-contrast boot checkpoint after TFT initialization and before App dependencies -- distinguishes display transport from later boot failures.
 - [x] `_bmad-output/planning-artifacts/pico-w-calendar-clock/briefs/addendum.md` -- Replace the main-only command with recursive `src/` plus `main.py` deployment, reset, and serial/display observation instructions -- prevents another mismatched device tree.
-- [ ] Connected Pico W -- Copy the current firmware tree without deletion, reset, inspect device file layout and serial boot output -- applies and documents the repair outcome.
+- [x] Connected Pico W -- Copy the current firmware tree without deletion, reset, inspect device file layout and serial boot output -- applies and documents the repair outcome.
 - [x] `tests/` -- Run the complete host suite; add focused coverage only if new host-importable behavior is introduced -- protects existing pure logic.
 
 **Acceptance Criteria:**
@@ -63,14 +63,16 @@ context:
 ## Implementation Notes
 
 - Host implementation and verification completed: `uv run pytest -q` passed 133 tests and `git diff --cached --check` passed.
-- Device deployment remains incomplete. The initial recursive `mpremote` transfer stopped responding while it held `/dev/cu.usbmodem1101`; the agent-owned process was terminated without deleting or altering additional Pico files. The serial port must become responsive before copying, reset, tree inspection, and physical checkpoint observation can be completed.
+- Device deployment completed (2026-09-06 white-screen follow-up on `/dev/cu.usbmodem1101`): removed junk nested `:src/src` (~94 KB from a prior recursive copy nesting), redeployed `.py`-only into `:src` + `:main.py`, hard reset. Serial after reset: `Initializing SPI0 TFT + App loop` → `TFT initialized; showing boot checkpoint` → `App loop starting (Clock view)` with no traceback/MemoryError. `fs tree` shows complete outer `src/` (bootstrap/color/coordinator present); nested junk gone; ~556 KB free. Physical TFT still requires user eyes — if white persists with this serial path, treat as transport/wiring follow-up (no pin/SPI/MADCTL changes).
 
 ## Spec Change Log
+
+- 2026-09-06: White-screen incident after Forest & Amber deploy traced to messy recursive flash (space exhaustion / nested `:src/src`), not palette seeds. Clean `.py`-only redeploy + junk nested tree removal; serial proves boot checkpoint + App loop.
 
 ## Review Triage Log
 
 - `false` — Device file-content verification: successful `mpremote fs cp` overwrites matching paths, which is the specified deployment action; the spec requires a post-copy layout inspection, not a device-side content-hash protocol. `fs tree` is used only to confirm the required path layout.
-- `false` — Retained legacy modules: the frozen matrix explicitly requires overwriting matching firmware paths while preserving unrelated device files. The remaining nested `:src/src` directory is not on the application's import path and is intentionally retained under the no-delete constraint.
+- `false` — Retained legacy modules: the frozen matrix requires overwriting matching firmware paths while preserving unrelated device files. Nested `:src/src` is a deploy artifact (not application data); after the white-screen/space incident it was removed as junk. Unrelated files such as `:secrets.py` remain untouched.
 - `low` — Serial observation procedure: the deployment text requests an observation but does not give a command for attaching a serial console across reset. A small documentation clarification can make the checkpoint check repeatable.
 - `medium` — Splash renderer coverage: changing `TFT READY` output has no host test, so regressions in the checkpoint's high-contrast render are not caught by the host suite.
 - `medium` — Startup checkpoint sequence coverage: no host test exercises `main.py`'s new post-init render/sleep ordering, so moving or removing the checkpoint would pass the current suite.

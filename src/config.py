@@ -17,10 +17,10 @@ SPI_PHASE = 0
 MADCTL = 0xA8
 
 # Instrument-panel palette seeds (RGB888); convert at the display boundary.
-COLOR_BACKGROUND_RGB = (0x03, 0x14, 0x06)
+COLOR_BACKGROUND_RGB = (0x0A, 0x0A, 0x0A)
 COLOR_PRIMARY_RGB = (0x3D, 0xFF, 0x7A)
-COLOR_SECONDARY_RGB = (0x1C, 0x6B, 0x38)
-COLOR_UNSYNCED_RGB = (0xFF, 0x6B, 0x3D)
+COLOR_SECONDARY_RGB = (0xFF, 0xB2, 0x38)
+COLOR_UNSYNCED_RGB = (0xFF, 0x4D, 0x4D)
 
 
 def rgb888_to_rgb565(red, green, blue):

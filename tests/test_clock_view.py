@@ -297,10 +297,10 @@ def test_palette_rgb565_matches_independent_packing():
     assert config.COLOR_PRIMARY == _pack_rgb565(*config.COLOR_PRIMARY_RGB)
     assert config.COLOR_SECONDARY == _pack_rgb565(*config.COLOR_SECONDARY_RGB)
     assert config.COLOR_UNSYNCED == _pack_rgb565(*config.COLOR_UNSYNCED_RGB)
-    assert config.COLOR_BACKGROUND == 0x00A0
+    assert config.COLOR_BACKGROUND == 0x0841
     assert config.COLOR_PRIMARY == 0x3FEF
-    assert config.COLOR_SECONDARY == 0x1B47
-    assert config.COLOR_UNSYNCED == 0xFB47
+    assert config.COLOR_SECONDARY == 0xFD87
+    assert config.COLOR_UNSYNCED == 0xFA69
 
 
 def test_font_ids_are_stable_config_names():
