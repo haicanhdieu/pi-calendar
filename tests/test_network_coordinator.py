@@ -40,18 +40,30 @@ def ntp_payload():
 
 
 class FakeWlan:
-    def __init__(self, connected=False):
+    def __init__(self, connected=False, ip="192.168.1.40"):
         self.connected = connected
         self.connect_calls = []
+        self.disconnect_calls = 0
+        self._ip = ip
+        self.active_value = False
 
-    def active(self, value):
-        assert value is True
+    def active(self, value=None):
+        if value is None:
+            return self.active_value
+        self.active_value = value
 
     def isconnected(self):
         return self.connected
 
     def connect(self, ssid, password):
         self.connect_calls.append((ssid, password))
+
+    def disconnect(self):
+        self.disconnect_calls += 1
+        self.connected = False
+
+    def ifconfig(self):
+        return (self._ip, "255.255.255.0", "192.168.1.1", "8.8.8.8")
 
 
 class FakeSocketModule:

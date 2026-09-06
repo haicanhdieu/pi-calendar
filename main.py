@@ -12,6 +12,7 @@ from src.device.display.splash import splash_screen
 from src.device.network.mailbox import Mailbox
 from src.device.network.models import (
     MODE_SETUP_AP,
+    MODE_STATION_CONNECTING,
     make_settings_coordinator,
     ntp_sync_enabled,
 )
@@ -65,9 +66,13 @@ def main():
         ntp_address=config.NTP_SERVER_ADDRESS,
         http_server=setup_http,
     )
-    # Legacy secrets NTP only when settings are configured; SETUP_AP owns boot
-    # when the store is unconfigured (story 1.1). App overlay of events is 1.3.
-    sync_enabled = ntp_sync_enabled(coordinator.mode, credentials_valid())
+    # Store-owned Wi-Fi: hold NTP until App sees station online (story 1.3).
+    # Connecting/setup must not enqueue SyncCommands that expire mid-associate.
+    creds_ok = settings_store.is_configured() or credentials_valid()
+    if coordinator.mode in (MODE_SETUP_AP, MODE_STATION_CONNECTING):
+        sync_enabled = False
+    else:
+        sync_enabled = ntp_sync_enabled(coordinator.mode, creds_ok)
 
     app = App(
         clock_port=clock_port,
@@ -76,9 +81,10 @@ def main():
         compositor=compositor,
         mailbox=mailbox,
         sync_enabled=sync_enabled,
+        network_events=network_events,
     )
 
-    if not sync_enabled and coordinator.mode != MODE_SETUP_AP:
+    if not creds_ok and coordinator.mode != MODE_SETUP_AP:
         app.report_time_source_failure("missing or empty Wi-Fi credentials")
 
     led.value(0)

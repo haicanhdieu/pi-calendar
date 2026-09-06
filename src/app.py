@@ -16,6 +16,14 @@ from src.ui.view_state import (
 # Re-export view constants for callers / tests.
 __all__ = ("VIEW_CLOCK", "VIEW_CALENDAR", "AppState", "App")
 
+# Duck-typed NetworkEvent kind strings (no src.device import — purity).
+_EVENT_SETUP_STATUS = "setup_status"
+_EVENT_STATION_STATUS = "station_status"
+_MODE_STATION_ONLINE = "STATION_ONLINE"
+
+_OVERLAY_SETUP = "setup"
+_OVERLAY_STATION_IP = "station_ip"
+
 
 class _SyncCommand:
     """Duck-typed SyncCommand so App never imports ``src.device``."""
@@ -58,8 +66,8 @@ class App:
 
     Reads advancing UTC only through an injected ClockPort, derives immutable
     TimeSnapshots via pure time logic, and schedules work with ticks helpers.
-    Loop order (AD-12): adapter results → snapshot → rollover → view deadline
-    → base render → status layer.
+    Loop order (AD-12): adapter results → network events → snapshot → rollover
+    → view deadline → base render → status layer.
     """
 
     def __init__(
@@ -73,6 +81,7 @@ class App:
         mailbox=None,
         lock=None,
         sync_enabled=True,
+        network_events=None,
     ):
         self._clock = clock_port
         self._view = clock_view
@@ -87,6 +96,7 @@ class App:
         # retire; the cooperative core-0 composition never uses a lock.
         del lock
         self._sync_enabled = bool(sync_enabled)
+        self._network_events = network_events
         self.state = AppState()
         self._booted = False
         self._last_snapshot = None
@@ -95,6 +105,10 @@ class App:
         self._next_command_id = 1
         self._inflight_id = None
         self._inflight_deadline = None
+        self._overlay_kind = None
+        self._overlay_ssid = None
+        self._overlay_ip = None
+        self._overlay_clear_deadline = None
 
     def boot(self):
         """Enter Clock as the active view and arm tick deadlines."""
@@ -108,6 +122,10 @@ class App:
         self._month_grid = None
         self._inflight_id = None
         self._inflight_deadline = None
+        self._overlay_kind = None
+        self._overlay_ssid = None
+        self._overlay_ip = None
+        self._overlay_clear_deadline = None
         # Due immediately so the first step paints Clock.
         self.state.redraw_deadline = now
         # Sync retry due immediately so the first NTP attempt is not deferred.
@@ -148,12 +166,27 @@ class App:
         self._consume_sync_result(now)
         self._maybe_enqueue_sync(now)
 
+        # 1b. Drain coordinator NetworkEvents into overlay state (story 1.3).
+        overlay_before = (
+            self._overlay_kind,
+            self._overlay_ssid,
+            self._overlay_ip,
+            self._overlay_clear_deadline,
+        )
+        self._drain_network_events(now)
+        self._expire_station_ip_overlay(now)
+        overlay_after = (
+            self._overlay_kind,
+            self._overlay_ssid,
+            self._overlay_ip,
+            self._overlay_clear_deadline,
+        )
+        force_redraw = overlay_before != overlay_after
+
         # 2. Derive snapshot.
         utc = self._clock.read_utc()
         snapshot = make_snapshot(utc, self.state.trust, self.state.sync_age_ms)
         self._last_snapshot = snapshot
-
-        force_redraw = False
 
         # 3. Handle date / month rollover.
         force_redraw = self._handle_rollover(snapshot, now) or force_redraw
@@ -169,6 +202,66 @@ class App:
         if force_redraw or t.ticks_diff(self.state.redraw_deadline, now) <= 0:
             self._render(snapshot)
             self.state.redraw_deadline = t.ticks_add(now, config.CLOCK_REDRAW_MS)
+
+    def _drain_network_events(self, now):
+        events = self._network_events
+        if events is None:
+            return
+        while events:
+            event = events.pop(0)
+            self._apply_network_event(event, now)
+
+    def _apply_network_event(self, event, now):
+        kind = getattr(event, "kind", None)
+        mode = getattr(event, "mode", None)
+        if kind == _EVENT_SETUP_STATUS:
+            self._sync_enabled = False
+            self._overlay_kind = _OVERLAY_SETUP
+            self._overlay_ssid = getattr(event, "ssid", None) or config.SETUP_AP_SSID
+            self._overlay_ip = getattr(event, "ip", None) or config.SETUP_AP_GATEWAY
+            self._overlay_clear_deadline = None
+            return
+        if kind == _EVENT_STATION_STATUS and mode == _MODE_STATION_ONLINE:
+            # NTP only after station is online (not while still connecting).
+            self._sync_enabled = True
+            ip = getattr(event, "ip", None)
+            # Clear prior Setup / station-IP overlay; never leave a stale address.
+            self._overlay_kind = None
+            self._overlay_ssid = None
+            self._overlay_ip = None
+            self._overlay_clear_deadline = None
+            if not ip:
+                # Missing IP: never invent a false address.
+                return
+            self._overlay_kind = _OVERLAY_STATION_IP
+            self._overlay_ssid = getattr(event, "ssid", None)
+            self._overlay_ip = str(ip)
+            self._overlay_clear_deadline = self._ticks.ticks_add(
+                now, config.STATION_IP_DISPLAY_MS
+            )
+
+    def _expire_station_ip_overlay(self, now):
+        if self._overlay_kind != _OVERLAY_STATION_IP:
+            return
+        deadline = self._overlay_clear_deadline
+        if deadline is None:
+            return
+        if self._ticks.ticks_diff(now, deadline) >= 0:
+            self._overlay_kind = None
+            self._overlay_ssid = None
+            self._overlay_ip = None
+            self._overlay_clear_deadline = None
+
+    def _network_status(self):
+        """Immutable-ish status payload for the compositor status layer."""
+        kind = self._overlay_kind
+        if kind is None:
+            return None
+        return {
+            "kind": kind,
+            "ssid": self._overlay_ssid,
+            "ip": self._overlay_ip,
+        }
 
     def _result_is_expired(self, deadline_ms, now_ms):
         return self._ticks.ticks_diff(now_ms, deadline_ms) >= 0
@@ -305,14 +398,15 @@ class App:
             self._calendar_view.invalidate()
 
     def _render(self, snapshot):
+        status = self._network_status()
         if self.state.active_view == VIEW_CALENDAR:
             grid = self._month_grid
             if grid is None and snapshot.local is not None:
                 self._rebuild_month_grid(snapshot.local)
                 grid = self._month_grid
-            self._compositor.render(self._calendar_view, snapshot, grid)
+            self._compositor.render(self._calendar_view, snapshot, grid, status=status)
         else:
-            self._compositor.render(self._view, snapshot)
+            self._compositor.render(self._view, snapshot, status=status)
 
     def run_forever(self, sleep_ms_fn=None):
         """Device loop: step + short sleep. Not used by host tests."""

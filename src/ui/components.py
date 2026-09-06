@@ -2,6 +2,14 @@
 
 from src import config
 
+_OVERLAY_SETUP = "setup"
+_OVERLAY_STATION_IP = "station_ip"
+
+# Bottom-left network status strip (draw-last after base + UNSYNCED badge).
+_STATUS_MARGIN_LEFT = 8
+_STATUS_MARGIN_BOTTOM = 8
+_STATUS_LINE_GAP = 2
+
 
 def badge_rect(display):
     """Return the fixed top-right badge fill rect (x, y, w, h), unclipped."""
@@ -33,3 +41,40 @@ def draw_unsynced_badge(display, visible):
         config.FONT_BADGE,
         config.COLOR_BACKGROUND,
     )
+
+
+def draw_network_status_overlay(display, status):
+    """
+    Draw Setup SSID+gateway continuously, or station IPv4 after connect.
+
+    ``status`` is ``None`` or a dict with ``kind`` / ``ssid`` / ``ip``.
+    Coordinator never calls this — App owns the overlay via compositor.
+    """
+    if not status:
+        return
+    kind = status.get("kind")
+    if kind == _OVERLAY_SETUP:
+        line1 = status.get("ssid") or config.SETUP_AP_SSID
+        line2 = status.get("ip") or config.SETUP_AP_GATEWAY
+        _draw_status_lines(display, line1, line2)
+        return
+    if kind == _OVERLAY_STATION_IP:
+        ip = status.get("ip")
+        if not ip:
+            return
+        _draw_status_lines(display, str(ip), None)
+
+
+def _draw_status_lines(display, line1, line2):
+    font = config.FONT_BADGE
+    color = config.COLOR_PRIMARY
+    _, th = display.measure_text("Ag", font)
+    lines = [line1] if line2 is None else [line1, line2]
+    total_h = len(lines) * th + (len(lines) - 1) * _STATUS_LINE_GAP
+    y = display.height - _STATUS_MARGIN_BOTTOM - total_h
+    x = _STATUS_MARGIN_LEFT
+    for text in lines:
+        if text is None:
+            continue
+        display.draw_text(str(text), x, y, font, color)
+        y += th + _STATUS_LINE_GAP

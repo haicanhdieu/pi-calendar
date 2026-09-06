@@ -23,9 +23,12 @@ from src.device.network.models import (
     MODE_STATION_ONLINE,
     SETUP_AP_SSID,
     boot_mode_for_settings,
+    next_station_failure_count,
+    reset_station_failure_count,
     setup_ap_error_event,
     setup_ap_status_event,
     station_error_event,
+    station_failures_exhausted,
     station_status_event,
 )
 from src.device.settings_store import SettingsCommitError
@@ -79,6 +82,13 @@ class NetworkCoordinator:
         self._candidate = None
         self._candidate_deadline = None
         self._candidate_started = False
+        self._station_failure_count = reset_station_failure_count()
+        self._station_ssid = None
+        self._station_password = None
+        self._station_deadline = None
+        self._station_started = False
+        self._station_next_attempt = None
+        self._station_attempt_armed = False
 
     def _resolve_boot_mode(self):
         store = self._settings_store
@@ -124,7 +134,11 @@ class NetworkCoordinator:
             self._tick_candidate_join(now)
             return
         if self._mode == MODE_STATION_CONNECTING:
+            self._tick_store_station(now)
             return
+        if self._mode == MODE_STATION_ONLINE and self._settings_store is not None:
+            if self._watch_station_drop(now):
+                return
         if self._command is None:
             taken = self._mailbox.try_take_command()
             if taken is None:
@@ -142,7 +156,8 @@ class NetworkCoordinator:
                 if wlan.isconnected():
                     self._state = "start_ntp"
                 else:
-                    # This is intentionally the only association request.
+                    # Legacy secrets path only: store STA owns association when
+                    # SettingsStore is present (story 1.3).
                     wlan.connect(self._ssid, self._password)
                     self._state = "wifi"
             except Exception:
@@ -164,6 +179,158 @@ class NetworkCoordinator:
             return
         if self._state == "recv_ntp":
             self._poll_ntp()
+
+    def _load_store_wifi(self):
+        store = self._settings_store
+        if store is None:
+            return None, None
+        try:
+            settings = store.load()
+        except Exception:
+            return None, None
+        if not settings:
+            return None, None
+        ssid = settings.get("wifi_ssid")
+        password = settings.get("wifi_password")
+        if not ssid or not password:
+            return None, None
+        return str(ssid), str(password)
+
+    def _arm_store_station_attempt(self, now, defer_ms=0):
+        """Schedule a store-credential station attempt (boot or reconnect)."""
+        self._mode = MODE_STATION_CONNECTING
+        self._station_started = False
+        self._station_attempt_armed = False
+        self._station_deadline = None
+        if defer_ms > 0:
+            self._station_next_attempt = self._ticks.ticks_add(now, defer_ms)
+        else:
+            self._station_next_attempt = now
+
+    def _begin_store_station_attempt(self, now):
+        ssid, password = self._load_store_wifi()
+        if not ssid or not password:
+            self._fail_store_station(ERROR_JOIN_FAIL, ssid=None)
+            return
+        self._station_ssid = ssid
+        self._station_password = password
+        self._station_deadline = self._ticks.ticks_add(
+            now, config.SYNC_COMMAND_DEADLINE_MS
+        )
+        self._station_started = False
+        self._station_attempt_armed = True
+        self._station_next_attempt = None
+        self._mode = MODE_STATION_CONNECTING
+        try:
+            self._emit(
+                station_status_event(
+                    mode=MODE_STATION_CONNECTING, ssid=ssid
+                )
+            )
+        except Exception:
+            pass
+
+    def _tick_store_station(self, now):
+        """Bounded store-credential STA connect/reconnect (no candidate)."""
+        if not self._station_attempt_armed:
+            next_at = self._station_next_attempt
+            if next_at is not None and self._ticks.ticks_diff(now, next_at) < 0:
+                return
+            self._begin_store_station_attempt(now)
+            return
+
+        if self._ticks.ticks_diff(now, self._station_deadline) >= 0:
+            self._fail_store_station(ERROR_JOIN_TIMEOUT, self._station_ssid)
+            return
+
+        try:
+            wlan = self._get_wlan()
+            if not self._station_started:
+                wlan.active(True)
+                if wlan.isconnected():
+                    self._station_started = True
+                    self._complete_store_station_success()
+                    return
+                wlan.connect(self._station_ssid, self._station_password)
+                self._station_started = True
+                return
+            if not wlan.isconnected():
+                return
+        except Exception:
+            self._fail_store_station(ERROR_JOIN_FAIL, self._station_ssid)
+            return
+
+        self._complete_store_station_success()
+
+    def _complete_store_station_success(self):
+        ssid = self._station_ssid
+        ip = None
+        try:
+            ip = self._station_ip()
+        except Exception:
+            ip = None
+        self._station_failure_count = reset_station_failure_count()
+        self._clear_store_station_attempt()
+        self._mode = MODE_STATION_ONLINE
+        try:
+            self._emit(
+                station_status_event(
+                    mode=MODE_STATION_ONLINE, ssid=ssid, ip=ip
+                )
+            )
+        except Exception:
+            pass
+
+    def _fail_store_station(self, error_code, ssid):
+        self._disconnect_station()
+        self._station_failure_count = next_station_failure_count(
+            self._station_failure_count
+        )
+        self._clear_store_station_attempt()
+        try:
+            self._emit(
+                station_error_event(
+                    error_code,
+                    mode=MODE_STATION_CONNECTING,
+                    ssid=ssid,
+                )
+            )
+        except Exception:
+            pass
+        if station_failures_exhausted(self._station_failure_count):
+            self._enter_setup_ap_from_failures()
+            return
+        # Schedule the next bounded reconnect attempt.
+        now = self._ticks.ticks_ms()
+        self._arm_store_station_attempt(now, config.STATION_RECONNECT_GAP_MS)
+
+    def _enter_setup_ap_from_failures(self):
+        self._mode = MODE_SETUP_AP
+        self._setup_ap_active = False
+        self._setup_error_emitted = False
+        self._clear_store_station_attempt()
+        # Emit setup_status immediately so App clears any station-IP overlay
+        # on the same loop step (do not wait for the next SETUP_AP tick).
+        self._activate_setup_ap()
+
+    def _clear_store_station_attempt(self):
+        self._station_ssid = None
+        self._station_password = None
+        self._station_deadline = None
+        self._station_started = False
+        self._station_attempt_armed = False
+        self._station_next_attempt = None
+
+    def _watch_station_drop(self, now):
+        """If a formerly-online station drops, start a reconnect attempt."""
+        try:
+            if self._get_wlan().isconnected():
+                return False
+        except Exception:
+            # Treat WLAN probe failure as a drop requiring reconnect.
+            pass
+        self._arm_store_station_attempt(now, 0)
+        return True
 
     def _tick_setup_ap(self, now):
         """Activate open setup AP, serve setup HTTP, run one candidate join."""
@@ -312,6 +479,8 @@ class NetworkCoordinator:
 
         ssid = candidate.ssid
         # Order: emit online → flush browser success → close clients → drop AP.
+        self._station_failure_count = reset_station_failure_count()
+        self._clear_store_station_attempt()
         self._mode = MODE_STATION_ONLINE
         try:
             self._emit(
@@ -391,6 +560,14 @@ class NetworkCoordinator:
         self._setup_ap_active = False
 
     def _credentials_valid(self):
+        # Prefer SettingsStore Wi-Fi when present (story 1.3); secrets is legacy.
+        if self._settings_store is not None:
+            ssid, password = self._load_store_wifi()
+            if ssid and password:
+                self._ssid = ssid
+                self._password = password
+                return True
+            return False
         try:
             secrets_mod = self._secrets_mod
             if secrets_mod is None:

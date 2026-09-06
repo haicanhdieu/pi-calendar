@@ -6,6 +6,7 @@ from src.device.network.models import (
     EVENT_SETUP_ERROR,
     EVENT_SETUP_STATUS,
     MODE_SETUP_AP,
+    MODE_STATION_CONNECTING,
     MODE_STATION_ONLINE,
     SETUP_AP_GATEWAY,
     SETUP_AP_SSID,
@@ -109,10 +110,11 @@ def test_valid_settings_do_not_enter_setup_ap_and_keep_ntp_path():
     store = _store(fs)
     events = []
     coordinator, box, _ticks = make_coordinator()
+    wlan = FakeWlan(True)
     # Rebuild with configured store while reusing mailbox NTP fakes.
     coordinator = NetworkCoordinator(
         box,
-        wlan=FakeWlan(True),
+        wlan=wlan,
         socket_module=FakeSocketModule(ntp_payload()),
         secrets_mod=Secrets,
         ticks_module=FakeTicks(),
@@ -120,14 +122,19 @@ def test_valid_settings_do_not_enter_setup_ap_and_keep_ntp_path():
         event_sink=events,
         ap_wlan=FakeApWlan(),
     )
-    assert coordinator.mode == MODE_STATION_ONLINE
+    assert coordinator.mode == MODE_STATION_CONNECTING
     assert store.is_configured() is True
+    # Store STA connect completes first, then NTP mailbox path runs.
+    coordinator.tick()  # begin attempt + emit connecting
+    coordinator.tick()  # already connected → online
+    assert coordinator.mode == MODE_STATION_ONLINE
     box.enqueue(SyncCommand(1, 100))
     coordinator.tick()
     coordinator.tick()
     coordinator.tick()
     assert terminal(box).ok is True
-    assert events == []
+    kinds = [e.kind for e in events]
+    assert "station_status" in kinds
 
 
 def test_setup_ap_wlan_error_emits_named_event_without_crash():
@@ -214,4 +221,4 @@ def test_boot_uses_real_settings_store_is_configured():
         settings_store=configured,
         ap_wlan=FakeApWlan(),
     )
-    assert online.mode == MODE_STATION_ONLINE
+    assert online.mode == MODE_STATION_CONNECTING

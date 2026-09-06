@@ -22,3 +22,12 @@ def test_tft_spi_and_madctl_match_hardware_docs():
 def test_network_proof_mode_defaults_off():
     # Product boot must not silently divert into the Story 1.4 harness.
     assert config.NETWORK_PROOF_MODE is False
+
+
+def test_station_recovery_budgets():
+    assert config.STATION_FAILURE_LIMIT == 3
+    assert config.STATION_IP_DISPLAY_MS >= 10_000
+    assert config.STATION_RECONNECT_GAP_MS >= 0
+    # Pin map untouched by story 1.3 constants.
+    assert config.TFT_SCK == 18
+    assert config.TFT_MOSI == 19

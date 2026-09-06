@@ -29,15 +29,32 @@ ERROR_SCAN_FAIL = "scan_fail"
 
 
 def boot_mode_for_settings(configured):
-    """Pure boot transition: unconfigured → SETUP_AP, else STATION_ONLINE stub."""
+    """Pure boot transition: unconfigured → SETUP_AP, else STATION_CONNECTING."""
     if configured:
-        return MODE_STATION_ONLINE
+        return MODE_STATION_CONNECTING
     return MODE_SETUP_AP
 
 
 def ntp_sync_enabled(mode, credentials_ok):
     """True only when not in SETUP_AP and credentials soft-check passed."""
     return mode != MODE_SETUP_AP and bool(credentials_ok)
+
+
+def next_station_failure_count(current_count):
+    """Increment consecutive terminal station failures (pure)."""
+    return int(current_count) + 1
+
+
+def station_failures_exhausted(count, limit=None):
+    """True when consecutive terminal failures reach the setup fallback limit."""
+    if limit is None:
+        limit = config.STATION_FAILURE_LIMIT
+    return int(count) >= int(limit)
+
+
+def reset_station_failure_count():
+    """Failure count after a successful persist/online station path."""
+    return 0
 
 
 def make_settings_coordinator(mailbox, settings_store, event_sink, **kwargs):
