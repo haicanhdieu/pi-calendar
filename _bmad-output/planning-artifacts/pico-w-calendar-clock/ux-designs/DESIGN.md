@@ -1,15 +1,15 @@
 ---
 name: Pi Calendar Clock
 status: final
-updated: 2026-09-05
+updated: 2026-09-06
 colors:
-  bg: '#031406'
+  bg: '#0a0a0a'
   digit-primary: '#3dff7a'
-  digit-secondary: '#1c6b38'
+  digit-secondary: '#ffb238'
   today-fill: '#3dff7a'
-  today-text: '#031406'
-  unsynced-bg: '#ff6b3d'
-  unsynced-text: '#031406'
+  today-text: '#0a0a0a'
+  unsynced-bg: '#ff4d4d'
+  unsynced-text: '#0a0a0a'
 typography:
   time:
     family: '-apple-system, "Helvetica Neue", Arial, sans-serif (device: bold sans bitmap font)'
@@ -53,20 +53,20 @@ components:
 
 ## Brand & Style
 
-Pi Calendar Clock is a single-purpose desk object, not an app. It has one job — tell Minh the time and date at a glance, from across a desk, without asking for attention. The visual register is **instrument panel**: a dark screen, one glowing hue, no chrome, no decoration. It should feel like a dedicated piece of hardware earning its keep, not a UI squeezed onto a small display.
+Pi Calendar Clock is a single-purpose desk object, not an app. It has one job — tell Minh the time and date at a glance, from across a desk, without asking for attention. The visual register is **instrument panel**: a dark screen, green-and-amber glow, no chrome, no decoration. It should feel like a dedicated piece of hardware earning its keep, not a UI squeezed onto a small display.
 
 Everything drawn on the 2.4" ILI9341 (320×240, landscape) answers to one question: is it readable in a half-second glance? If a decision doesn't serve glanceability, it's cut.
 
 ## Colors
 
-Deep Forest Mono-green — a single hue on near-black, chosen for a calm, low-glare, "instrument display" feel rather than a bright multi-color gadget look.
+Forest & Amber — green stays hero, amber takes the supporting tier. Two warm/cool-balanced hues on neutral near-black, still calm and low-glare, but with more tonal range than the old mono-green panel.
 
-- **Background (`#031406`)** — near-black, not pure black, so the phosphor-green never looks like it's floating on a void. Used on both screens, always.
-- **Digit Primary (`#3dff7a`)** — the hero color. Used only for the thing the user is looking at *right now*: the HH:MM time, and today's date number in the calendar grid.
-- **Digit Secondary (`#1c6b38`)** — a dimmed version of the same hue. Used for supporting information that should read as present but not compete: seconds, the date line under the clock, the weekday header row, and adjacent-month overflow days.
-- **Unsynced Accent (`#ff6b3d`)** — the *only* non-green color on the device. Reserved exclusively for the unsynced badge. Its rarity is the point: if the user ever sees orange, something is wrong with the time source.
+- **Background (`#0a0a0a`)** — neutral near-black, no color cast. Doesn't favor green or amber; both hues read as equally "at home" on it. Used on both screens, always.
+- **Digit Primary (`#3dff7a`)** — the hero color, unchanged from the mono-green era. Used only for the thing the user is looking at *right now*: the HH:MM time, and today's date number in the calendar grid.
+- **Digit Secondary (`#ffb238`)** — amber, replacing the old dimmed-green secondary. Used for supporting information that should read as present but not compete: seconds, the date line under the clock, the weekday header row, and adjacent-month overflow days. Amber is a distinct hue from green (not a dimmed shade of it), so the primary/secondary split now reads as two-tone rather than bright/dim.
+- **Unsynced Accent (`#ff4d4d`)** — red, the *only* non-green/non-amber color on the device. Reserved exclusively for the unsynced badge. Moved off orange because amber now owns that part of the wheel; red keeps the alert unmistakably distinct from both hero and secondary tones. Its rarity is the point: if the user ever sees red, something is wrong with the time source.
 
-Avoid: any second chromatic accent, gradients, or full-brightness use of the secondary green (it must read as visibly dimmer than primary, not just a different shade).
+Avoid: any third chromatic accent beyond green/amber/red, gradients, or letting amber creep into primary-tier elements (it must stay a supporting color, never compete with the green hero digits).
 
 ## Typography
 
@@ -103,7 +103,8 @@ Minimal rounding — 3px on the unsynced badge and the today-cell fill, just eno
 
 ## Do's and Don'ts
 
-- **Do** keep exactly one chromatic accent (orange) reserved for the unsynced state — its rarity is what makes it noticeable.
+- **Do** keep exactly one alert accent (red) reserved for the unsynced state — its rarity is what makes it noticeable.
+- **Do** keep amber strictly secondary-tier — it supports, never headlines.
 - **Do** use tabular/fixed-width numerals everywhere digits tick, so nothing visibly jitters.
 - **Don't** use seven-segment/LED-style digit rendering — tried during design, produced overlapping ghost-segment artifacts at small render sizes and was dropped in favor of a bold modern sans.
 - **Don't** add a second brightness level, dimming schedule, or theme switch in v1 — the hardware has no backlight control and no ambient light sensor; one fixed high-contrast palette is the only option.

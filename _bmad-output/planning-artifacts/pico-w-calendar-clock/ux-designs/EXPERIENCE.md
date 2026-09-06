@@ -5,7 +5,7 @@ sources:
   - "../prds/prd.md"
   - "../architecture/project-structure.md"
   - "docs/hardware_configuration.md"
-updated: 2026-09-05
+updated: 2026-09-06
 ---
 
 # Pi Calendar Clock — Experience Spine
@@ -73,7 +73,7 @@ There is no user interaction — v1 has no buttons, no touch, no remote control.
 
 This is a fixed-position physical display with a single, non-configurable viewer (Minh, at his own desk) and no software accessibility APIs (no screen reader, no OS-level settings) — the floor here is entirely about **physical legibility**, not software a11y:
 
-- Contrast: Digit Primary (`#3dff7a`) against `#031406` background must remain clearly legible under normal desk lighting and from typical desk-viewing distance (~0.5–1m) — verify on the physical panel once built, not only in the HTML mock.
+- Contrast: Digit Primary (`#3dff7a`) and Digit Secondary (`#ffb238`) against `#0a0a0a` background must both remain clearly legible under normal desk lighting and from typical desk-viewing distance (~0.5–1m) — verify on the physical panel once built, not only in the HTML mock.
 - No color-only signaling: the unsynced state is communicated by badge *text* ("UNSYNCED"), not by a color shift alone, so it doesn't depend on the viewer's color perception.
 - Fixed high-contrast palette only (see `DESIGN.md.Do's and Don'ts`) — no reliance on adjustable brightness, since the hardware has none.
 - Text sizes (88px time, 14px+ everything else) are chosen for legibility at distance on a 320×240 panel, not for information density — nothing should be added to either view that would force these sizes down.
@@ -91,5 +91,5 @@ This is a fixed-position physical display with a single, non-configurable viewer
 
 1. Overnight, the router restarts and the device's hourly NTP resync fails a few times in a row.
 2. Minh walks by in the morning; Clock view shows a time that's drifted slightly, but the `UNSYNCED` badge is visible top-right on both Clock and Calendar views.
-3. **Climax beat:** because the badge is unmistakable (the one orange thing on an otherwise all-green device) and *present on whichever view happens to be showing*, Minh doesn't need to guess whether the displayed time is trustworthy — he knows at a glance to check his router before trusting the clock, rather than being silently misled by a wrong time with no signal that anything's off.
+3. **Climax beat:** because the badge is unmistakable (the one red thing on an otherwise green-and-amber device) and *present on whichever view happens to be showing*, Minh doesn't need to guess whether the displayed time is trustworthy — he knows at a glance to check his router before trusting the clock, rather than being silently misled by a wrong time with no signal that anything's off.
 4. Once Wi-Fi recovers and the next hourly retry succeeds, the badge disappears on its own — no acknowledgment needed from Minh.
