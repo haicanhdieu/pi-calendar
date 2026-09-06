@@ -95,7 +95,32 @@ A convenient shortcut that reads the RTC or a pin from inside calendar code cost
 
 ## Deploying to the device
 
-Not yet set up. The intended tool is `mpremote` (`pipx install mpremote`), deploying with `mpremote connect auto fs cp main.py :main.py` followed by `mpremote reset`. This invocation is unverified until the tool is installed and run once against the board.
+Use `mpremote` (`pipx install mpremote`) to copy the composition root and the
+complete package tree without deleting anything already on the device. From the
+repository root, with the Pico W at the documented serial path, run:
+
+```sh
+mpremote connect /dev/cu.usbmodem1101 fs cp -r src/* :src
+mpremote connect /dev/cu.usbmodem1101 fs cp main.py :main.py
+mpremote connect /dev/cu.usbmodem1101 reset
+mpremote connect /dev/cu.usbmodem1101 fs tree :
+```
+
+To observe the reset interactively, attach the terminal first with
+`mpremote connect /dev/cu.usbmodem1101 repl`, then press Ctrl-D to soft-reset
+the Pico and watch its serial output and TFT. Use Ctrl-C to return to the REPL
+after the Clock loop starts.
+
+The tree must contain `main.py` and the recursive `src/` package paths used by
+its imports; matching firmware files are overwritten, while unrelated device
+files are preserved. The `src/*` form is intentional: when `:src` already
+exists, copying the source directory itself would nest it as `:src/src`.
+Watch the serial console and TFT through reset: `TFT
+initialized; showing boot checkpoint`, a short high-contrast `TFT READY`
+screen, then the Clock/App loop identifies a successful boundary. If no
+checkpoint appears after this matching deployment, retain the serial output
+and investigate the panel transport/controller/wiring rather than changing
+hardware settings speculatively.
 
 Firmware cannot be executed in the development environment. On-device behaviour is never observed by an agent working in this repository — it can only be reasoned about, flashed by the user, and reported back.
 

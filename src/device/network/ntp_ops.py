@@ -1,9 +1,10 @@
-"""Real WLAN / DNS / UDP NTP ops for the AD-8 network worker.
+"""Legacy blocking WLAN / DNS / UDP NTP ops for worker-proof tests.
 
 Owns blocking network I/O only. Returns ``SyncResult``; never calls
 ``ntptime.settime()``; never touches RTC, TFT, or ``AppState``.
 
-Network imports are lazy so host AST / import checks can load this module
+Production uses ``NetworkCoordinator`` instead. Network imports are lazy so
+host AST / import checks can load this module
 without MicroPython's ``network`` package.
 """
 

@@ -83,7 +83,9 @@ class App:
             compositor = UiCompositor(clock_view._display)
         self._compositor = compositor
         self._mailbox = mailbox
-        self._lock = lock
+        # Kept as a call-site compatibility argument while old proof fixtures
+        # retire; the cooperative core-0 composition never uses a lock.
+        del lock
         self._sync_enabled = bool(sync_enabled)
         self.state = AppState()
         self._booted = False
@@ -168,16 +170,6 @@ class App:
             self._render(snapshot)
             self.state.redraw_deadline = t.ticks_add(now, config.CLOCK_REDRAW_MS)
 
-    def _with_mailbox_lock(self, fn):
-        lock = self._lock
-        if lock is None:
-            return fn()
-        lock.acquire()
-        try:
-            return fn()
-        finally:
-            lock.release()
-
     def _result_is_expired(self, deadline_ms, now_ms):
         return self._ticks.ticks_diff(now_ms, deadline_ms) >= 0
 
@@ -196,7 +188,7 @@ class App:
         if mailbox is None:
             return
 
-        result = self._with_mailbox_lock(mailbox.try_take_result)
+        result = mailbox.try_take_result()
         if result is None:
             return
 
@@ -242,10 +234,7 @@ class App:
         deadline_ms = t.ticks_add(now, config.SYNC_COMMAND_DEADLINE_MS)
         command = _SyncCommand(command_id, deadline_ms)
 
-        def _enqueue():
-            return self._mailbox.enqueue(command)
-
-        accepted = self._with_mailbox_lock(_enqueue)
+        accepted = self._mailbox.enqueue(command)
         if accepted:
             self._next_command_id = command_id + 1
             self._inflight_id = command_id

@@ -2,10 +2,7 @@ from machine import Pin
 from time import sleep_ms
 
 from src import config
-
-
-def color565(red, green, blue):
-    return ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | (blue >> 3)
+from src.device.display.color import color565
 
 
 class ILI9341:

@@ -1,8 +1,7 @@
 """Pure capacity-one sync mailbox protocol (AD-8).
 
-Lock-free protocol object: App and the network worker must call these methods
-only while holding the shared external lock. Host tests drive the protocol with
-plain call sequencing; the device worker uses ``_thread.allocate_lock``.
+Lock-free protocol object. App and the cooperative coordinator call it in
+sequence from core 0, so no lock is required.
 
 Forbidden imports: ``machine``, ``network``, ``ntptime``, ``_thread``.
 """

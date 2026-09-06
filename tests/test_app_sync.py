@@ -158,8 +158,9 @@ def test_boot_retry_due_immediately_enqueues_when_idle():
     assert app._inflight_id == 1
     assert app._inflight_deadline == ft.ticks_add(1000, config.SYNC_COMMAND_DEADLINE_MS)
     assert app.state.retry_deadline == ft.ticks_add(1000, config.NTP_RETRY_MS)
-    assert lock.acquire_count >= 1
-    assert lock.release_count == lock.acquire_count
+    # The production coordinator and App now run sequentially on core 0.
+    assert lock.acquire_count == 0
+    assert lock.release_count == 0
 
 
 def test_enqueue_rejected_while_busy_leaves_retry_due():

@@ -1,17 +1,16 @@
 from machine import Pin, SPI
 from time import sleep_ms
 
-import _thread
-
 from src import config
 from src.app import App
 from src.credentials import credentials_valid
 from src.device.clock_port import RtcClockPort
-from src.device.display import ILI9341
+from src.device.display.bootstrap import initialize_display
 from src.device.display.adapter import Ili9341DisplayPort
+from src.device.display.ili9341 import ILI9341
+from src.device.display.splash import splash_screen
 from src.device.network.mailbox import Mailbox
-from src.device.network.ntp_ops import NtpOps
-from src.device.network.worker import NetworkWorker
+from src.device.network.coordinator import NetworkCoordinator
 from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
 from src.ui.compositor import UiCompositor
@@ -41,12 +40,7 @@ def main():
         miso=Pin(config.TFT_MISO),
     )
 
-    display = ILI9341(
-        spi=spi,
-        dc=config.TFT_DC,
-        rst=config.TFT_RST,
-        cs=config.TFT_CS,
-    )
+    display = initialize_display(spi, ILI9341, splash_screen, sleep_ms, print)
 
     display_port = Ili9341DisplayPort(display)
     clock_view = ClockView(display_port)
@@ -55,10 +49,10 @@ def main():
     clock_port = RtcClockPort()
 
     mailbox = Mailbox()
-    lock = _thread.allocate_lock()
     sync_enabled = credentials_valid()
-    worker = NetworkWorker(mailbox, lock, NtpOps())
-    worker.start()
+    coordinator = NetworkCoordinator(
+        mailbox, ntp_address=config.NTP_SERVER_ADDRESS
+    )
 
     app = App(
         clock_port=clock_port,
@@ -66,7 +60,6 @@ def main():
         calendar_view=calendar_view,
         compositor=compositor,
         mailbox=mailbox,
-        lock=lock,
         sync_enabled=sync_enabled,
     )
 
@@ -75,7 +68,11 @@ def main():
 
     led.value(0)
     print("App loop starting (Clock view)")
-    app.run_forever(sleep_ms_fn=sleep_ms)
+    app.boot()
+    while True:
+        coordinator.tick()
+        app.step()
+        sleep_ms(10)
 
 
 try:

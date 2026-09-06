@@ -1,4 +1,4 @@
-"""Isolated network worker shell (AD-8 device boundary).
+"""Legacy threaded worker proof shell; not used by production composition.
 
 Owns ``_thread`` locking around mailbox take/publish. Network operations are
 injected so the proof harness can stub DNS/NTP success and failure without

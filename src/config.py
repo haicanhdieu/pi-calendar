@@ -86,6 +86,7 @@ BADGE_PADDING_X = 7
 BADGE_PADDING_Y = 2
 
 # Timing defaults (milliseconds)
+BOOT_CHECKPOINT_DWELL_MS = 1_200
 CLOCK_DWELL_MS = 30_000
 CALENDAR_DWELL_MS = 8_000
 CLOCK_REDRAW_MS = 1000
@@ -94,6 +95,8 @@ NTP_RETRY_MS = 3_600_000
 
 # SyncCommand deadline budget for bounded worker ops (AD-8)
 SYNC_COMMAND_DEADLINE_MS = 15_000
+# Numeric address deliberately avoids a synchronous DNS lookup in the render loop.
+NTP_SERVER_ADDRESS = ("129.6.15.28", 123)
 
 # Story 1.4 flashable proof harness (src/device/network/proof.py)
 NETWORK_PROOF_MODE = False
