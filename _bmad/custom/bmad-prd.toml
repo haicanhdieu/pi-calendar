@@ -1,7 +1,7 @@
 # Team override for bmad-prd. See .claude/skills/bmad-prd/customize.toml for full surface.
 #
 # Group artifacts slug-then-subtype under the shared planning-artifacts bucket,
-# flattened (no dated run folder) since this repo has one PRD per slug. See AGENTS.md.
+# flattened (no dated run folder). Path points at the currently active slug (wifi-config); see AGENTS.md.
 [workflow]
-prd_output_path = "{planning_artifacts}/pico-w-calendar-clock/prds"
+prd_output_path = "{planning_artifacts}/wifi-config/prds"
 run_folder_pattern = ""

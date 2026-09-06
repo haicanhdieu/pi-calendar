@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wi-Fi Config UI — Accent Color Variations</title>
+<style>
+/*
+  Pi Calendar Clock — Wi-Fi Provisioning & Admin Config web UI
+  Accent color exploration (dark mode only)
+
+  LOCKED BASE PALETTE (identical in every variation):
+    --bg:             #12161c
+    --surface:        #1b212a
+    --border:         #2a323d
+    --text-primary:   #e8ecf1
+    --text-secondary: #9aa5b1
+    --danger:         #ff5c5c
+    --success:        #3ddc84
+
+  VARYING ACCENT ONLY, one per section:
+    1. Confident Blue     accent: #4c8dff
+    2. Violet Indigo      accent: #7c6cf6
+    3. Teal Cyan          accent: #1fc8d1
+    4. Warm Magenta       accent: #ff4fa3
+    5. Slate Muted        accent: #8791a3
+    6. Bold Ultraviolet   accent: #9333ea
+
+  Excluded by hard constraint: green (#3d.. family, reserved for device TFT
+  "Forest") and amber/orange (#ffb2.. family, reserved for device TFT
+  "Amber"). All accents above sit clear of both registers, and clear of the
+  danger red / success green tones already present in the base palette.
+*/
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0a0d11;
+  color: #e8ecf1;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: 32px 16px 80px;
+}
+
+.page-title {
+  max-width: 1200px;
+  margin: 0 auto 8px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.page-sub {
+  max-width: 1200px;
+  margin: 0 auto 36px;
+  color: #9aa5b1;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 28px;
+}
+
+.variation {
+  background: #12161c;
+  border: 1px solid #232a34;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.v-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: #e8ecf1;
+}
+
+.v-register {
+  font-size: 13px;
+  color: #9aa5b1;
+  line-height: 1.4;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: #9aa5b1;
+  background: #1b212a;
+  border: 1px solid #2a323d;
+  border-radius: 999px;
+  padding: 4px 9px 4px 6px;
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.15);
+  flex-shrink: 0;
+}
+
+.chip.accent-chip {
+  color: #e8ecf1;
+  border-color: transparent;
+  font-weight: 600;
+}
+
+/* ---- mock phone screen ---- */
+.mock {
+  background: #12161c;
+  border: 1px solid #2a323d;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.mock-header {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9aa5b1;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.ssid-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.ssid-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1b212a;
+  border: 1px solid #2a323d;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 14px;
+  color: #e8ecf1;
+}
+
+.ssid-row .bars {
+  font-size: 11px;
+  color: #9aa5b1;
+  margin-right: auto;
+  margin-left: 10px;
+}
+
+.ssid-row.selected {
+  border-width: 2px;
+  padding: 11px 13px;
+}
+
+.check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #12161c;
+  flex-shrink: 0;
+}
+
+.btn-primary {
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  padding: 13px 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #12161c;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.input-mock {
+  margin-top: 10px;
+  background: #1b212a;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 13px;
+  color: #9aa5b1;
+  border-width: 2px;
+  border-style: solid;
+}
+
+/* ============ 1. Confident Blue ============ */
+.v1 .accent-chip { background: #4c8dff; }
+.v1 .ssid-row.selected { border-color: #4c8dff; }
+.v1 .check { background: #4c8dff; }
+.v1 .btn-primary { background: #4c8dff; }
+.v1 .input-mock { border-color: #4c8dff; color: #e8ecf1; }
+.v1 .sw1 { background: #4c8dff; }
+
+/* ============ 2. Violet Indigo ============ */
+.v2 .accent-chip { background: #7c6cf6; }
+.v2 .ssid-row.selected { border-color: #7c6cf6; }
+.v2 .check { background: #7c6cf6; color: #12161c; }
+.v2 .btn-primary { background: #7c6cf6; }
+.v2 .input-mock { border-color: #7c6cf6; color: #e8ecf1; }
+.v2 .sw1 { background: #7c6cf6; }
+
+/* ============ 3. Teal Cyan ============ */
+.v3 .accent-chip { background: #1fc8d1; }
+.v3 .ssid-row.selected { border-color: #1fc8d1; }
+.v3 .check { background: #1fc8d1; }
+.v3 .btn-primary { background: #1fc8d1; }
+.v3 .input-mock { border-color: #1fc8d1; color: #e8ecf1; }
+.v3 .sw1 { background: #1fc8d1; }
+
+/* ============ 4. Warm Magenta ============ */
+.v4 .accent-chip { background: #ff4fa3; }
+.v4 .ssid-row.selected { border-color: #ff4fa3; }
+.v4 .check { background: #ff4fa3; }
+.v4 .btn-primary { background: #ff4fa3; }
+.v4 .input-mock { border-color: #ff4fa3; color: #e8ecf1; }
+.v4 .sw1 { background: #ff4fa3; }
+
+/* ============ 5. Slate Muted ============ */
+.v5 .accent-chip { background: #8791a3; color: #12161c; }
+.v5 .ssid-row.selected { border-color: #8791a3; }
+.v5 .check { background: #8791a3; }
+.v5 .btn-primary { background: #8791a3; }
+.v5 .input-mock { border-color: #8791a3; color: #e8ecf1; }
+.v5 .sw1 { background: #8791a3; }
+
+/* ============ 6. Bold Ultraviolet ============ */
+.v6 .accent-chip { background: #9333ea; }
+.v6 .ssid-row.selected { border-color: #9333ea; }
+.v6 .check { background: #9333ea; }
+.v6 .btn-primary { background: #9333ea; }
+.v6 .input-mock { border-color: #9333ea; color: #e8ecf1; }
+.v6 .sw1 { background: #9333ea; }
+
+</style>
+</head>
+<body>
+
+<div class="page-title">Wi-Fi Config UI — Accent Color Variations</div>
+<div class="page-sub">
+  Base palette (bg / surface / border / text / danger / success) is locked across all six
+  variations. Only the accent hue changes — used for the primary Connect/Save button fill,
+  the focused input border, and the selected SSID row border + checkmark. Mock is the Setup
+  page's SSID-picker screen, served over the temporary open AP during first boot / recovery.
+</div>
+
+<div class="grid">
+
+  <!-- 1 -->
+  <div class="variation v1">
+    <div class="v-header">
+      <div class="v-name">1. Confident Blue</div>
+      <div class="v-register">Technical, neutral, trustworthy — reads like a settings app, not a toy.</div>
+    </div>
+    <div class="chips">
+      <span class="chip accent-chip"><span class="swatch sw1"></span>accent #4c8dff</span>
+      <span class="chip"><span class="swatch" style="background:#12161c"></span>bg #12161c</span>
+      <span class="chip"><span class="swatch" style="background:#1b212a"></span>surface #1b212a</span>
+      <span class="chip"><span class="swatch" style="background:#2a323d"></span>border #2a323d</span>
+      <span class="chip"><span class="swatch" style="background:#ff5c5c"></span>danger #ff5c5c</span>
+      <span class="chip"><span class="swatch" style="background:#3ddc84"></span>success #3ddc84</span>
+    </div>
+    <div class="mock">
+      <div class="mock-header">Select a network</div>
+      <div class="ssid-list">
+        <div class="ssid-row selected">
+          <span>HomeNet-5G</span>
+          <span class="bars">▂▄▆█</span>
+          <span class="check">✓</span>
+        </div>
+        <div class="ssid-row"><span>HomeNet</span><span class="bars">▂▄▆</span></div>
+        <div class="ssid-row"><span>Neighbor_WiFi</span><span class="bars">▂▄</span></div>
+      </div>
+      <div class="input-mock">Password ····························</div>
+      <button class="btn-primary" style="margin-top:10px;">Connect</button>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="variation v2">
+    <div class="v-header">
+      <div class="v-name">2. Violet Indigo</div>
+      <div class="v-register">Calm and a little premium — modern without being flashy.</div>
+    </div>
+    <div class="chips">
+      <span class="chip accent-chip"><span class="swatch sw1"></span>accent #7c6cf6</span>
+      <span class="chip"><span class="swatch" style="background:#12161c"></span>bg #12161c</span>
+      <span class="chip"><span class="swatch" style="background:#1b212a"></span>surface #1b212a</span>
+      <span class="chip"><span class="swatch" style="background:#2a323d"></span>border #2a323d</span>
+      <span class="chip"><span class="swatch" style="background:#ff5c5c"></span>danger #ff5c5c</span>
+      <span class="chip"><span class="swatch" style="background:#3ddc84"></span>success #3ddc84</span>
+    </div>
+    <div class="mock">
+      <div class="mock-header">Select a network</div>
+      <div class="ssid-list">
+        <div class="ssid-row selected">
+          <span>HomeNet-5G</span>
+          <span class="bars">▂▄▆█</span>
+          <span class="check">✓</span>
+        </div>
+        <div class="ssid-row"><span>HomeNet</span><span class="bars">▂▄▆</span></div>
+        <div class="ssid-row"><span>Neighbor_WiFi</span><span class="bars">▂▄</span></div>
+      </div>
+      <div class="input-mock">Password ····························</div>
+      <button class="btn-primary" style="margin-top:10px;">Connect</button>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="variation v3">
+    <div class="v-header">
+      <div class="v-name">3. Teal Cyan</div>
+      <div class="v-register">Fresh, clinical, alert — feels like live network status, not decor.</div>
+    </div>
+    <div class="chips">
+      <span class="chip accent-chip"><span class="swatch sw1"></span>accent #1fc8d1</span>
+      <span class="chip"><span class="swatch" style="background:#12161c"></span>bg #12161c</span>
+      <span class="chip"><span class="swatch" style="background:#1b212a"></span>surface #1b212a</span>
+      <span class="chip"><span class="swatch" style="background:#2a323d"></span>border #2a323d</span>
+      <span class="chip"><span class="swatch" style="background:#ff5c5c"></span>danger #ff5c5c</span>
+      <span class="chip"><span class="swatch" style="background:#3ddc84"></span>success #3ddc84</span>
+    </div>
+    <div class="mock">
+      <div class="mock-header">Select a network</div>
+      <div class="ssid-list">
+        <div class="ssid-row selected">
+          <span>HomeNet-5G</span>
+          <span class="bars">▂▄▆█</span>
+          <span class="check">✓</span>
+        </div>
+        <div class="ssid-row"><span>HomeNet</span><span class="bars">▂▄▆</span></div>
+        <div class="ssid-row"><span>Neighbor_WiFi</span><span class="bars">▂▄</span></div>
+      </div>
+      <div class="input-mock">Password ····························</div>
+      <button class="btn-primary" style="margin-top:10px;">Connect</button>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="variation v4">
+    <div class="v-header">
+      <div class="v-name">4. Warm Magenta</div>
+      <div class="v-register">Playful and distinct — friendly, a bit unexpected for a utility screen.</div>
+    </div>
+    <div class="chips">
+      <span class="chip accent-chip"><span class="swatch sw1"></span>accent #ff4fa3</span>
+      <span class="chip"><span class="swatch" style="background:#12161c"></span>bg #12161c</span>
+      <span class="chip"><span class="swatch" style="background:#1b212a"></span>surface #1b212a</span>
+      <span class="chip"><span class="swatch" style="background:#2a323d"></span>border #2a323d</span>
+      <span class="chip"><span class="swatch" style="background:#ff5c5c"></span>danger #ff5c5c</span>
+      <span class="chip"><span class="swatch" style="background:#3ddc84"></span>success #3ddc84</span>
+    </div>
+    <div class="mock">
+      <div class="mock-header">Select a network</div>
+      <div class="ssid-list">
+        <div class="ssid-row selected">
+          <span>HomeNet-5G</span>
+          <span class="bars">▂▄▆█</span>
+          <span class="check">✓</span>
+        </div>
+        <div class="ssid-row"><span>HomeNet</span><span class="bars">▂▄▆</span></div>
+        <div class="ssid-row"><span>Neighbor_WiFi</span><span class="bars">▂▄</span></div>
+      </div>
+      <div class="input-mock">Password ····························</div>
+      <button class="btn-primary" style="margin-top:10px;">Connect</button>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="variation v5">
+    <div class="v-header">
+      <div class="v-name">5. Slate Muted</div>
+      <div class="v-register">Quiet and understated — nearly monochrome, disappears into the UI.</div>
+    </div>
+    <div class="chips">
+      <span class="chip accent-chip"><span class="swatch sw1"></span>accent #8791a3</span>
+      <span class="chip"><span class="swatch" style="background:#12161c"></span>bg #12161c</span>
+      <span class="chip"><span class="swatch" style="background:#1b212a"></span>surface #1b212a</span>
+      <span class="chip"><span class="swatch" style="background:#2a323d"></span>border #2a323d</span>
+      <span class="chip"><span class="swatch" style="background:#ff5c5c"></span>danger #ff5c5c</span>
+      <span class="chip"><span class="swatch" style="background:#3ddc84"></span>success #3ddc84</span>
+    </div>
+    <div class="mock">
+      <div class="mock-header">Select a network</div>
+      <div class="ssid-list">
+        <div class="ssid-row selected">
+          <span>HomeNet-5G</span>
+          <span class="bars">▂▄▆█</span>
+          <span class="check">✓</span>
+        </div>
+        <div class="ssid-row"><span>HomeNet</span><span class="bars">▂▄▆</span></div>
+        <div class="ssid-row"><span>Neighbor_WiFi</span><span class="bars">▂▄</span></div>
+      </div>
+      <div class="input-mock">Password ····························</div>
+      <button class="btn-primary" style="margin-top:10px;">Connect</button>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="variation v6">
+    <div class="v-header">
+      <div class="v-name">6. Bold Ultraviolet</div>
+      <div class="v-register">Vivid and confident — the loudest option, unmistakably a choice.</div>
+    </div>
+    <div class="chips">
+      <span class="chip accent-chip"><span class="swatch sw1"></span>accent #9333ea</span>
+      <span class="chip"><span class="swatch" style="background:#12161c"></span>bg #12161c</span>
+      <span class="chip"><span class="swatch" style="background:#1b212a"></span>surface #1b212a</span>
+      <span class="chip"><span class="swatch" style="background:#2a323d"></span>border #2a323d</span>
+      <span class="chip"><span class="swatch" style="background:#ff5c5c"></span>danger #ff5c5c</span>
+      <span class="chip"><span class="swatch" style="background:#3ddc84"></span>success #3ddc84</span>
+    </div>
+    <div class="mock">
+      <div class="mock-header">Select a network</div>
+      <div class="ssid-list">
+        <div class="ssid-row selected">
+          <span>HomeNet-5G</span>
+          <span class="bars">▂▄▆█</span>
+          <span class="check">✓</span>
+        </div>
+        <div class="ssid-row"><span>HomeNet</span><span class="bars">▂▄▆</span></div>
+        <div class="ssid-row"><span>Neighbor_WiFi</span><span class="bars">▂▄</span></div>
+      </div>
+      <div class="input-mock">Password ····························</div>
+      <button class="btn-primary" style="margin-top:10px;">Connect</button>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

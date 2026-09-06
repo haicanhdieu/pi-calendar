@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Key Screen — Setup page Screen 1: SSID picker</title>
+<style>
+/*
+  Governs:
+    EXPERIENCE.md > Foundation (Setup page, served over open PiCalendar-Setup AP)
+    EXPERIENCE.md > Information Architecture > Setup page Screen 1
+      (SSID picker -> select one -> Wi-Fi password field appears -> "Next")
+    EXPERIENCE.md > Component Patterns > SSID list row, Password field, Primary button
+    EXPERIENCE.md > State Patterns > Setup page — scanning (empty-scan variant)
+    EXPERIENCE.md > Accessibility Floor (text-label show/hide toggle, 44px tap targets)
+    DESIGN.md > Components > setup-ssid-list, password-field, primary-button
+    DESIGN.md > Colors / Typography / Layout & Spacing / Shapes tokens
+
+  This file renders two states of the same screen for review:
+    1. Populated scan result, one SSID selected, password revealed, Next enabled.
+    2. Empty scan result state.
+*/
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0a0d11;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #e8ecf1;
+  padding: 32px 16px 80px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  justify-content: center;
+}
+
+.frame-label {
+  text-align: center;
+  font-size: 12px;
+  color: #9aa5b1;
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+}
+
+.frame-wrap { display: flex; flex-direction: column; }
+
+.phone {
+  width: 375px;
+  min-height: 640px;
+  background: #12161c;
+  border: 1px solid #2a323d;
+  border-radius: 28px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e8ecf1;
+  margin-bottom: 28px;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #9aa5b1;
+  margin-bottom: 12px;
+}
+
+.ssid-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.ssid-row {
+  min-height: 44px;
+  background: #1b212a;
+  border: 1px solid #2a323d;
+  border-radius: 14px;
+  padding: 13px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 15px;
+  color: #e8ecf1;
+}
+
+.ssid-row.selected {
+  border: 2px solid #7c6cf6;
+  padding: 12px 15px;
+}
+
+.ssid-name { display: flex; align-items: center; gap: 10px; }
+
+.bars {
+  font-size: 11px;
+  color: #9aa5b1;
+  letter-spacing: 1px;
+}
+
+.check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #7c6cf6;
+  color: #0a0f16;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.field-block { margin-bottom: 28px; }
+
+.input-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8ecf1;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.password-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  background: #1b212a;
+  border: 2px solid #7c6cf6;
+  border-radius: 10px;
+  padding: 11px 14px;
+}
+
+.password-field input {
+  border: none;
+  background: transparent;
+  color: #e8ecf1;
+  font-size: 15px;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  width: 100%;
+  outline: none;
+}
+
+.toggle-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7c6cf6;
+  background: none;
+  border: none;
+  cursor: default;
+  flex-shrink: 0;
+  padding-left: 12px;
+}
+
+.spacer { flex: 1; }
+
+.btn-primary {
+  width: 100%;
+  min-height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: #7c6cf6;
+  color: #0a0f16;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: 13px 0;
+}
+
+/* --- empty scan state --- */
+.empty-state {
+  background: #1b212a;
+  border: 1px solid #2a323d;
+  border-radius: 14px;
+  padding: 20px 16px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.empty-copy {
+  font-size: 15px;
+  color: #9aa5b1;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.rescan-link {
+  font-size: 15px;
+  font-weight: 600;
+  color: #7c6cf6;
+}
+
+.caption {
+  max-width: 375px;
+  margin: 14px auto 0;
+  font-size: 12px;
+  color: #9aa5b1;
+  text-align: center;
+  line-height: 1.5;
+}
+</style>
+</head>
+<body>
+
+<div class="frame-wrap">
+  <div class="frame-label">Setup page — Screen 1 (populated, HomeNet-5G selected)</div>
+  <div class="phone">
+    <div class="page-title">Set Up Wi-Fi</div>
+
+    <div class="section-label">Network</div>
+    <div class="ssid-list">
+      <div class="ssid-row selected">
+        <span class="ssid-name">HomeNet-5G</span>
+        <span style="display:flex; align-items:center; gap:10px;">
+          <span class="bars">▂▄▆█</span>
+          <span class="check">✓</span>
+        </span>
+      </div>
+      <div class="ssid-row">
+        <span class="ssid-name">HomeNet</span>
+        <span class="bars">▂▄▆</span>
+      </div>
+      <div class="ssid-row">
+        <span class="ssid-name">Neighbor_WiFi</span>
+        <span class="bars">▂▄</span>
+      </div>
+    </div>
+
+    <div class="field-block">
+      <label class="input-label">Wi-Fi Password</label>
+      <div class="password-field">
+        <input type="password" value="••••••••••••" readonly>
+        <button class="toggle-link">Show</button>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <button class="btn-primary">Next</button>
+  </div>
+  <div class="caption">SSID row selected (accent border + checkmark), password field revealed below with text-label show/hide toggle, Next enabled once a value is entered.</div>
+</div>
+
+<div class="frame-wrap">
+  <div class="frame-label">Setup page — Screen 1 (empty scan result)</div>
+  <div class="phone">
+    <div class="page-title">Set Up Wi-Fi</div>
+
+    <div class="section-label">Network</div>
+    <div class="empty-state">
+      <div class="empty-copy">No networks found — move closer to your router and reload</div>
+      <a class="rescan-link">Rescan</a>
+    </div>
+
+    <div class="spacer"></div>
+    <button class="btn-primary" style="background:#2a323d; color:#9aa5b1;" disabled>Next</button>
+  </div>
+  <div class="caption">Empty-scan state per EXPERIENCE.md State Patterns — manual text-link "Rescan," no auto-retry; Next stays disabled with nothing to submit.</div>
+</div>
+
+</body>
+</html>

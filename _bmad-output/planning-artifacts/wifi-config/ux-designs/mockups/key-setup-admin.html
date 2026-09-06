@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Key Screen — Setup page Screen 2: Admin password / Connect</title>
+<style>
+/*
+  Governs:
+    EXPERIENCE.md > Information Architecture > Setup page Screen 2
+      (Admin password field, one primary "Connect" button — actual submit:
+      saves both Wi-Fi credentials and Admin password, drops Setup AP, joins network)
+    EXPERIENCE.md > Voice and Tone (in-progress / failure copy, exact strings)
+    EXPERIENCE.md > State Patterns > Setup page — connecting, join failed
+    EXPERIENCE.md > Component Patterns > Password field, Primary button (disabled ->
+      immediate in-progress state on tap)
+    EXPERIENCE.md > Accessibility Floor (aria-live status banner, text-label toggle)
+    DESIGN.md > Components > password-field, primary-button, status-banner
+    DESIGN.md > Colors (danger/success/text-secondary for banner states)
+
+  Three states of the same screen, rendered side by side:
+    (a) at-rest / ready — Admin password entered, Connect enabled
+    (b) Connecting… — status banner active, Connect disabled
+    (c) failure — status banner shows join-failure copy for ssid "HomeNet-5G",
+        Wi-Fi password field cleared per EXPERIENCE.md State Patterns
+        (Admin password field retained, not cleared)
+*/
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0a0d11;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #e8ecf1;
+  padding: 32px 16px 80px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  justify-content: center;
+}
+
+.frame-label {
+  text-align: center;
+  font-size: 12px;
+  color: #9aa5b1;
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+}
+
+.frame-wrap { display: flex; flex-direction: column; }
+
+.phone {
+  width: 375px;
+  min-height: 560px;
+  background: #12161c;
+  border: 1px solid #2a323d;
+  border-radius: 28px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e8ecf1;
+  margin-bottom: 20px;
+}
+
+.status-banner {
+  min-height: 44px;
+  border-radius: 999px;
+  padding: 11px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.status-banner.connecting { background: #1b212a; color: #9aa5b1; border: 1px solid #2a323d; }
+.status-banner.failure { background: #1b212a; color: #ff5c5c; border: 1px solid #ff5c5c; }
+
+.section-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #9aa5b1;
+  margin-bottom: 12px;
+}
+
+.field-block { margin-bottom: 28px; }
+
+.input-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8ecf1;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.password-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  background: #1b212a;
+  border: 1px solid #2a323d;
+  border-radius: 10px;
+  padding: 12px 15px;
+}
+
+.password-field.focused { border: 2px solid #7c6cf6; padding: 11px 14px; }
+
+.password-field input {
+  border: none;
+  background: transparent;
+  color: #e8ecf1;
+  font-size: 15px;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  width: 100%;
+  outline: none;
+}
+
+.password-field input::placeholder { color: #9aa5b1; }
+
+.toggle-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7c6cf6;
+  background: none;
+  border: none;
+  flex-shrink: 0;
+  padding-left: 12px;
+}
+
+.spacer { flex: 1; }
+
+.btn-primary {
+  width: 100%;
+  min-height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: #7c6cf6;
+  color: #0a0f16;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: 13px 0;
+}
+
+.btn-primary.disabled {
+  background: #2a323d;
+  color: #9aa5b1;
+  opacity: 0.7;
+}
+
+.caption {
+  max-width: 375px;
+  margin: 14px auto 0;
+  font-size: 12px;
+  color: #9aa5b1;
+  text-align: center;
+  line-height: 1.5;
+}
+</style>
+</head>
+<body>
+
+<div class="frame-wrap">
+  <div class="frame-label">Setup page — Screen 2 (ready)</div>
+  <div class="phone">
+    <div class="page-title">Set Admin Password</div>
+
+    <div class="field-block">
+      <div class="section-label">Admin Password</div>
+      <div class="password-field focused">
+        <input type="password" value="••••••••" readonly>
+        <button class="toggle-link">Show</button>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <button class="btn-primary">Connect</button>
+  </div>
+  <div class="caption">At-rest state: Admin password entered, Connect enabled — this single tap saves both passwords, drops the Setup AP, and starts the join.</div>
+</div>
+
+<div class="frame-wrap">
+  <div class="frame-label">Setup page — Screen 2 (connecting)</div>
+  <div class="phone">
+    <div class="page-title">Set Admin Password</div>
+
+    <div class="status-banner connecting" aria-live="polite">Connecting…</div>
+
+    <div class="field-block">
+      <div class="section-label">Admin Password</div>
+      <div class="password-field">
+        <input type="password" value="••••••••" readonly>
+        <button class="toggle-link">Show</button>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <button class="btn-primary disabled" disabled>Connect</button>
+  </div>
+  <div class="caption">In-progress state: status banner reads "Connecting…", primary button disabled at reduced opacity, screen holds until success or failure per FR-1's timeout.</div>
+</div>
+
+<div class="frame-wrap">
+  <div class="frame-label">Setup page — Screen 2 (join failed)</div>
+  <div class="phone">
+    <div class="page-title">Set Admin Password</div>
+
+    <div class="status-banner failure" aria-live="polite">Couldn't join HomeNet-5G. Check the password and try again.</div>
+
+    <div class="field-block">
+      <div class="section-label">Admin Password</div>
+      <div class="password-field">
+        <input type="password" value="••••••••" readonly>
+        <button class="toggle-link">Show</button>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <button class="btn-primary">Connect</button>
+  </div>
+  <div class="caption">Failure state (ssid "HomeNet-5G"): danger-colored status banner, exact Voice-and-Tone failure copy. Admin password field retains its value (Wi-Fi password field on Screen 1 is cleared, not shown here); user can resubmit without re-selecting the SSID.</div>
+</div>
+
+</body>
+</html>

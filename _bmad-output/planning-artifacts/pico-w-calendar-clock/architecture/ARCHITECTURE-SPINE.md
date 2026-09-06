@@ -19,10 +19,10 @@ sources:
   - ../../../docs/pico_w_calendar_clock_handoff.md
   - https://www.micropython.org/download/RPI_PICO_W/
   - https://docs.micropython.org/en/v1.29.0/library/index.html
-  - https://docs.micropython.org/en/v1.29.0/library/_thread.html
   - https://docs.micropython.org/en/v1.29.0/rp2/quickref.html
 companions:
   - ../../planning-artifacts/pico-w-calendar-clock/architecture/project-structure.md
+  - ../../wifi-config/architecture/ARCHITECTURE-SPINE.md
 ---
 
 # Architecture Spine — Pi Calendar Clock
@@ -92,15 +92,15 @@ flowchart TD
 
 ### AD-8 — Network failure cannot stop the clock
 
-- **Binds:** FR-1, the render loop, error handling, and serial diagnostics
+- **Binds:** core time sync, the render loop, error handling, and serial diagnostics
 - **Prevents:** unavailable Wi-Fi/NTP freezing the display or terminating the device
-- **Rule:** one isolated RP2040 network worker owns WLAN, DNS, and blocking UDP NTP operations. App and worker share separate capacity-one command and result slots guarded by one `_thread.allocate_lock`. App non-blockingly enqueues exactly one `SyncCommand(command_id, deadline_ms)` only while the worker is idle; the worker atomically consumes it, enforces its deadline with bounded WLAN/socket operations, and publishes exactly one terminal `SyncResult(command_id, ok, utc: DateTime | None, error_code: str | None)` into the empty result slot. The result is never overwritten; saturation is a contract violation logged as a fatal diagnostic. App consumes every result, applies only the matching non-expired one, discards stale results, and does not enqueue a retry until the prior result is consumed and the worker is idle. The worker never touches RTC, TFT, or `AppState`; App alone writes successful UTC through `ClockPort`. Failed, expired, or stale attempts set trust to `unsynced` while valid RTC time advances. Do not call bundled `ntptime.settime()`. Fatal handling otherwise remains limited to failures that make the TFT unusable; the current catch-all blink loop must narrow when `main.py` is extracted.
+- **Rule:** the cooperative `NetworkCoordinator` defined by the [Wi-Fi provisioning architecture](../../wifi-config/architecture/ARCHITECTURE-SPINE.md) owns WLAN and socket lifecycle. Core NTP behavior enters it only through that feature's typed command/event contract; each coordinator tick is bounded and never waits, sleeps, DNS-resolves, or renders. `App` alone writes RTC through `ClockPort`, reduces network results into time trust, and continues rendering after every recoverable failure. Do not call bundled `ntptime.settime()`. Wi-Fi provisioning, AP/STA transitions, HTTP, settings persistence, and credentials are owned exclusively by the Wi-Fi feature spine. Fatal handling otherwise remains limited to failures that make the TFT unusable.
 
-### AD-9 — Secrets stay outside product configuration
+### AD-9 — Wi-Fi settings stay outside product configuration
 
-- **Binds:** Wi-Fi adapter, deployment, and repository contents
+- **Binds:** deployment and repository contents
 - **Prevents:** credentials entering version control or becoming importable by pure logic
-- **Rule:** checked-in `src/config.py` owns non-secret pins, dimensions, colors, and durations. Before any credential file is created, root `.gitignore` must exclude `/secrets.py`; only a value-free `secrets.example.py` may be committed. Device-local `secrets.py` is imported only by the Wi-Fi adapter, and missing or invalid secrets produce unsynced operation rather than a boot crash.
+- **Rule:** checked-in `src/config.py` owns non-secret pins, dimensions, colors, and durations. The [Wi-Fi provisioning architecture](../../wifi-config/architecture/ARCHITECTURE-SPINE.md) exclusively defines the ignored device-local `SettingsStore` record and migration from legacy `/secrets.py`; core modules must not import either. Missing or invalid Wi-Fi settings produce unsynced operation rather than a boot crash.
 
 ### AD-10 — Same pure code on host and device [ADOPTED]
 
@@ -139,7 +139,7 @@ flowchart TD
 | --- | --- |
 | Raspberry Pi Pico W / RP2040 | Existing physical target |
 | MicroPython Pico W release firmware | 1.29.0 |
-| MicroPython `_thread` network worker | 1.29.0 built-in; experimental API `[ASSUMPTION]` |
+| Wi-Fi provisioning/admin config | See `wifi-config` architecture spine |
 | TFT adapter | ILI9341-compatible, repository-local `[ASSUMPTION]` |
 
 ## Structural Seed
@@ -165,16 +165,16 @@ pi-calendar/
 │   │   └── calendar_view.py      # MonthGrid renderer
 │   └── device/
 │       ├── display/              # SPI TFT adapter and glyph buffers
-│       └── network/              # isolated worker, mailbox, Wi-Fi/NTP
+│       └── network/              # cooperative coordinator; see wifi-config spine
 ├── tests/                        # CPython tests for core and fake adapters
-└── secrets.py                    # device-local, ignored, never committed
+└── device-local settings          # owned by wifi-config SettingsStore, ignored
 ```
 
 ```mermaid
 flowchart LR
     Host[CPython host] -->|pytest imports unchanged| Pure[src/calendar + src/time + view_state]
     Repo[Repository main.py + src tree] -->|preserve paths when copied| Pico[Pico W<br/>MicroPython 1.29.0]
-    Secrets[untracked secrets.py] -->|device-local copy| Pico
+    Settings[ignored device settings\nowned by wifi-config] -->|device-local copy| Pico
     Pico -->|SPI0 40 MHz<br/>GP16-GP21| TFT[320x240 landscape TFT]
     Pico -->|Wi-Fi| NTP[NTP provider]
 ```
@@ -186,7 +186,7 @@ The physical pin map and `MADCTL 0xA8` remain owned by
 
 | Capability / Area | Lives in | Governed by |
 | --- | --- | --- |
-| FR-1 Wi-Fi/NTP sync | `src/time/service.py`, `src/device/network/` | AD-2–AD-5, AD-8, AD-9 |
+| Core NTP sync | `src/time/service.py`, `src/device/network/` | AD-2–AD-5, AD-8; Wi-Fi feature spine |
 | FR-2 seconds-level clock | `src/ui/clock_view.py` | AD-2–AD-5, AD-7, AD-11, AD-12 |
 | FR-3 Gregorian month grid | `src/calendar/`, `src/ui/calendar_view.py` | AD-1, AD-3, AD-4, AD-6, AD-10 |
 | Clock-dominant auto-rotation | `src/app.py`, `src/ui/view_state.py` | AD-2, AD-5, AD-12 |
@@ -197,7 +197,7 @@ The physical pin map and `MADCTL 0xA8` remain owned by
 
 - **Controller identity:** the current code and tested orientation are ILI9341-compatible, but the physical controller was not read. Probe it before declaring the extracted display adapter final; swap only that adapter if the assumption fails.
 - **Time freshness policy:** define the maximum age after a successful sync before FR-1 trust-state acceptance tests are written. `TimeService` owns the decision; views remain unchanged.
-- **Network-worker proof:** MicroPython `_thread` is explicitly experimental. Before FR-1 implementation proceeds, verify one worker plus the lock-protected mailbox on the flashed Pico W; if it is unstable, update AD-8 rather than introducing blocking network work into App.
+- **Wi-Fi operational proof:** AP/STA transitions, provisioning HTTP behavior, and device-local settings persistence are owned and verified by the `wifi-config` feature spine; this core spine does not re-decide them.
 - **Lunar conversion strategy:** choose algorithm, table, or hybrid before v2 implementation; each option must emit the AD-6 annotation contract.
 - **RTC retention:** DS3231 and its adapter remain outside v1; AD-3 and AD-4 reserve its integration boundary.
 - **Alarm:** alarm and buzzer behavior remain outside v1; revisit this intended direction before unrelated product expansion.

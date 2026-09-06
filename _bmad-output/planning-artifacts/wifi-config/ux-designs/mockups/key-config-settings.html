@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Key Screen — Config page: Settings</title>
+<style>
+/*
+  Governs:
+    EXPERIENCE.md > Information Architecture > Config page > Settings screen
+      ("Admin Password" row opens change-password form, "Color Scheme" row
+      opens theme picker stub)
+    EXPERIENCE.md > Component Patterns > Settings row (tap-to-expand accordion,
+      inline, no navigation stack), Theme picker (stub) (one option,
+      pre-selected, visually disabled/inert per FR-4)
+    EXPERIENCE.md > State Patterns > Config page — session active,
+      password changed (success toast)
+    EXPERIENCE.md > Accessibility Floor (44px tap targets, text-label toggle)
+    DESIGN.md > Components > settings-row, theme-picker-stub, password-field,
+      primary-button
+    PRD FR-3 (password change), FR-4 (color scheme stub, single option,
+      selecting it is a no-op, must not error)
+
+  Renders the flat settings list with both rows expanded:
+    - "Admin Password" expanded to its inline change-password form + Save
+    - "Color Scheme" expanded to its inert single-option theme picker stub
+*/
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0a0d11;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #e8ecf1;
+  padding: 32px 16px 80px;
+  display: flex;
+  justify-content: center;
+}
+
+.frame-wrap { display: flex; flex-direction: column; }
+
+.frame-label {
+  text-align: center;
+  font-size: 12px;
+  color: #9aa5b1;
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+}
+
+.phone {
+  width: 375px;
+  min-height: 700px;
+  background: #12161c;
+  border: 1px solid #2a323d;
+  border-radius: 28px;
+  padding: 20px;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e8ecf1;
+  margin-bottom: 28px;
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-row {
+  background: #1b212a;
+  border: 1px solid #2a323d;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.settings-row-head {
+  min-height: 44px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 15px;
+  font-weight: 600;
+  color: #e8ecf1;
+}
+
+.chevron { color: #9aa5b1; font-size: 13px; }
+
+.settings-row-body {
+  padding: 4px 16px 20px;
+  border-top: 1px solid #2a323d;
+}
+
+.input-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8ecf1;
+  margin: 16px 0 8px;
+  display: block;
+}
+
+.password-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  background: #12161c;
+  border: 2px solid #7c6cf6;
+  border-radius: 10px;
+  padding: 11px 14px;
+}
+
+.password-field input {
+  border: none;
+  background: transparent;
+  color: #e8ecf1;
+  font-size: 15px;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  width: 100%;
+  outline: none;
+}
+
+.toggle-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7c6cf6;
+  background: none;
+  border: none;
+  flex-shrink: 0;
+  padding-left: 12px;
+}
+
+.btn-primary {
+  width: 100%;
+  min-height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: #7c6cf6;
+  color: #0a0f16;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: 13px 0;
+  margin-top: 16px;
+}
+
+.theme-option {
+  margin-top: 12px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #12161c;
+  border: 1px solid #2a323d;
+  border-radius: 10px;
+  padding: 12px 15px;
+  opacity: 0.6;
+}
+
+.theme-option-label {
+  font-size: 15px;
+  color: #9aa5b1;
+}
+
+.theme-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #2a323d;
+  color: #9aa5b1;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.theme-note {
+  font-size: 13px;
+  color: #9aa5b1;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
+.toast {
+  margin-top: 20px;
+  background: #1b212a;
+  border: 1px solid #3ddc84;
+  border-radius: 999px;
+  padding: 11px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #3ddc84;
+  text-align: center;
+}
+
+.caption {
+  max-width: 375px;
+  margin: 14px auto 0;
+  font-size: 12px;
+  color: #9aa5b1;
+  text-align: center;
+  line-height: 1.5;
+}
+</style>
+</head>
+<body>
+
+<div class="frame-wrap">
+  <div class="frame-label">Config page — Settings (both rows expanded)</div>
+  <div class="phone">
+    <div class="page-title">Device Settings</div>
+
+    <div class="settings-list">
+      <div class="settings-row">
+        <div class="settings-row-head">
+          <span>Admin Password</span>
+          <span class="chevron">▾</span>
+        </div>
+        <div class="settings-row-body">
+          <label class="input-label">New Password</label>
+          <div class="password-field">
+            <input type="password" value="••••••••" readonly>
+            <button class="toggle-link">Show</button>
+          </div>
+          <button class="btn-primary">Save</button>
+          <div class="toast">Password changed.</div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-head">
+          <span>Color Scheme</span>
+          <span class="chevron">▾</span>
+        </div>
+        <div class="settings-row-body">
+          <div class="theme-option">
+            <span class="theme-option-label">Forest &amp; Amber</span>
+            <span class="theme-check">✓</span>
+          </div>
+          <div class="theme-note">Only theme available in this version.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="caption">Flat settings list, tap-to-expand accordion rows (no navigation stack). "Admin Password" expanded shows new-password field + Save, with a success toast ("Password changed."). "Color Scheme" expanded shows the single "Forest &amp; Amber" option, pre-selected and visually inert per FR-4.</div>
+</div>
+
+</body>
+</html>
