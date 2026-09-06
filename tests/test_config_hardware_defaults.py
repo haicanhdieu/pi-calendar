@@ -17,3 +17,8 @@ def test_tft_spi_and_madctl_match_hardware_docs():
     assert config.SPI_POLARITY == 0
     assert config.SPI_PHASE == 0
     assert config.MADCTL == 0xA8
+
+
+def test_network_proof_mode_defaults_off():
+    # Product boot must not silently divert into the Story 1.4 harness.
+    assert config.NETWORK_PROOF_MODE is False

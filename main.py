@@ -14,6 +14,16 @@ def main():
     led = Pin("LED", Pin.OUT)
     led.value(1)
 
+    # Story 1.4: gated proof harness (set NETWORK_PROOF_MODE True only for flash).
+    # Does not wire production App NTP integration (Story 1.5).
+    if config.NETWORK_PROOF_MODE:
+        print("NETWORK_PROOF_MODE: running Story 1.4 mailbox proof harness")
+        led.value(0)
+        from src.device.network.proof import run_proof
+
+        run_proof()
+        return
+
     print("Initializing SPI0 TFT + App loop")
     spi = SPI(
         0,
