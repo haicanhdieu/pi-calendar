@@ -16,6 +16,7 @@ from src.device.network.models import (
     ntp_sync_enabled,
 )
 from src.device.settings_store import SettingsStore
+from src.device.web import SetupHttpServer
 from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
 from src.ui.compositor import UiCompositor
@@ -56,11 +57,13 @@ def main():
     mailbox = Mailbox()
     settings_store = SettingsStore(path=config.SETTINGS_BASENAME)
     network_events = []
+    setup_http = SetupHttpServer()
     coordinator = make_settings_coordinator(
         mailbox,
         settings_store,
         network_events,
         ntp_address=config.NTP_SERVER_ADDRESS,
+        http_server=setup_http,
     )
     # Legacy secrets NTP only when settings are configured; SETUP_AP owns boot
     # when the store is unconfigured (story 1.1). App overlay of events is 1.3.

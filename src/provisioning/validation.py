@@ -151,3 +151,41 @@ def validate_settings_json(text):
     except Exception:
         return ValidationResult(False, REASON_MALFORMED)
     return validate_settings_object(obj)
+
+
+def _field_utf8_ok(value, min_len, max_len):
+    if not isinstance(value, str):
+        return False
+    if "\x00" in value:
+        return False
+    try:
+        encoded = value.encode("utf-8")
+    except Exception:
+        return False
+    length = len(encoded)
+    return min_len <= length <= max_len
+
+
+def validate_setup_form_fields(ssid, wifi_password, admin_password):
+    """
+    Validate Connect form fields before creating a setup candidate.
+
+    SSID 1–32 and Wi-Fi password 8–63 match the persisted record rules.
+    Admin password uses the same 8–63 UTF-8 length band (never persisted
+    as plaintext).
+    """
+    if not _field_utf8_ok(ssid, 1, 32):
+        return ValidationResult(False, REASON_INVALID)
+    if not _field_utf8_ok(wifi_password, 8, 63):
+        return ValidationResult(False, REASON_INVALID)
+    if not _field_utf8_ok(admin_password, 8, 63):
+        return ValidationResult(False, REASON_INVALID)
+    return ValidationResult(
+        True,
+        REASON_OK,
+        {
+            "ssid": ssid,
+            "wifi_password": wifi_password,
+            "admin_password": admin_password,
+        },
+    )

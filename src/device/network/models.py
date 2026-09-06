@@ -13,13 +13,19 @@ MODE_SETUP_AP = "SETUP_AP"
 
 EVENT_SETUP_STATUS = "setup_status"
 EVENT_SETUP_ERROR = "setup_error"
+EVENT_STATION_STATUS = "station_status"
+EVENT_STATION_ERROR = "station_error"
 
 SETUP_AP_SSID = config.SETUP_AP_SSID
 SETUP_AP_GATEWAY = config.SETUP_AP_GATEWAY
 
-# Placeholders for later stories (1.2/1.3).
-EVENT_STATION_STATUS = "station_status"
-EVENT_STATION_ERROR = "station_error"
+# Named join / persist / busy codes (story 1.2)
+ERROR_AP_FAIL = "ap_fail"
+ERROR_JOIN_FAIL = "join_fail"
+ERROR_JOIN_TIMEOUT = "join_timeout"
+ERROR_PERSIST_FAIL = "persist_fail"
+ERROR_BUSY = "busy"
+ERROR_SCAN_FAIL = "scan_fail"
 
 
 def boot_mode_for_settings(configured):
@@ -92,5 +98,25 @@ def setup_ap_error_event(error_code):
         EVENT_SETUP_ERROR,
         mode=MODE_SETUP_AP,
         ssid=SETUP_AP_SSID,
+        error_code=error_code,
+    )
+
+
+def station_status_event(mode=MODE_STATION_ONLINE, ssid=None, ip=None):
+    """Station online/connecting status without App/TFT mutation."""
+    return NetworkEvent(
+        EVENT_STATION_STATUS,
+        mode=mode,
+        ssid=ssid,
+        ip=ip,
+    )
+
+
+def station_error_event(error_code, mode=MODE_SETUP_AP, ssid=None):
+    """Named station join/persist failure (no crash, no secret payload)."""
+    return NetworkEvent(
+        EVENT_STATION_ERROR,
+        mode=mode,
+        ssid=ssid,
         error_code=error_code,
     )

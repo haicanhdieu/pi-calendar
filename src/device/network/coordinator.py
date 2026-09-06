@@ -11,16 +11,26 @@ or mutates App.
 import struct
 import time
 
+from src import config
 from src.calendar.gregorian import weekday_from_ymd
 from src.device.network.mailbox import MailboxSaturationError, SyncResult
 from src.device.network.models import (
+    ERROR_JOIN_FAIL,
+    ERROR_JOIN_TIMEOUT,
+    ERROR_PERSIST_FAIL,
     MODE_SETUP_AP,
+    MODE_STATION_CONNECTING,
     MODE_STATION_ONLINE,
     SETUP_AP_SSID,
     boot_mode_for_settings,
     setup_ap_error_event,
     setup_ap_status_event,
+    station_error_event,
+    station_status_event,
 )
+from src.device.settings_store import SettingsCommitError
+from src.device.web import pages
+from src.provisioning.scan import ssids_from_scan_rows
 from src.time.model import DateTime
 from src import ticks as default_ticks
 
@@ -45,6 +55,7 @@ class NetworkCoordinator:
         log=None,
         settings_store=None,
         event_sink=None,
+        http_server=None,
     ):
         self._mailbox = mailbox
         self._wlan = wlan
@@ -56,6 +67,7 @@ class NetworkCoordinator:
         self._log = log if log is not None else print
         self._settings_store = settings_store
         self._event_sink = event_sink
+        self._http = http_server
         self._command = None
         self._take_epoch = None
         self._state = "idle"
@@ -64,6 +76,9 @@ class NetworkCoordinator:
         self._setup_ap_active = False
         self._setup_error_emitted = False
         self._mode = self._resolve_boot_mode()
+        self._candidate = None
+        self._candidate_deadline = None
+        self._candidate_started = False
 
     def _resolve_boot_mode(self):
         store = self._settings_store
@@ -85,6 +100,10 @@ class NetworkCoordinator:
     def active(self):
         return self._command is not None
 
+    @property
+    def candidate_active(self):
+        return self._candidate is not None
+
     def _emit(self, event):
         sink = self._event_sink
         if sink is None:
@@ -96,11 +115,16 @@ class NetworkCoordinator:
 
     def tick(self, now_ticks=None):
         """Advance one bounded unit of network work; never waits or sleeps."""
-        if self._mode == MODE_SETUP_AP:
-            self._tick_setup_ap()
-            return
-
         now = self._ticks.ticks_ms() if now_ticks is None else int(now_ticks)
+        if self._mode == MODE_SETUP_AP:
+            self._tick_setup_ap(now)
+            return
+        if self._mode == MODE_STATION_CONNECTING and self._candidate is not None:
+            # Setup join handshake: keep AP + held Connect client through result.
+            self._tick_candidate_join(now)
+            return
+        if self._mode == MODE_STATION_CONNECTING:
+            return
         if self._command is None:
             taken = self._mailbox.try_take_command()
             if taken is None:
@@ -141,10 +165,40 @@ class NetworkCoordinator:
         if self._state == "recv_ntp":
             self._poll_ntp()
 
-    def _tick_setup_ap(self):
-        """Activate open setup AP and emit typed status (no App/TFT calls)."""
-        if self._setup_ap_active:
+    def _tick_setup_ap(self, now):
+        """Activate open setup AP, serve setup HTTP, run one candidate join."""
+        if not self._setup_ap_active:
+            self._activate_setup_ap()
             return
+
+        if self._candidate is not None:
+            self._tick_candidate_join(now)
+            return
+
+        http = self._http
+        if http is None:
+            return
+        if not http.ensure_listening():
+            if not self._setup_error_emitted:
+                self._setup_error_emitted = True
+                try:
+                    self._emit(setup_ap_error_event("listen_fail"))
+                except Exception:
+                    pass
+            return
+        action = http.tick(
+            MODE_SETUP_AP,
+            candidate_active=False,
+            scan_fn=self._scan_ssids,
+        )
+        if action is None:
+            return
+        kind, candidate = action
+        if kind != "connect" or candidate is None:
+            return
+        self._start_candidate(candidate, now)
+
+    def _activate_setup_ap(self):
         try:
             ap = self._get_ap_wlan()
             ap.config(essid=SETUP_AP_SSID, security=0)
@@ -165,6 +219,176 @@ class NetworkCoordinator:
         except Exception:
             # AP is up but sink failed; retry status emit on a later tick.
             pass
+
+    def _scan_ssids(self):
+        try:
+            wlan = self._get_wlan()
+            try:
+                wlan.active(True)
+            except Exception:
+                pass
+            rows = wlan.scan()
+        except Exception:
+            return []
+        return ssids_from_scan_rows(rows)
+
+    def _start_candidate(self, candidate, now):
+        self._candidate = candidate
+        self._candidate_started = False
+        self._candidate_deadline = self._ticks.ticks_add(
+            now, config.SYNC_COMMAND_DEADLINE_MS
+        )
+        self._mode = MODE_STATION_CONNECTING
+        try:
+            self._emit(
+                station_status_event(
+                    mode=MODE_STATION_CONNECTING, ssid=candidate.ssid
+                )
+            )
+        except Exception:
+            pass
+
+    def _tick_candidate_join(self, now):
+        candidate = self._candidate
+        if candidate is None:
+            return
+
+        # Still serve HTTP so concurrent Connect receives 503 Busy.
+        # Do not scan STA while a candidate join is in flight.
+        http = self._http
+        if http is not None:
+            http.tick(
+                MODE_SETUP_AP,
+                candidate_active=True,
+                scan_fn=lambda: [],
+            )
+
+        if self._ticks.ticks_diff(now, self._candidate_deadline) >= 0:
+            self._fail_candidate(ERROR_JOIN_TIMEOUT)
+            return
+
+        try:
+            wlan = self._get_wlan()
+            if not self._candidate_started:
+                wlan.active(True)
+                wlan.connect(candidate.ssid, candidate.wifi_password)
+                self._candidate_started = True
+                return
+            if not wlan.isconnected():
+                return
+        except Exception:
+            self._fail_candidate(ERROR_JOIN_FAIL)
+            return
+
+        self._complete_candidate_success()
+
+    def _complete_candidate_success(self):
+        candidate = self._candidate
+        store = self._settings_store
+        ip = None
+        try:
+            ip = self._station_ip()
+        except Exception:
+            ip = None
+
+        if store is None:
+            self._fail_candidate(ERROR_PERSIST_FAIL)
+            return
+
+        try:
+            store.commit(
+                wifi_ssid=candidate.ssid,
+                wifi_password=candidate.wifi_password,
+                admin_password=candidate.admin_password,
+            )
+        except SettingsCommitError:
+            self._disconnect_station()
+            self._fail_candidate(ERROR_PERSIST_FAIL)
+            return
+        except Exception:
+            self._disconnect_station()
+            self._fail_candidate(ERROR_PERSIST_FAIL)
+            return
+
+        ssid = candidate.ssid
+        # Order: emit online → flush browser success → close clients → drop AP.
+        self._mode = MODE_STATION_ONLINE
+        try:
+            self._emit(
+                station_status_event(
+                    mode=MODE_STATION_ONLINE, ssid=ssid, ip=ip
+                )
+            )
+        except Exception:
+            pass
+
+        response = pages.response_join_success(ssid)
+        if self._http is not None:
+            self._http.queue_held_response(response)
+            self._http.drain_writes()
+            self._http.close_all()
+        self._deactivate_ap()
+        self._clear_candidate()
+
+    def _fail_candidate(self, error_code):
+        candidate = self._candidate
+        ssid = candidate.ssid if candidate is not None else None
+        admin = candidate.admin_password if candidate is not None else ""
+        self._disconnect_station()
+        try:
+            self._emit(
+                station_error_event(
+                    error_code, mode=MODE_SETUP_AP, ssid=ssid
+                )
+            )
+        except Exception:
+            pass
+
+        body = pages.response_join_failure(ssid or "", admin or "")
+        if self._http is not None:
+            self._http.queue_held_response(body)
+            self._http.drain_writes()
+
+        self._mode = MODE_SETUP_AP
+        self._clear_candidate()
+        # AP stays up for retry; do not deactivate.
+
+    def _clear_candidate(self):
+        if self._candidate is not None:
+            try:
+                self._candidate.clear_secrets()
+            except Exception:
+                pass
+        self._candidate = None
+        self._candidate_deadline = None
+        self._candidate_started = False
+
+    def _disconnect_station(self):
+        try:
+            wlan = self._get_wlan()
+            disconnect = getattr(wlan, "disconnect", None)
+            if callable(disconnect):
+                disconnect()
+        except Exception:
+            pass
+
+    def _station_ip(self):
+        wlan = self._get_wlan()
+        ifconfig = getattr(wlan, "ifconfig", None)
+        if not callable(ifconfig):
+            return None
+        cfg = ifconfig()
+        if not cfg:
+            return None
+        return cfg[0]
+
+    def _deactivate_ap(self):
+        try:
+            ap = self._get_ap_wlan()
+            ap.active(False)
+        except Exception:
+            pass
+        self._setup_ap_active = False
 
     def _credentials_valid(self):
         try:
