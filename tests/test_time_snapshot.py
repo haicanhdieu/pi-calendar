@@ -24,20 +24,26 @@ FORBIDDEN_IMPORT_ROOTS = frozenset(
 )
 
 
+def _remember_module(roots: set[str], name: str) -> None:
+    """Record a module path and every dotted prefix (so src.device.foo hits src.device)."""
+    if not name:
+        return
+    parts = name.split(".")
+    for i in range(len(parts)):
+        roots.add(".".join(parts[: i + 1]))
+
+
 def _imported_roots(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     roots: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                roots.add(alias.name.split(".")[0])
-                roots.add(alias.name)
+                _remember_module(roots, alias.name)
         elif isinstance(node, ast.ImportFrom) and node.module:
-            roots.add(node.module.split(".")[0])
-            roots.add(node.module)
-            # Catch `from src.device...` even when checking the full module path.
-            if node.module.startswith("src.device"):
-                roots.add("src.device")
+            _remember_module(roots, node.module)
+            for alias in node.names:
+                _remember_module(roots, f"{node.module}.{alias.name}")
     return roots
 
 
@@ -114,3 +120,9 @@ def test_leap_day_rollover():
     utc = DateTime(2024, 2, 28, 2, 20, 0, 0)  # Wednesday
     local = utc_to_local(utc)
     assert local == DateTime(2024, 2, 29, 3, 3, 0, 0)  # Thursday
+
+
+def test_non_leap_feb_rollover_to_march():
+    utc = DateTime(2025, 2, 28, 4, 20, 0, 0)  # Friday
+    local = utc_to_local(utc)
+    assert local == DateTime(2025, 3, 1, 5, 3, 0, 0)  # Saturday

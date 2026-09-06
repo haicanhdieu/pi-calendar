@@ -41,7 +41,7 @@ class DateTime:
 
 
 class TimeSnapshot:
-    """Immutable glanceable time state for renderers and view gating."""
+    """Glanceable time state for renderers and view gating."""
 
     __slots__ = ("utc", "local", "trust", "sync_age_ms")
 

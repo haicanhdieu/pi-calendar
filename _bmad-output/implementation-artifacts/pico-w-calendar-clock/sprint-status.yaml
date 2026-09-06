@@ -35,8 +35,8 @@ project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts/pico-w-calendar-clock
 development_status:
-  epic-1: backlog
-  1-1-establish-the-testable-time-and-device-foundation: backlog
+  epic-1: in-progress
+  1-1-establish-the-testable-time-and-device-foundation: done
   1-2-render-an-immediately-legible-clock-view: backlog
   1-3-keep-the-clock-running-through-time-source-failures: backlog
   1-4-prove-the-nonblocking-network-boundary-on-hardware: backlog
