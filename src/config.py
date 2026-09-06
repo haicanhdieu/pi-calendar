@@ -99,6 +99,12 @@ SYNC_COMMAND_DEADLINE_MS = 15_000
 # Numeric address deliberately avoids a synchronous DNS lookup in the render loop.
 NTP_SERVER_ADDRESS = ("129.6.15.28", 123)
 
+# Wi-Fi setup AP and settings record (non-secret constants only; AD-3/AD-9)
+SETUP_AP_SSID = "PiCalendar-Setup"
+SETUP_AP_GATEWAY = "192.168.4.1"
+SETTINGS_BASENAME = ".settings-v1"
+ADMIN_PBKDF2_ITERATIONS = 20_000
+
 # Story 1.4 flashable proof harness (src/device/network/proof.py)
 NETWORK_PROOF_MODE = False
 PROOF_RESULT_TIMEOUT_MS = 10_000

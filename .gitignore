@@ -18,6 +18,10 @@ dist/
 .env
 .env.*
 !.env.example
+.settings-v1
+.settings-v1.tmp
+.settings-v1.bak
+.settings-v1.rejected
 
 # macOS / Windows / Linux desktop noise
 .DS_Store

@@ -3,6 +3,9 @@
 Each :meth:`tick` performs at most one state transition or non-blocking poll.
 It deliberately has no wait loop, DNS lookup, or sleep call: the application
 loop remains responsible for display cadence and is the only RTC writer.
+
+Owns WLAN/socket objects and emits typed NetworkEvents. Never draws the TFT
+or mutates App.
 """
 
 import struct
@@ -10,6 +13,14 @@ import time
 
 from src.calendar.gregorian import weekday_from_ymd
 from src.device.network.mailbox import MailboxSaturationError, SyncResult
+from src.device.network.models import (
+    MODE_SETUP_AP,
+    MODE_STATION_ONLINE,
+    SETUP_AP_SSID,
+    boot_mode_for_settings,
+    setup_ap_error_event,
+    setup_ap_status_event,
+)
 from src.time.model import DateTime
 from src import ticks as default_ticks
 
@@ -26,31 +37,69 @@ class NetworkCoordinator:
         self,
         mailbox,
         wlan=None,
+        ap_wlan=None,
         socket_module=None,
         secrets_mod=None,
         ticks_module=None,
         ntp_address=("129.6.15.28", 123),
         log=None,
+        settings_store=None,
+        event_sink=None,
     ):
         self._mailbox = mailbox
         self._wlan = wlan
+        self._ap_wlan = ap_wlan
         self._socket_module = socket_module
         self._secrets_mod = secrets_mod
         self._ticks = ticks_module if ticks_module is not None else default_ticks
         self._ntp_address = ntp_address
         self._log = log if log is not None else print
+        self._settings_store = settings_store
+        self._event_sink = event_sink
         self._command = None
         self._take_epoch = None
         self._state = "idle"
         self._sock = None
         self.fatal = None
+        self._setup_ap_active = False
+        self._setup_error_emitted = False
+        self._mode = self._resolve_boot_mode()
+
+    def _resolve_boot_mode(self):
+        store = self._settings_store
+        if store is None:
+            # Legacy/host path without SettingsStore: keep mailbox NTP usable.
+            return MODE_STATION_ONLINE
+        configured = False
+        try:
+            configured = bool(store.is_configured())
+        except Exception:
+            configured = False
+        return boot_mode_for_settings(configured)
+
+    @property
+    def mode(self):
+        return self._mode
 
     @property
     def active(self):
         return self._command is not None
 
+    def _emit(self, event):
+        sink = self._event_sink
+        if sink is None:
+            return
+        if callable(sink):
+            sink(event)
+        else:
+            sink.append(event)
+
     def tick(self, now_ticks=None):
         """Advance one bounded unit of network work; never waits or sleeps."""
+        if self._mode == MODE_SETUP_AP:
+            self._tick_setup_ap()
+            return
+
         now = self._ticks.ticks_ms() if now_ticks is None else int(now_ticks)
         if self._command is None:
             taken = self._mailbox.try_take_command()
@@ -92,6 +141,31 @@ class NetworkCoordinator:
         if self._state == "recv_ntp":
             self._poll_ntp()
 
+    def _tick_setup_ap(self):
+        """Activate open setup AP and emit typed status (no App/TFT calls)."""
+        if self._setup_ap_active:
+            return
+        try:
+            ap = self._get_ap_wlan()
+            ap.config(essid=SETUP_AP_SSID, security=0)
+            ap.active(True)
+        except Exception:
+            # Retry activation on later ticks; emit the named failure once.
+            if not self._setup_error_emitted:
+                self._setup_error_emitted = True
+                try:
+                    self._emit(setup_ap_error_event("ap_fail"))
+                except Exception:
+                    pass
+            return
+        try:
+            self._emit(setup_ap_status_event())
+            self._setup_ap_active = True
+            self._setup_error_emitted = False
+        except Exception:
+            # AP is up but sink failed; retry status emit on a later tick.
+            pass
+
     def _credentials_valid(self):
         try:
             secrets_mod = self._secrets_mod
@@ -112,6 +186,14 @@ class NetworkCoordinator:
 
         self._wlan = network.WLAN(network.STA_IF)
         return self._wlan
+
+    def _get_ap_wlan(self):
+        if self._ap_wlan is not None:
+            return self._ap_wlan
+        import network
+
+        self._ap_wlan = network.WLAN(network.AP_IF)
+        return self._ap_wlan
 
     def _get_socket_module(self):
         if self._socket_module is None:

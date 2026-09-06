@@ -10,7 +10,12 @@ from src.device.display.adapter import Ili9341DisplayPort
 from src.device.display.ili9341 import ILI9341
 from src.device.display.splash import splash_screen
 from src.device.network.mailbox import Mailbox
-from src.device.network.coordinator import NetworkCoordinator
+from src.device.network.models import (
+    MODE_SETUP_AP,
+    make_settings_coordinator,
+    ntp_sync_enabled,
+)
+from src.device.settings_store import SettingsStore
 from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
 from src.ui.compositor import UiCompositor
@@ -49,10 +54,17 @@ def main():
     clock_port = RtcClockPort()
 
     mailbox = Mailbox()
-    sync_enabled = credentials_valid()
-    coordinator = NetworkCoordinator(
-        mailbox, ntp_address=config.NTP_SERVER_ADDRESS
+    settings_store = SettingsStore(path=config.SETTINGS_BASENAME)
+    network_events = []
+    coordinator = make_settings_coordinator(
+        mailbox,
+        settings_store,
+        network_events,
+        ntp_address=config.NTP_SERVER_ADDRESS,
     )
+    # Legacy secrets NTP only when settings are configured; SETUP_AP owns boot
+    # when the store is unconfigured (story 1.1). App overlay of events is 1.3.
+    sync_enabled = ntp_sync_enabled(coordinator.mode, credentials_valid())
 
     app = App(
         clock_port=clock_port,
@@ -63,7 +75,7 @@ def main():
         sync_enabled=sync_enabled,
     )
 
-    if not sync_enabled:
+    if not sync_enabled and coordinator.mode != MODE_SETUP_AP:
         app.report_time_source_failure("missing or empty Wi-Fi credentials")
 
     led.value(0)
