@@ -3,7 +3,7 @@
 from src import config
 from src import ticks as default_ticks
 from src.calendar.gregorian import build_month_grid
-from src.time.model import TRUST_UNSYNCED
+from src.time.model import TRUST_SYNCED, TRUST_UNSYNCED
 from src.time.service import make_snapshot
 from src.ui.compositor import UiCompositor
 from src.ui.view_state import (
@@ -15,6 +15,16 @@ from src.ui.view_state import (
 
 # Re-export view constants for callers / tests.
 __all__ = ("VIEW_CLOCK", "VIEW_CALENDAR", "AppState", "App")
+
+
+class _SyncCommand:
+    """Duck-typed SyncCommand so App never imports ``src.device``."""
+
+    __slots__ = ("command_id", "deadline_ms")
+
+    def __init__(self, command_id, deadline_ms):
+        self.command_id = command_id
+        self.deadline_ms = deadline_ms
 
 
 class AppState:
@@ -60,6 +70,9 @@ class App:
         ticks_module=None,
         log=None,
         compositor=None,
+        mailbox=None,
+        lock=None,
+        sync_enabled=True,
     ):
         self._clock = clock_port
         self._view = clock_view
@@ -69,11 +82,17 @@ class App:
         if compositor is None:
             compositor = UiCompositor(clock_view._display)
         self._compositor = compositor
+        self._mailbox = mailbox
+        self._lock = lock
+        self._sync_enabled = bool(sync_enabled)
         self.state = AppState()
         self._booted = False
         self._last_snapshot = None
         self._last_local_ymd = None
         self._month_grid = None
+        self._next_command_id = 1
+        self._inflight_id = None
+        self._inflight_deadline = None
 
     def boot(self):
         """Enter Clock as the active view and arm tick deadlines."""
@@ -85,9 +104,12 @@ class App:
         self.state.sync_age_ms = None
         self._last_local_ymd = None
         self._month_grid = None
+        self._inflight_id = None
+        self._inflight_deadline = None
         # Due immediately so the first step paints Clock.
         self.state.redraw_deadline = now
-        self.state.retry_deadline = t.ticks_add(now, config.NTP_RETRY_MS)
+        # Sync retry due immediately so the first NTP attempt is not deferred.
+        self.state.retry_deadline = now
         self.state.freshness_deadline = t.ticks_add(now, config.NTP_RETRY_MS)
         self.state.view_deadline = t.ticks_add(now, config.CLOCK_DWELL_MS)
         if hasattr(self._view, "invalidate"):
@@ -120,7 +142,10 @@ class App:
         else:
             now = int(now_ticks) & (default_ticks.PERIOD - 1)
 
-        # 1. Consume adapter results — no-op until Story 1.5 mailbox/NTP.
+        # 1. Consume adapter results (AD-8 mailbox), then maybe enqueue.
+        self._consume_sync_result(now)
+        self._maybe_enqueue_sync(now)
+
         # 2. Derive snapshot.
         utc = self._clock.read_utc()
         snapshot = make_snapshot(utc, self.state.trust, self.state.sync_age_ms)
@@ -130,10 +155,6 @@ class App:
 
         # 3. Handle date / month rollover.
         force_redraw = self._handle_rollover(snapshot, now) or force_redraw
-
-        # Retry / freshness deadlines stay armed with ticks_* only.
-        if t.ticks_diff(self.state.retry_deadline, now) <= 0:
-            self.state.retry_deadline = t.ticks_add(now, config.NTP_RETRY_MS)
 
         if t.ticks_diff(self.state.freshness_deadline, now) <= 0:
             self.state.freshness_deadline = t.ticks_add(now, config.NTP_RETRY_MS)
@@ -146,6 +167,91 @@ class App:
         if force_redraw or t.ticks_diff(self.state.redraw_deadline, now) <= 0:
             self._render(snapshot)
             self.state.redraw_deadline = t.ticks_add(now, config.CLOCK_REDRAW_MS)
+
+    def _with_mailbox_lock(self, fn):
+        lock = self._lock
+        if lock is None:
+            return fn()
+        lock.acquire()
+        try:
+            return fn()
+        finally:
+            lock.release()
+
+    def _result_is_expired(self, deadline_ms, now_ms):
+        return self._ticks.ticks_diff(now_ms, deadline_ms) >= 0
+
+    def _should_apply_result(self, result, expected_command_id, deadline_ms, now_ms):
+        """Matching, non-expired gate (duck-typed; no ``src.device`` import)."""
+        if result is None:
+            return False
+        if result.command_id != expected_command_id:
+            return False
+        if self._result_is_expired(deadline_ms, now_ms):
+            return False
+        return True
+
+    def _consume_sync_result(self, now):
+        mailbox = self._mailbox
+        if mailbox is None:
+            return
+
+        result = self._with_mailbox_lock(mailbox.try_take_result)
+        if result is None:
+            return
+
+        expected_id = self._inflight_id
+        deadline = self._inflight_deadline
+        self._inflight_id = None
+        self._inflight_deadline = None
+
+        apply = False
+        if expected_id is not None and deadline is not None:
+            apply = self._should_apply_result(result, expected_id, deadline, now)
+
+        if apply and getattr(result, "ok", False) and result.utc is not None:
+            self._clock.set_utc(result.utc)
+            self.state.trust = TRUST_SYNCED
+            self.state.utc_valid = True
+            self.state.sync_age_ms = 0
+        else:
+            reason = "sync result discarded"
+            if apply:
+                err = getattr(result, "error_code", None)
+                reason = "sync failed" if err is None else "sync failed: %s" % (err,)
+            elif expected_id is None:
+                reason = "stale sync result (no inflight)"
+            elif result.command_id != expected_id:
+                reason = "stale sync result (id mismatch)"
+            elif deadline is not None and self._result_is_expired(deadline, now):
+                reason = "expired sync result"
+            self.report_time_source_failure(reason)
+
+        self.state.retry_deadline = self._ticks.ticks_add(now, config.NTP_RETRY_MS)
+
+    def _maybe_enqueue_sync(self, now):
+        t = self._ticks
+        if t.ticks_diff(self.state.retry_deadline, now) > 0:
+            return
+
+        if not self._sync_enabled or self._mailbox is None:
+            self.state.retry_deadline = t.ticks_add(now, config.NTP_RETRY_MS)
+            return
+
+        command_id = self._next_command_id
+        deadline_ms = t.ticks_add(now, config.SYNC_COMMAND_DEADLINE_MS)
+        command = _SyncCommand(command_id, deadline_ms)
+
+        def _enqueue():
+            return self._mailbox.enqueue(command)
+
+        accepted = self._with_mailbox_lock(_enqueue)
+        if accepted:
+            self._next_command_id = command_id + 1
+            self._inflight_id = command_id
+            self._inflight_deadline = deadline_ms
+            self.state.retry_deadline = t.ticks_add(now, config.NTP_RETRY_MS)
+        # Rejected (busy / result occupied): leave retry_deadline due.
 
     def _handle_rollover(self, snapshot, now):
         """Apply same-month today refresh or month-change cut; return force flag."""

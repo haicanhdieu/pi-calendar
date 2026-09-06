@@ -1,12 +1,17 @@
 from machine import Pin, SPI
 from time import sleep_ms
 
+import _thread
+
 from src import config
 from src.app import App
 from src.credentials import credentials_valid
 from src.device.clock_port import RtcClockPort
 from src.device.display import ILI9341
 from src.device.display.adapter import Ili9341DisplayPort
+from src.device.network.mailbox import Mailbox
+from src.device.network.ntp_ops import NtpOps
+from src.device.network.worker import NetworkWorker
 from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
 from src.ui.compositor import UiCompositor
@@ -17,7 +22,6 @@ def main():
     led.value(1)
 
     # Story 1.4: gated proof harness (set NETWORK_PROOF_MODE True only for flash).
-    # Does not wire production App NTP integration (Story 1.5).
     if config.NETWORK_PROOF_MODE:
         print("NETWORK_PROOF_MODE: running Story 1.4 mailbox proof harness")
         led.value(0)
@@ -49,14 +53,24 @@ def main():
     calendar_view = CalendarView(display_port)
     compositor = UiCompositor(display_port)
     clock_port = RtcClockPort()
+
+    mailbox = Mailbox()
+    lock = _thread.allocate_lock()
+    sync_enabled = credentials_valid()
+    worker = NetworkWorker(mailbox, lock, NtpOps())
+    worker.start()
+
     app = App(
         clock_port=clock_port,
         clock_view=clock_view,
         calendar_view=calendar_view,
         compositor=compositor,
+        mailbox=mailbox,
+        lock=lock,
+        sync_enabled=sync_enabled,
     )
 
-    if not credentials_valid():
+    if not sync_enabled:
         app.report_time_source_failure("missing or empty Wi-Fi credentials")
 
     led.value(0)

@@ -245,12 +245,14 @@ def test_deadlines_use_ticks_helpers_not_wall_clock():
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(ticks_mod=ft)
     app.boot()
     assert app.state.redraw_deadline == 50_000
-    assert app.state.retry_deadline == ft.ticks_add(50_000, config.NTP_RETRY_MS)
+    assert app.state.retry_deadline == 50_000  # due immediately for first sync
     assert app.state.freshness_deadline == ft.ticks_add(50_000, config.NTP_RETRY_MS)
     assert app.state.view_deadline == ft.ticks_add(50_000, config.CLOCK_DWELL_MS)
 
     app.step(now_ticks=50_000)
     assert app.state.redraw_deadline == ft.ticks_add(50_000, config.CLOCK_REDRAW_MS)
+    # No mailbox: sync skip arms full NTP_RETRY_MS.
+    assert app.state.retry_deadline == ft.ticks_add(50_000, config.NTP_RETRY_MS)
 
     # Valid local: Clock dwell → Calendar, armed with CALENDAR_DWELL_MS.
     ft.advance(config.CLOCK_DWELL_MS)

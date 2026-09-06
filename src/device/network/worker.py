@@ -72,7 +72,7 @@ class NetworkWorker:
         try:
             result = self._ops.run(command)
         except Exception as exc:  # noqa: BLE001 — worker must always publish
-            self._log("PROOF:WORKER_OPS_ERROR", repr(exc))
+            self._log("WORKER_OPS_ERROR", repr(exc))
             return SyncResult(
                 command.command_id,
                 False,

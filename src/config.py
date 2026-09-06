@@ -89,11 +89,10 @@ BADGE_PADDING_Y = 2
 CLOCK_DWELL_MS = 30_000
 CALENDAR_DWELL_MS = 8_000
 CLOCK_REDRAW_MS = 1000
-# Production App NTP retry cadence (Story 1.5). Documented here only in 1.4 —
-# do not wire App↔mailbox retry from this story.
+# Production App NTP retry cadence after each terminal sync consume (v1 = 1 h).
 NTP_RETRY_MS = 3_600_000
 
-# SyncCommand deadline budget for bounded worker ops (AD-8 / Story 1.4+)
+# SyncCommand deadline budget for bounded worker ops (AD-8)
 SYNC_COMMAND_DEADLINE_MS = 15_000
 
 # Story 1.4 flashable proof harness (src/device/network/proof.py)
