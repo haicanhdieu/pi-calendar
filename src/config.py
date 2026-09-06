@@ -71,6 +71,7 @@ BADGE_PADDING_Y = 2
 # Timing defaults (milliseconds)
 CLOCK_DWELL_MS = 30_000
 CALENDAR_DWELL_MS = 8_000
+CLOCK_REDRAW_MS = 1000
 NTP_RETRY_MS = 3_600_000
 
 # Fixed local offset for Asia/Ho_Chi_Minh (no DST)
