@@ -1,0 +1,50 @@
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created, ready for development
+#   - in-progress: Developer actively working on implementation
+#   - review: Implementation complete, ready for review
+#   - done: Story completed
+
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
+
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when its first story starts (via build's sprint sync)
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates the next story after the previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; the status view surfaces open ones
+generated: 09-06-2026 00:00
+last_updated: 09-06-2026 00:00
+project: pi-calendar
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts/pico-w-calendar-clock
+development_status:
+  epic-1: backlog
+  1-1-establish-the-testable-time-and-device-foundation: backlog
+  1-2-render-an-immediately-legible-clock-view: backlog
+  1-3-keep-the-clock-running-through-time-source-failures: backlog
+  1-4-prove-the-nonblocking-network-boundary-on-hardware: backlog
+  1-5-synchronize-clock-time-without-blocking-the-display: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-generate-a-correct-gregorian-month-model: backlog
+  2-2-render-the-current-month-calendar-view: backlog
+  2-3-rotate-views-and-handle-local-date-transitions: backlog
+  epic-2-retrospective: optional
