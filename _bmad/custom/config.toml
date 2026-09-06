@@ -5,3 +5,18 @@
 #
 # [agents.bmad-agent-pm]
 # description = "Prefers short, bulleted PRDs over narrative drafts."
+
+# Root buckets (planning-artifacts / implementation-artifacts / test-artifacts)
+# stay put; group by PRD slug then subtype inside each bucket:
+# _bmad-output/<bucket>/<prd-slug>/<subtype>/. Single-PRD repo today, slug is
+# "pico-w-calendar-clock" (the product, not the repo dirname). See AGENTS.md.
+# prds/ux-designs/architecture/briefs subtypes are overridden per-skill in
+# _bmad/custom/bmad-{prd,ux,architecture,product-brief}.toml.
+[modules.bmm]
+implementation_artifacts = "{project-root}/_bmad-output/implementation-artifacts/pico-w-calendar-clock"
+
+[modules.tea]
+test_artifacts = "{project-root}/_bmad-output/test-artifacts/pico-w-calendar-clock"
+test_design_output = "_bmad-output/test-artifacts/pico-w-calendar-clock/test-design"
+test_review_output = "_bmad-output/test-artifacts/pico-w-calendar-clock/test-reviews"
+trace_output = "_bmad-output/test-artifacts/pico-w-calendar-clock/traceability"

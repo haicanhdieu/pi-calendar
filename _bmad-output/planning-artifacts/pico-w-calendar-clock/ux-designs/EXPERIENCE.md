@@ -2,8 +2,8 @@
 name: Pi Calendar Clock
 status: final
 sources:
-  - "{planning_artifacts}/prds/prd-pi-calendar-2026-09-05/prd.md"
-  - "{planning_artifacts}/pico-w-calendar-clock/architecture/project-structure.md"
+  - "../prds/prd.md"
+  - "../architecture/project-structure.md"
   - "docs/hardware_configuration.md"
 updated: 2026-09-05
 ---

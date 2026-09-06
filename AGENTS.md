@@ -7,18 +7,20 @@ Firmware and planning repository for a Raspberry Pi Pico W clock and calendar de
 
 ## Policy
 
-- For every PRD, derive one stable lowercase kebab-case `<prd-slug>` and place all related BMAD artifacts under `_bmad-output/<prd-slug>/`; never flatten artifacts directly into `_bmad-output/` or shared `planning-artifacts/`, `implementation-artifacts/`, or `test-artifacts/` directories.
-- Keep artifacts for different PRDs isolated in separate slug directories; preserve BMAD's expected filenames and artifact types inside the active PRD directory.
-- Before running a BMAD workflow, rebase or override its output location to the active `_bmad-output/<prd-slug>/` directory; do not edit installer-managed `_bmad/config.toml` to achieve this.
-- Treat `_bmad-output/<prd-slug>/` as the source of truth for that PRD's planning-to-implementation-to-testing trail; do not place those artifacts in `docs/` or the repository root.
+- Root buckets stay as installed: `_bmad-output/planning-artifacts/`, `_bmad-output/implementation-artifacts/`, `_bmad-output/test-artifacts/`. For every PRD, derive one stable lowercase kebab-case `<prd-slug>` and group artifacts inside each bucket as `<bucket>/<prd-slug>/<subtype>/`, flattened — files sit directly in the subtype folder, no dated run-folder layer (e.g. `_bmad-output/planning-artifacts/pico-w-calendar-clock/prds/prd.md`, not `.../prds/prd-<slug>-<date>/prd.md`). Never flatten artifacts directly into a bucket root.
+- This repo currently has one product, slug `pico-w-calendar-clock` (the product name, not the repo dirname `pi-calendar`). Its artifacts: `_bmad-output/planning-artifacts/pico-w-calendar-clock/{briefs,prds,ux-designs,architecture}/`, `_bmad-output/implementation-artifacts/pico-w-calendar-clock/`, `_bmad-output/test-artifacts/pico-w-calendar-clock/{test-design,test-reviews,traceability}/`.
+- Keep artifacts for different PRDs isolated in separate slug directories inside each bucket; preserve BMAD's expected filenames and artifact types inside the active PRD's subtype directory.
+- The flattened slug-then-subtype grouping is enforced by config, not convention — do not edit installer-managed `_bmad/config.toml` or any skill's own `customize.toml`. Instead: `_bmad/custom/config.toml` overrides `[modules.bmm].implementation_artifacts` and `[modules.tea].test_artifacts`/`test_design_output`/`test_review_output`/`trace_output`; `_bmad/custom/bmad-prd.toml`, `bmad-ux.toml`, `bmad-architecture.toml`, `bmad-product-brief.toml` each override their `*_output_path` to `{planning_artifacts}/pico-w-calendar-clock/<subtype>` and set `run_folder_pattern = ""` (drops the dated run subfolder). Adding a second PRD means adding its slug the same way in each of these override files.
+- Treat each `_bmad-output/<bucket>/<prd-slug>/` tree as the source of truth for that PRD's planning-to-implementation-to-testing trail; do not place those artifacts in `docs/` or the repository root.
 - Keep product, hardware, and design decisions in `docs/` and the PRD artifacts, never in this block.
 - Do not change hardware pin assignments in software unless the physical wiring has changed and the documentation is updated in the same change.
 
 ## Where things are
 
 - Hardware and product source of truth: `docs/`
-- Per-PRD planning, implementation, and test artifacts, including briefs: `_bmad-output/<prd-slug>/`
-- Project folder structure: `_bmad-output/<prd-slug>/architecture/project-structure.md`
+- Per-PRD planning, implementation, and test artifacts, grouped bucket-then-slug-then-subtype: `_bmad-output/{planning-artifacts,implementation-artifacts,test-artifacts}/<prd-slug>/<subtype>/`
+- Project folder structure: `_bmad-output/planning-artifacts/<prd-slug>/architecture/project-structure.md`
+- Slug-then-subtype path overrides: `_bmad/custom/config.toml` and `_bmad/custom/bmad-{prd,ux,architecture,product-brief}.toml`
 - BMAD configuration and workflow scripts: `_bmad/config.toml` and `_bmad/scripts/`
 - Firmware entry point: `main.py`
 - BMAD loop state and policy: `.bmad-loop/`

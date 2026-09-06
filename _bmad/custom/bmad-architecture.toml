@@ -1,0 +1,7 @@
+# Team override for bmad-architecture. See .claude/skills/bmad-architecture/customize.toml for full surface.
+#
+# Group artifacts slug-then-subtype under the shared planning-artifacts bucket,
+# flattened (no dated run folder) since this repo has one PRD per slug. See AGENTS.md.
+[workflow]
+spine_output_path = "{planning_artifacts}/pico-w-calendar-clock/architecture"
+run_folder_pattern = ""

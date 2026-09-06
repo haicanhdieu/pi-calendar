@@ -10,7 +10,7 @@ updated: 2026-09-05
 
 ## 0. Document Purpose
 
-This PRD scopes v1 of a Raspberry Pi Pico W-based desk clock that displays the current time and Gregorian calendar date on a physical screen. It builds on the existing [Project Folder Structure Convention](../../../pico-w-calendar-clock/architecture/project-structure.md), which already establishes the MicroPython/CPython split, module layout, and the deferred status of the Vietnamese lunar calendar. This PRD does not repeat that structure — it defines what the device does, for whom, and what's in/out of v1.
+This PRD scopes v1 of a Raspberry Pi Pico W-based desk clock that displays the current time and Gregorian calendar date on a physical screen. It builds on the existing [Project Folder Structure Convention](../architecture/project-structure.md), which already establishes the MicroPython/CPython split, module layout, and the deferred status of the Vietnamese lunar calendar. This PRD does not repeat that structure — it defines what the device does, for whom, and what's in/out of v1.
 
 ## 1. Vision
 

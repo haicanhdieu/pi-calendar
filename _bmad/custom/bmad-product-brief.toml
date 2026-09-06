@@ -1,0 +1,7 @@
+# Team override for bmad-product-brief. See .claude/skills/bmad-product-brief/customize.toml for full surface.
+#
+# Group artifacts slug-then-subtype under the shared planning-artifacts bucket,
+# flattened (no dated run folder) since this repo has one PRD per slug. See AGENTS.md.
+[workflow]
+brief_output_path = "{planning_artifacts}/pico-w-calendar-clock/briefs"
+run_folder_pattern = ""
