@@ -333,7 +333,8 @@ flex-shrink:0;padding-left:12px;min-height:44px;cursor:pointer}
 font-size:15px;font-weight:700;font-family:inherit;padding:13px 0;cursor:pointer;margin-top:4px}
 .banner{min-height:44px;border-radius:999px;padding:11px 16px;font-size:14px;font-weight:600;
 display:flex;align-items:center;justify-content:center;background:#1b212a;color:#ff5c5c;
-border:1px solid #ff5c5c;text-align:center}
+border:1px solid #ff5c5c;text-align:center;margin-bottom:20px}
+.banner.success{color:#3ddc84;border:1px solid #3ddc84}
 .settings-list{display:flex;flex-direction:column;gap:10px}
 .settings-row{background:#1b212a;border:1px solid #2a323d;border-radius:14px;overflow:hidden}
 .settings-row-head{min-height:44px;padding:14px 16px;display:flex;align-items:center;
@@ -431,8 +432,18 @@ def login_page_html(incorrect=False):
     )
 
 
-def settings_page_html():
-    """Authenticated mobile flat settings shell (password/theme POST deferred)."""
+def settings_page_html(password_changed=False):
+    """Authenticated mobile flat settings shell (password change + theme stub)."""
+    banner = ""
+    row_class = "settings-row"
+    aria_expanded = "false"
+    if password_changed:
+        banner = (
+            '<div class="banner success" aria-live="polite">'
+            "Password changed.</div>"
+        )
+        row_class = "settings-row open"
+        aria_expanded = "true"
     return (
         "<!DOCTYPE html><html lang=\"en\"><head>"
         "<meta charset=\"UTF-8\">"
@@ -440,12 +451,15 @@ def settings_page_html():
         "<title>Pi Calendar Settings</title>"
         "<style>" + _CONFIG_CSS + "</style></head><body>"
         "<h1>Device Settings</h1>"
-        '<div class="settings-list">'
-        '<div class="settings-row" id="row-password">'
-        '<button type="button" class="settings-row-head" aria-expanded="false" '
-        'aria-controls="body-password">'
+        + banner
+        + '<div class="settings-list">'
+        '<div class="' + row_class + '" id="row-password">'
+        '<button type="button" class="settings-row-head" aria-expanded="'
+        + aria_expanded
+        + '" aria-controls="body-password">'
         "<span>Admin Password</span><span class=\"chevron\">▾</span></button>"
         '<div class="settings-row-body" id="body-password">'
+        '<form method="POST" action="/settings">'
         '<label class="input-label" for="new-password">New Password</label>'
         '<div class="pw">'
         '<input id="new-password" name="new_password" type="password" '
@@ -453,7 +467,8 @@ def settings_page_html():
         '<button type="button" class="toggle" id="toggle-new" '
         'aria-label="Show new password">Show</button>'
         "</div>"
-        '<button type="button" class="btn" id="save-password">Save</button>'
+        '<button type="submit" class="btn" id="save-password">Save</button>'
+        "</form>"
         "</div></div>"
         '<div class="settings-row" id="row-theme">'
         '<button type="button" class="settings-row-head" aria-expanded="false" '
@@ -574,8 +589,10 @@ def response_login_page(incorrect=False):
     return http_response(200, "OK", login_page_html(incorrect=incorrect))
 
 
-def response_settings_page():
-    return http_response(200, "OK", settings_page_html())
+def response_settings_page(password_changed=False):
+    return http_response(
+        200, "OK", settings_page_html(password_changed=password_changed)
+    )
 
 
 def response_login_success(session_id):

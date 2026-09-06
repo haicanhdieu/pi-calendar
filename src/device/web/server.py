@@ -11,6 +11,7 @@ from src.device.web import pages
 from src.device.web.router import (
     ACTION_CONNECT,
     ACTION_LOGIN_KDF,
+    ACTION_PASSWORD_CHANGE_KDF,
     ACTION_RESPOND,
     ACTION_SCAN,
     route_config_request,
@@ -127,7 +128,9 @@ class SetupHttpServer:
         Advance one bounded unit of HTTP work.
 
         Setup mode may return ``(\"connect\", candidate)``. Config mode may
-        return ``(\"login_kdf\", password_bytearray)``. Otherwise ``None``.
+        return ``(\"login_kdf\", password_bytearray)`` or
+        ``(\"password_change_kdf\", (password_bytearray, acting_session_id))``.
+        Otherwise ``None``.
         """
         if self._listen is None:
             return None
@@ -327,6 +330,26 @@ class SetupHttpServer:
             client.held = True
             self._held_client = client
             return ("login_kdf", routed.password)
+        if routed.action == ACTION_PASSWORD_CHANGE_KDF:
+            try:
+                client.parser.body = b""
+            except Exception:
+                pass
+            acting_id = routed.renew_session_id
+            if acting_id is not None:
+                try:
+                    session_table.renew(acting_id, now_ticks)
+                except Exception:
+                    pass
+            if self._held_client is not None:
+                self._wipe_password(routed.password)
+                client.outbox = pages.response_busy()
+                client.out_offset = 0
+                client.closing = True
+                return None
+            client.held = True
+            self._held_client = client
+            return ("password_change_kdf", (routed.password, acting_id))
         self._wipe_password(getattr(routed, "password", None))
         client.outbox = pages.response_not_found()
         client.out_offset = 0

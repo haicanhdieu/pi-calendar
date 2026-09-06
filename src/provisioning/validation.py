@@ -166,6 +166,21 @@ def _field_utf8_ok(value, min_len, max_len):
     return min_len <= length <= max_len
 
 
+def validate_admin_password_field(admin_password):
+    """
+    Validate an Admin password field (Setup admin / Config change band).
+
+    UTF-8 length 8–63 with no NUL. Never persists plaintext.
+    """
+    if not _field_utf8_ok(admin_password, 8, 63):
+        return ValidationResult(False, REASON_INVALID)
+    return ValidationResult(
+        True,
+        REASON_OK,
+        {"admin_password": admin_password},
+    )
+
+
 def validate_setup_form_fields(ssid, wifi_password, admin_password):
     """
     Validate Connect form fields before creating a setup candidate.
@@ -178,8 +193,9 @@ def validate_setup_form_fields(ssid, wifi_password, admin_password):
         return ValidationResult(False, REASON_INVALID)
     if not _field_utf8_ok(wifi_password, 8, 63):
         return ValidationResult(False, REASON_INVALID)
-    if not _field_utf8_ok(admin_password, 8, 63):
-        return ValidationResult(False, REASON_INVALID)
+    check = validate_admin_password_field(admin_password)
+    if not check.ok:
+        return check
     return ValidationResult(
         True,
         REASON_OK,

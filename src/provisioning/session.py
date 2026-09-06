@@ -166,5 +166,29 @@ class SessionTable:
         entry.deadline = self._ticks.ticks_add(int(now), self._idle_ms)
         return True
 
+    def keep_only(self, encoded_id, now):
+        """
+        After expiry sweep, retain only the acting session and renew it.
+
+        Returns True when the acting id was present and kept; otherwise the
+        table is emptied and False is returned.
+        """
+        raw = decode_session_id(encoded_id)
+        self.expire(now)
+        if raw is None:
+            self._entries = []
+            return False
+        kept = None
+        for entry in self._entries:
+            if constant_time_equal(entry.raw_id, raw):
+                kept = entry
+                break
+        if kept is None:
+            self._entries = []
+            return False
+        kept.deadline = self._ticks.ticks_add(int(now), self._idle_ms)
+        self._entries = [kept]
+        return True
+
     def clear(self):
         self._entries = []

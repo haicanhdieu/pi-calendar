@@ -34,12 +34,15 @@ from src.device.network.models import (
 from src.device.settings_store import SettingsCommitError
 from src.device.web import pages
 from src.provisioning.kdf_job import (
+    DERIVE_OK,
     PURPOSE_LOGIN_VERIFY,
+    PURPOSE_PASSWORD_CHANGE_DERIVE,
     VERIFY_OK,
     KdfJob,
 )
 from src.provisioning.scan import ssids_from_scan_rows
 from src.provisioning.session import SessionTable
+from src.provisioning.validation import COLOR_SCHEME_V1
 from src.time.model import DateTime
 from src import ticks as default_ticks
 
@@ -98,6 +101,7 @@ class NetworkCoordinator:
         self._sessions = SessionTable(ticks_module=self._ticks)
         self._kdf_job = None
         self._kdf_correlation = 0
+        self._kdf_acting_session_id = None
 
     def _resolve_boot_mode(self):
         store = self._settings_store
@@ -345,9 +349,10 @@ class NetworkCoordinator:
         return True
 
     def _abort_config_auth(self):
-        """Cancel mid-flight login KDF and drop held Config HTTP clients."""
+        """Cancel mid-flight login/password-change KDF and drop held clients."""
         job = self._kdf_job
         self._kdf_job = None
+        self._kdf_acting_session_id = None
         if job is not None:
             try:
                 job.cancel()
@@ -370,7 +375,11 @@ class NetworkCoordinator:
         if kdf_active:
             result = self._kdf_job.step(config.KDF_ROUNDS_PER_TICK)
             if result is not None:
-                self._finish_login_kdf(result, now)
+                purpose = self._kdf_job.purpose
+                if purpose == PURPOSE_PASSWORD_CHANGE_DERIVE:
+                    self._finish_password_change_kdf(result, now)
+                else:
+                    self._finish_login_kdf(result, now)
 
         http = self._http
         if http is None:
@@ -390,18 +399,27 @@ class NetworkCoordinator:
         if action is None:
             return kdf_active
         kind, payload = action
-        if kind != "login_kdf":
+        if kind == "login_kdf":
+            if self._kdf_job is not None:
+                self._wipe_bytearray(payload)
+                http.queue_held_response(pages.response_busy())
+                return True
+            self._start_login_kdf(payload, now)
             return True
-        if self._kdf_job is not None:
-            self._wipe_bytearray(payload)
-            http.queue_held_response(pages.response_busy())
+        if kind == "password_change_kdf":
+            password_ba, acting_id = payload
+            if self._kdf_job is not None:
+                self._wipe_bytearray(password_ba)
+                http.queue_held_response(pages.response_busy())
+                return True
+            self._start_password_change_kdf(password_ba, acting_id, now)
             return True
-        self._start_login_kdf(payload, now)
         return True
 
     def _start_login_kdf(self, password_ba, now):
         salt_hex, verifier_hex = self._load_admin_verifier()
         self._kdf_correlation = int(self._kdf_correlation) + 1
+        self._kdf_acting_session_id = None
         if salt_hex is None or verifier_hex is None:
             self._wipe_bytearray(password_ba)
             if self._http is not None:
@@ -420,9 +438,28 @@ class NetworkCoordinator:
         if self._kdf_job.done:
             self._finish_login_kdf(self._kdf_job.result, now)
 
+    def _start_password_change_kdf(self, password_ba, acting_id, now):
+        self._kdf_correlation = int(self._kdf_correlation) + 1
+        self._kdf_acting_session_id = acting_id
+        store = self._settings_store
+        if store is None:
+            self._wipe_bytearray(password_ba)
+            self._kdf_acting_session_id = None
+            if self._http is not None:
+                self._http.queue_held_response(pages.response_settings_page())
+            return
+        self._kdf_job = KdfJob(
+            self._kdf_correlation,
+            PURPOSE_PASSWORD_CHANGE_DERIVE,
+            password_ba,
+        )
+        if self._kdf_job.done:
+            self._finish_password_change_kdf(self._kdf_job.result, now)
+
     def _finish_login_kdf(self, result, now):
         job = self._kdf_job
         self._kdf_job = None
+        self._kdf_acting_session_id = None
         if job is not None and not job.done:
             try:
                 job.cancel()
@@ -454,6 +491,74 @@ class NetworkCoordinator:
         response = pages.response_login_page(incorrect=True)
         if held:
             http.queue_held_response(response)
+
+    def _finish_password_change_kdf(self, result, now):
+        job = self._kdf_job
+        acting_id = self._kdf_acting_session_id
+        self._kdf_job = None
+        self._kdf_acting_session_id = None
+        if job is not None and not job.done:
+            try:
+                job.cancel()
+            except Exception:
+                pass
+
+        http = self._http
+        held = http is not None and http.has_held_client
+        if result != DERIVE_OK or job is None:
+            if held:
+                http.queue_held_response(pages.response_settings_page())
+            return
+
+        salt_hex = job.salt_hex
+        verifier_hex = job.verifier_hex
+        if not salt_hex or not verifier_hex:
+            if held:
+                http.queue_held_response(pages.response_settings_page())
+            return
+
+        committed = self._commit_password_change(salt_hex, verifier_hex)
+        if not committed:
+            # Fail-closed: old verifier and every session unchanged.
+            if held:
+                http.queue_held_response(pages.response_settings_page())
+            return
+
+        if acting_id is not None:
+            self._sessions.keep_only(acting_id, now)
+
+        if held:
+            http.queue_held_response(
+                pages.response_settings_page(password_changed=True)
+            )
+
+    def _commit_password_change(self, salt_hex, verifier_hex):
+        store = self._settings_store
+        if store is None:
+            return False
+        try:
+            settings = store.load()
+        except Exception:
+            return False
+        if not settings:
+            return False
+        ssid = settings.get("wifi_ssid")
+        wifi_password = settings.get("wifi_password")
+        if not ssid or not wifi_password:
+            return False
+        try:
+            store.commit(
+                wifi_ssid=ssid,
+                wifi_password=wifi_password,
+                admin_salt_hex=salt_hex,
+                admin_verifier_hex=verifier_hex,
+                color_scheme=COLOR_SCHEME_V1,
+            )
+        except SettingsCommitError:
+            return False
+        except Exception:
+            return False
+        return True
 
     def _load_admin_verifier(self):
         store = self._settings_store

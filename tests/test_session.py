@@ -78,6 +78,46 @@ def test_create_lookup_renew_expire_and_full():
     assert third is not None
 
 
+def test_keep_only_retains_acting_and_renews():
+    ticks = FakeTicks(1000)
+    counter = {"n": 0}
+
+    def urandom(n):
+        counter["n"] += 1
+        return bytes([counter["n"]] * n)
+
+    table = SessionTable(
+        max_sessions=4, idle_ms=100, urandom=urandom, ticks_module=ticks
+    )
+    first = table.create(1000)
+    second = table.create(1000)
+    third = table.create(1000)
+    assert len(table) == 3
+
+    assert table.keep_only(second, 1050) is True
+    assert len(table) == 1
+    assert table.lookup(first, 1050) is None
+    assert table.lookup(third, 1050) is None
+    kept = table.lookup(second, 1050)
+    assert kept is not None
+    # Renewed at 1050 → deadline 1150
+    ticks.now = 1120
+    assert table.lookup(second, 1120) is not None
+    ticks.now = 1160
+    assert table.lookup(second, 1160) is None
+
+
+def test_keep_only_missing_id_clears_table():
+    ticks = FakeTicks(0)
+    table = SessionTable(
+        max_sessions=2, idle_ms=100, urandom=lambda n: b"\x07" * n, ticks_module=ticks
+    )
+    table.create(0)
+    assert table.keep_only("A" * 22, 0) is False
+    assert len(table) == 0
+    assert table.keep_only("not-a-valid-session-id!", 0) is False
+
+
 def test_expire_wrap_safe():
     ticks = FakeTicks(FakeTicks.PERIOD - 50)
     table = SessionTable(

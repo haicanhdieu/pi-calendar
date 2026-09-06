@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-06-2026 22:30
-last_updated: 09-06-2026 23:59
+last_updated: 09-07-2026 00:36
 project: pi-calendar
 project_key: NOKEY
 tracking_system: file-system
@@ -41,7 +41,7 @@ development_status:
   1-3-recover-wi-fi-automatically-and-show-the-device-address: done
   epic-1-retrospective: optional
 
-  epic-2: in-progress
+  epic-2: done
   2-1-sign-in-to-protected-local-settings: done
-  2-2-maintain-the-admin-password-and-see-the-theme-setting: backlog
+  2-2-maintain-the-admin-password-and-see-the-theme-setting: done
   epic-2-retrospective: optional
