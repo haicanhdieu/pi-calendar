@@ -14,6 +14,7 @@ dist/
 *.egg-info/
 
 # Secrets and local environment configuration
+/secrets.py
 .env
 .env.*
 !.env.example
