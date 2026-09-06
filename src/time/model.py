@@ -33,10 +33,16 @@ class DateTime:
 
     def __repr__(self):
         return (
-            "DateTime("
-            f"year={self.year}, month={self.month}, day={self.day}, "
-            f"weekday={self.weekday}, hour={self.hour}, "
-            f"minute={self.minute}, second={self.second})"
+            "DateTime(year={}, month={}, day={}, weekday={}, "
+            "hour={}, minute={}, second={})"
+        ).format(
+            self.year,
+            self.month,
+            self.day,
+            self.weekday,
+            self.hour,
+            self.minute,
+            self.second,
         )
 
 
@@ -63,10 +69,8 @@ class TimeSnapshot:
 
     def __repr__(self):
         return (
-            "TimeSnapshot("
-            f"utc={self.utc!r}, local={self.local!r}, "
-            f"trust={self.trust!r}, sync_age_ms={self.sync_age_ms!r})"
-        )
+            "TimeSnapshot(utc={!r}, local={!r}, trust={!r}, sync_age_ms={!r})"
+        ).format(self.utc, self.local, self.trust, self.sync_age_ms)
 
 
 def calendar_entry_allowed(snapshot):

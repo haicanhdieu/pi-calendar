@@ -39,7 +39,7 @@ development_status:
   1-1-establish-the-testable-time-and-device-foundation: done
   1-2-render-an-immediately-legible-clock-view: done
   1-3-keep-the-clock-running-through-time-source-failures: done
-  1-4-prove-the-nonblocking-network-boundary-on-hardware: blocked
+  1-4-prove-the-nonblocking-network-boundary-on-hardware: done
   1-5-synchronize-clock-time-without-blocking-the-display: backlog
   epic-1-retrospective: optional
 

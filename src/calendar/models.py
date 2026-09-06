@@ -23,7 +23,9 @@ class CalendarAnnotation:
         return self.kind == other.kind and self.value == other.value
 
     def __repr__(self):
-        return f"CalendarAnnotation(kind={self.kind!r}, value={self.value!r})"
+        return "CalendarAnnotation(kind={!r}, value={!r})".format(
+            self.kind, self.value
+        )
 
 
 class DayCell:
@@ -53,10 +55,15 @@ class DayCell:
 
     def __repr__(self):
         return (
-            "DayCell("
-            f"year={self.year}, month={self.month}, day={self.day}, "
-            f"in_month={self.in_month}, is_today={self.is_today}, "
-            f"annotations={self.annotations!r})"
+            "DayCell(year={}, month={}, day={}, in_month={}, is_today={}, "
+            "annotations={!r})"
+        ).format(
+            self.year,
+            self.month,
+            self.day,
+            self.in_month,
+            self.is_today,
+            self.annotations,
         )
 
 
@@ -80,7 +87,6 @@ class MonthGrid:
         )
 
     def __repr__(self):
-        return (
-            "MonthGrid("
-            f"year={self.year}, month={self.month}, weeks={self.weeks!r})"
+        return "MonthGrid(year={}, month={}, weeks={!r})".format(
+            self.year, self.month, self.weeks
         )

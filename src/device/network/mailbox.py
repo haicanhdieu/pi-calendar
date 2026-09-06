@@ -32,9 +32,8 @@ class SyncCommand:
         )
 
     def __repr__(self):
-        return (
-            "SyncCommand("
-            f"command_id={self.command_id!r}, deadline_ms={self.deadline_ms!r})"
+        return "SyncCommand(command_id={!r}, deadline_ms={!r})".format(
+            self.command_id, self.deadline_ms
         )
 
 
@@ -61,10 +60,8 @@ class SyncResult:
 
     def __repr__(self):
         return (
-            "SyncResult("
-            f"command_id={self.command_id!r}, ok={self.ok!r}, "
-            f"utc={self.utc!r}, error_code={self.error_code!r})"
-        )
+            "SyncResult(command_id={!r}, ok={!r}, utc={!r}, error_code={!r})"
+        ).format(self.command_id, self.ok, self.utc, self.error_code)
 
 
 class Mailbox:

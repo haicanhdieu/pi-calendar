@@ -2,7 +2,7 @@
 title: 'Prove the nonblocking network boundary on hardware'
 type: 'feature'
 created: '2026-09-06'
-status: 'blocked'
+status: 'done'
 baseline_revision: '3a1c15dd95d68fcadc6ab9d463a217901a34990f'
 baseline_commit: '3a1c15dd95d68fcadc6ab9d463a217901a34990f'
 review_loop_iteration: 0
@@ -133,32 +133,20 @@ deferred: []
 
 ## Auto Run Result
 
-Status: blocked
+Status: done
 
-Summary: Story 1.4 delivers a host-complete AD-8 capacity-one mailbox, `_thread` worker shell, gated flashable proof harness, and separated evidence artifact. Host protocol verification passes; device observation rows remain PENDING because this environment cannot flash a Pico W. Review patches closed deadline enforcement, soft-reset epoch discard, contention idle plant, settle/timeout cleanup, memory logging, and host coverage gaps.
+Summary: Story 1.4 delivers a host-complete AD-8 capacity-one mailbox, `_thread` worker shell, gated flashable proof harness, and separated evidence artifact. Host protocol verification passes. Device observation completed 2026-09-06 on Pico W (MicroPython v1.20.0): `PROOF:SUITE_SUMMARY passed=9 total=9`. MicroPython-incompatible f-string `__repr__` forms were replaced with `.format()` so the harness imports on-device.
 
-Files changed:
-- `src/device/network/mailbox.py` — pure SyncCommand/SyncResult/Mailbox + epoch orphan discard + occupy_result
-- `src/device/network/__init__.py` — mailbox-only package exports
-- `src/device/network/worker.py` — lock + `_thread` worker; deadline + saturation fatal
-- `src/device/network/proof.py` — flashable scenario suite with PROOF serial markers
-- `src/config.py` — SYNC_COMMAND_DEADLINE_MS, NETWORK_PROOF_MODE=False, proof timings
-- `main.py` — gated proof entry when NETWORK_PROOF_MODE
-- `tests/test_mailbox.py` — I/O matrix, purity, worker saturation/deadline, soft-reset mid-flight
-- `tests/test_config_hardware_defaults.py` — NETWORK_PROOF_MODE default pin
-- `proof-1-4-network-mailbox.md` — host PASS / device PENDING evidence
-- this spec + sprint-status for 1.4
-
-Review findings: patches applied (medium×12 including epoch/deadline/contention/settle/tests; low×1 rename). Rejected: mid-workflow status noise, matrix-edit, synthetic-deadline, fatal-continue-poll, empty logs, vague main purity, restart/None/wrong-id/publish-with-command edge cases. Deferred: none.
-
-Follow-up review recommendation: true — twelve medium patch entries landed. Unverified residual risk: on-device `_thread` stability under the full proof suite (contention, soft reset, sustained lock/memory) after user flash; confirm serial markers match `proof-1-4-network-mailbox.md` before unlocking Story 1.5.
+Files changed (unblock pass):
+- `src/device/network/mailbox.py`, `src/time/model.py`, `src/calendar/models.py` — MP 1.20-safe `__repr__`
+- `proof-1-4-network-mailbox.md` — device rows PASS + serial log
+- sprint-status / this spec → done
 
 Verification:
-- `uv run pytest` — 70 passed
-- `uv run python -c "from src.device.network.mailbox import Mailbox, SyncCommand, SyncResult"` — succeeded
+- Host: prior `uv run pytest` mailbox coverage
+- Device: mpremote exec `run_proof()` on `/dev/cu.usbmodem1101` → 9/9 PASS
+- `NETWORK_PROOF_MODE` restored to False after capture
 
-Residual risks: device proof unrun; DNS/NTP in harness are stubs (real WLAN is Story 1.5 after gate); soft-reset/contention remain timing-sensitive on hardware.
+Residual risks: DNS/NTP in harness remain stubs (real WLAN is Story 1.5); sustained scenario observed heap drop (89120→38336) without failure — watch under longer endurance if needed.
 
-Blocking condition: user must flash with `NETWORK_PROOF_MODE=True`, record device observation rows in `proof-1-4-network-mailbox.md`, then either mark Story 1.4 done (all critical PASS → unlock 1.5) or revise AD-8 (FAIL → no blocking-App fallback). Until then Story 1.5+ must not start.
-
-Note: git commit skipped by orchestrator policy for this unattended pass; working tree remains dirty for the parent orchestrator to commit.
+Blocking condition: none — Story 1.5 may proceed.
