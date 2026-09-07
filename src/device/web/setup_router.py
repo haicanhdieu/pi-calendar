@@ -31,11 +31,14 @@ def route_setup_request(request, mode, candidate_active):
         return RouteResult(ACTION_RESPOND, pages.response_unsupported() if request.path in ("/", "/scan", "/connect") else pages.response_not_found())
     if candidate_active: return RouteResult(ACTION_RESPOND, pages.response_busy())
     content_type = request.headers.get("content-type", "")
-    if content_type and "application/x-www-form-urlencoded" not in content_type.lower(): return RouteResult(ACTION_RESPOND, pages.response_bad_request())
+    # Native browser forms include application/x-www-form-urlencoded, but
+    # tolerate a missing/compact form declaration from captive-portal clients
+    # when the body itself parses as this format.
+    if content_type and "urlencoded" not in content_type.lower() and "form" not in content_type.lower(): return RouteResult(ACTION_RESPOND, pages.response_bad_request())
     fields = parse_form_urlencoded(request.body)
     if fields is None: return RouteResult(ACTION_RESPOND, pages.response_bad_request())
     check = validate_setup_form_fields(fields.get("ssid", ""), fields.get("wifi_password", ""), fields.get("admin_password", ""))
-    if not check.ok: return RouteResult(ACTION_RESPOND, pages.response_bad_request())
+    if not check.ok: return RouteResult(ACTION_RESPOND, pages.response_setup_form_error())
     return RouteResult(ACTION_CONNECT, candidate=SetupCandidate(check.settings["ssid"], check.settings["wifi_password"], check.settings["admin_password"]))
 
 

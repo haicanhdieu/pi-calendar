@@ -108,7 +108,12 @@ def _percent_decode(text):
             out.append(int(text[i + 1 : i + 3], 16))
             i += 3
         else:
-            out.append(ord(ch))
+            # Browsers normally percent-encode non-ASCII form values, but
+            # accepting a literal UTF-8 character too keeps the decoder
+            # compatible with small/mobile clients that do not.  ``append``
+            # would reject code points above 255 and turn a valid SSID into a
+            # generic 400 response.
+            out.extend(ch.encode("utf-8"))
             i += 1
     return bytes(out).decode("utf-8")
 

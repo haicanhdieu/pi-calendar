@@ -23,13 +23,15 @@ def setup_page_html(state=None):
         banner = "Couldn't join {}. Check the password and try again.".format(html_escape(ssid or "the network"))
     elif status == "success":
         banner = "Connected to {}.".format(html_escape(ssid or "Wi-Fi"))
+    elif status == "form_error":
+        banner = "Choose a network and use passwords between 8 and 63 characters."
     else:
         banner = ""
     prefill = "<script>window.__setupPrefill={ssid:%s};</script>" % _js_string(ssid)
     return ("<!doctype html><html><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
             "<title>Pi Calendar Setup</title><style>body{background:#12161c;color:#e8ecf1;font-family:sans-serif;max-width:28rem;margin:2rem auto;padding:0 1rem}button,input,select{min-height:44px;margin:.4rem 0;box-sizing:border-box;width:100%}button{background:#7c6cf6}</style>"
             "<h1>Set Up Wi-Fi</h1><p id=banner aria-live=polite>" + banner + "</p>" + prefill +
-            '<form method="POST" action="/connect"><label for="ssid">Network<select id="ssid" name="ssid" required><option value="">Loading networks…</option></select></label><button id="rescan" type="button">Rescan</button><label>Wi-Fi Password<input name="wifi_password" type="password" autocomplete="current-password" required></label><label>Admin Password<input name="admin_password" type="password" autocomplete="new-password" value="' + html_escape(admin) + '" required></label><button type="submit">Connect</button></form>'
+            '<form method="POST" action="/connect"><label for="ssid">Network<select id="ssid" name="ssid" required><option value="">Loading networks…</option></select></label><button id="rescan" type="button">Rescan</button><label>Wi-Fi Password<input name="wifi_password" type="password" autocomplete="current-password" minlength="8" maxlength="63" required></label><label>Admin Password<input name="admin_password" type="password" autocomplete="new-password" minlength="8" maxlength="63" value="' + html_escape(admin) + '" required></label><button type="submit">Connect</button></form>'
             "<script>(function(){var p=window.__setupPrefill||{},select=document.getElementById('ssid'),banner=document.getElementById('banner');function scan(){select.innerHTML='<option value=\"\">Loading networks…</option>';fetch('/scan').then(function(r){return r.json()}).then(function(d){select.innerHTML='<option value=\"\">Choose a network</option>';(d.ssids||[]).forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;select.appendChild(o)});select.value=p.ssid||'';if(select.options.length===1)banner.textContent='No networks found. Rescan to try again.'}).catch(function(){select.innerHTML='<option value=\"\">No networks found</option>';banner.textContent='Could not scan networks. Rescan to try again.'})}document.getElementById('rescan').onclick=scan;scan()})();</script></html>")
 
 
@@ -51,6 +53,7 @@ def _json_string(value):
 
 
 def response_setup_page(state=None): return http_response("200 OK", setup_page_html(state))
+def response_setup_form_error(): return response_setup_page({"status": "form_error"})
 def response_scan_json(ssids): return http_response("200 OK", '{"ssids":[' + ','.join(_json_string(value) for value in ssids) + ']}', "application/json")
 def response_busy(): return http_response("503 Service Unavailable", "Busy")
 def response_bad_request(): return http_response("400 Bad Request", "Bad Request")

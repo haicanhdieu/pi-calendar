@@ -21,6 +21,7 @@ from src.device.web.router import (
 )
 from src.device.web import pages
 from src.device.web import setup_pages
+from src.device.web.setup_router import route_setup_request as route_production_setup
 from src.provisioning.scan import decode_ssid, ssids_from_scan_rows
 from src.provisioning.validation import validate_setup_form_fields
 
@@ -42,6 +43,9 @@ def test_html_escape_and_form_parse():
         "admin_password": "adminpass",
     }
     assert parse_form_urlencoded(b"a=%zz") is None
+    assert parse_form_urlencoded("ssid=Café&wifi_password=secret12") == {
+        "ssid": "Café", "wifi_password": "secret12"
+    }
 
 
 def test_setup_assets_keep_scan_flow_and_escape_json_controls():
@@ -49,6 +53,7 @@ def test_setup_assets_keep_scan_flow_and_escape_json_controls():
     assert 'fetch(\'/scan\')' in html
     assert "Couldn't join Home" in html
     assert '<select id="ssid" name="ssid" required>' in html
+    assert 'minlength="8" maxlength="63"' in html
     assert 'name="wifi_password"' in html
     assert 'name="admin_password"' in html
     assert '<form method="POST" action="/connect">' in html
@@ -163,6 +168,30 @@ def test_route_allowlist_and_connect_candidate():
     )
     assert r.action == ACTION_RESPOND
     assert b"503" in r.response
+
+
+def test_production_setup_router_accepts_native_form_and_reopens_invalid_form():
+    class Req:
+        def __init__(self, body, content_type="application/x-www-form-urlencoded; charset=UTF-8"):
+            self.method = "POST"
+            self.path = "/connect"
+            self.headers = {"content-type": content_type}
+            self.body = body
+
+    r = route_production_setup(
+        Req("ssid=Café&wifi_password=password1&admin_password=adminpass"),
+        "SETUP_AP", False,
+    )
+    assert r.action == "connect"
+    assert r.candidate.ssid == "Café"
+
+    r = route_production_setup(
+        Req(b"ssid=Home&wifi_password=short&admin_password=adminpass"),
+        "SETUP_AP", False,
+    )
+    assert r.action == "respond"
+    assert b"200 OK" in r.response
+    assert b"passwords between 8 and 63" in r.response
 
 
 def test_setup_page_has_tokens_and_a11y():
