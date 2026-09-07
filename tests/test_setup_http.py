@@ -50,6 +50,10 @@ def test_setup_assets_keep_scan_flow_and_escape_json_controls():
     assert 'id="screen2" class="screen active"' not in html
     assert 'fetch(\'/scan\')' in html
     assert "Couldn't join Home" in html
+    assert '<select id="ssid">' in html
+    assert "select.onchange=function(){ssid=select.value}" in html
+    assert "ssid=select.value;var wifi=wifiInput.value,admin=adminInput.value" in html
+    assert "connect.disabled=false" in html
     response = setup_pages.response_scan_json(['a\n\t"\\\x01'])
     assert b'a\\n\\t\\"\\\\\\u0001' in response
 
