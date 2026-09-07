@@ -406,8 +406,11 @@ class SetupHttpServer:
         outbox = client.outbox
         if outbox is None:
             return
-        remaining = outbox[client.out_offset :]
-        chunk = remaining[: self._per_tick_bytes]
+        # Slice only the bounded write window.  Slicing ``outbox[offset:]``
+        # first duplicates the entire page response on the Pico heap.
+        chunk = outbox[
+            client.out_offset : client.out_offset + self._per_tick_bytes
+        ]
         if not chunk:
             self._close_client(client)
             return

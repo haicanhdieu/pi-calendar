@@ -15,27 +15,22 @@ def _js_string(value):
 
 
 def setup_page_html(state=None):
-    """The scan-driven two-screen setup flow, without config/admin assets."""
+    """The scan-driven setup form, without config/admin assets."""
     state = state or {}
     status, ssid = state.get("status"), state.get("ssid") or ""
     admin = state.get("admin_password") or ""
-    # The failed Wi-Fi password is deliberately not retained, so retry begins
-    # on screen one while the SSID and admin-password prefill remain usable.
-    screen1 = "" if status in ("success", "connecting") else " active"
-    screen2 = " active" if status in ("success", "connecting") else ""
     if status == "failure":
         banner = "Couldn't join {}. Check the password and try again.".format(html_escape(ssid or "the network"))
     elif status == "success":
         banner = "Connected to {}.".format(html_escape(ssid or "Wi-Fi"))
     else:
         banner = ""
-    prefill = "<script>window.__setupPrefill={ssid:%s,admin:%s};</script>" % (_js_string(ssid), _js_string(admin))
+    prefill = "<script>window.__setupPrefill={ssid:%s};</script>" % _js_string(ssid)
     return ("<!doctype html><html><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-            "<title>Pi Calendar Setup</title><style>body{background:#12161c;color:#e8ecf1;font-family:sans-serif;max-width:28rem;margin:2rem auto;padding:0 1rem}.screen{display:none}.screen.active{display:block}button,input,select{min-height:44px;margin:.4rem 0;box-sizing:border-box;width:100%}button{background:#7c6cf6}</style>"
+            "<title>Pi Calendar Setup</title><style>body{background:#12161c;color:#e8ecf1;font-family:sans-serif;max-width:28rem;margin:2rem auto;padding:0 1rem}button,input,select{min-height:44px;margin:.4rem 0;box-sizing:border-box;width:100%}button{background:#7c6cf6}</style>"
             "<h1>Set Up Wi-Fi</h1><p id=banner aria-live=polite>" + banner + "</p>" + prefill +
-            '<section id="screen1" class="screen' + screen1 + '"><label for="ssid">Network<select id="ssid"><option value="">Loading networks…</option></select></label><button id="rescan" type="button">Rescan</button><label>Wi-Fi Password<input id="wifi-password" type="password" autocomplete="current-password"></label><button id="next-btn" type="button">Next</button></section>'
-            '<section id="screen2" class="screen' + screen2 + '"><form id="connect-form" method="POST" action="/connect"><label>Admin Password<input id="admin-password" name="admin_password" type="password" autocomplete="new-password" value="' + html_escape(admin) + '"></label><button id="connect-btn" type="submit">Connect</button></form></section>'
-            "<script>(function(){var p=window.__setupPrefill||{},ssid=p.ssid||'',select=document.getElementById('ssid'),wifiInput=document.getElementById('wifi-password'),adminInput=document.getElementById('admin-password'),next=document.getElementById('next-btn'),connect=document.getElementById('connect-btn'),s1=document.getElementById('screen1'),s2=document.getElementById('screen2'),banner=document.getElementById('banner');function show(m){banner.textContent=m}function scan(){select.innerHTML='<option value=\"\">Loading networks…</option>';fetch('/scan').then(function(r){return r.json()}).then(function(d){var old=ssid;select.innerHTML='<option value=\"\">Choose a network</option>';(d.ssids||[]).forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;select.appendChild(o)});select.value=old;ssid=select.value;if(!select.options.length||select.options.length===1)show('No networks found. Rescan to try again.')}).catch(function(){select.innerHTML='<option value=\"\">No networks found</option>';ssid='';show('Could not scan networks. Rescan to try again.')})}select.onchange=function(){ssid=select.value};document.getElementById('rescan').onclick=scan;next.onclick=function(){ssid=select.value;var wifi=wifiInput.value;if(!ssid){show('Choose a network first');return}if(!wifi){show('Enter the Wi-Fi password');return}s1.className='screen';s2.className='screen active';adminInput.focus()};document.getElementById('connect-form').onsubmit=function(e){e.preventDefault();ssid=select.value;var wifi=wifiInput.value,admin=adminInput.value;if(!ssid||!wifi||!admin){show('Choose a network and enter both passwords');s1.className='screen active';s2.className='screen';return}show('Connecting…');connect.disabled=true;fetch('/connect',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'ssid='+encodeURIComponent(ssid)+'&wifi_password='+encodeURIComponent(wifi)+'&admin_password='+encodeURIComponent(admin)}).then(function(r){return r.text()}).then(function(t){if(String(t).replace(/^\\s+/,'').charAt(0)==='<'){document.open();document.write(t);document.close();return}throw Error('unexpected response')}).catch(function(){show(\"Couldn't join \"+(ssid||'the network')+'. Check the password and try again.');connect.disabled=false;wifiInput.value='';s1.className='screen active';s2.className='screen'})};scan()})();</script></html>")
+            '<form method="POST" action="/connect"><label for="ssid">Network<select id="ssid" name="ssid" required><option value="">Loading networks…</option></select></label><button id="rescan" type="button">Rescan</button><label>Wi-Fi Password<input name="wifi_password" type="password" autocomplete="current-password" required></label><label>Admin Password<input name="admin_password" type="password" autocomplete="new-password" value="' + html_escape(admin) + '" required></label><button type="submit">Connect</button></form>'
+            "<script>(function(){var p=window.__setupPrefill||{},select=document.getElementById('ssid'),banner=document.getElementById('banner');function scan(){select.innerHTML='<option value=\"\">Loading networks…</option>';fetch('/scan').then(function(r){return r.json()}).then(function(d){select.innerHTML='<option value=\"\">Choose a network</option>';(d.ssids||[]).forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;select.appendChild(o)});select.value=p.ssid||'';if(select.options.length===1)banner.textContent='No networks found. Rescan to try again.'}).catch(function(){select.innerHTML='<option value=\"\">No networks found</option>';banner.textContent='Could not scan networks. Rescan to try again.'})}document.getElementById('rescan').onclick=scan;scan()})();</script></html>")
 
 
 def _json_string(value):

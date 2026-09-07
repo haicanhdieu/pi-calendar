@@ -335,8 +335,8 @@ def test_join_timeout_keeps_ap_and_clears_wifi_only_in_response():
     assert b"Couldn't join" in client.sent
     assert b"adminpass" in client.sent  # admin retained in failure page
     assert b"password1" not in client.sent  # wifi password cleared
-    assert b'id="screen1" class="screen active"' in client.sent
-    assert b'id="screen2" class="screen active"' not in client.sent
+    assert b'<form method="POST" action="/connect">' in client.sent
+    assert b'name="wifi_password"' in client.sent
     err = [e for e in events if e.kind == EVENT_STATION_ERROR]
     assert err and err[-1].error_code == ERROR_JOIN_TIMEOUT
 
