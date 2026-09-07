@@ -17,6 +17,7 @@ from src.provisioning.verifier import (
 
 PURPOSE_LOGIN_VERIFY = "login_verify"
 PURPOSE_PASSWORD_CHANGE_DERIVE = "password_change_derive"
+PURPOSE_SETUP_DERIVE = "setup_derive"
 
 VERIFY_OK = "VERIFY_OK"
 VERIFY_REJECTED = "VERIFY_REJECTED"
@@ -100,7 +101,7 @@ class KdfJob:
         else:
             self._password = bytearray(str(password).encode("utf-8"))
 
-        if purpose == PURPOSE_PASSWORD_CHANGE_DERIVE:
+        if purpose in (PURPOSE_PASSWORD_CHANGE_DERIVE, PURPOSE_SETUP_DERIVE):
             self._init_derive(urandom)
         else:
             self._init_verify(salt_hex, verifier_hex)
@@ -173,7 +174,7 @@ class KdfJob:
             return None
         fail_code = (
             DERIVE_FAILED
-            if self.purpose == PURPOSE_PASSWORD_CHANGE_DERIVE
+            if self.purpose in (PURPOSE_PASSWORD_CHANGE_DERIVE, PURPOSE_SETUP_DERIVE)
             else VERIFY_FAILED
         )
         try:
@@ -186,7 +187,7 @@ class KdfJob:
         """Abandon the job and wipe secrets."""
         if self._result is not None:
             return self._result
-        if self.purpose == PURPOSE_PASSWORD_CHANGE_DERIVE:
+        if self.purpose in (PURPOSE_PASSWORD_CHANGE_DERIVE, PURPOSE_SETUP_DERIVE):
             self._finish(DERIVE_CANCELLED)
         else:
             self._finish(VERIFY_CANCELLED)
@@ -220,7 +221,7 @@ class KdfJob:
         return None
 
     def _complete(self):
-        if self.purpose == PURPOSE_PASSWORD_CHANGE_DERIVE:
+        if self.purpose in (PURPOSE_PASSWORD_CHANGE_DERIVE, PURPOSE_SETUP_DERIVE):
             return self._complete_derive()
         return self._complete_compare()
 
@@ -241,7 +242,7 @@ class KdfJob:
         if code not in _TERMINAL:
             code = (
                 DERIVE_FAILED
-                if self.purpose == PURPOSE_PASSWORD_CHANGE_DERIVE
+                if self.purpose in (PURPOSE_PASSWORD_CHANGE_DERIVE, PURPOSE_SETUP_DERIVE)
                 else VERIFY_FAILED
             )
         # Drop derive outputs on any non-success terminal so callers cannot

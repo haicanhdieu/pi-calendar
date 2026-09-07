@@ -226,7 +226,10 @@ def test_candidate_persist_success_resets_failure_count():
     coordinator._start_candidate(candidate, ticks.now)
     coordinator.tick()  # issue candidate connect
     wlan.connected = True
-    coordinator.tick()  # complete join + persist
+    for _ in range(160):
+        coordinator.tick()  # complete join + bounded verifier + persist
+        if coordinator.mode == MODE_STATION_ONLINE:
+            break
     assert coordinator.mode == MODE_STATION_ONLINE
     assert coordinator._station_failure_count == 0
     online = [

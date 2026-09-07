@@ -14,6 +14,7 @@ from src.device.network.models import (
 )
 from src.device.web.server import SetupHttpServer
 from src.device.settings_store import SettingsCommitError, COMMIT_WRITE_FAIL
+from src.provisioning.verifier import verify_admin_password
 
 from tests.test_network_coordinator import FakeTicks, FakeWlan
 from tests.test_setup_ap_coordinator import FakeApWlan, UnconfiguredStore
@@ -185,7 +186,7 @@ def _activate(coordinator):
     assert coordinator._setup_ap_active is True
 
 
-def _pump_until(coordinator, pred, limit=40):
+def _pump_until(coordinator, pred, limit=160):
     for _ in range(limit):
         if pred():
             return True
@@ -290,11 +291,22 @@ def test_connect_join_commit_success_order():
 
     wlan.connected = True
     ticks.now = 2000
+    coordinator.tick()
+    assert coordinator.mode == MODE_STATION_CONNECTING
+    assert coordinator._setup_kdf_job is not None
+    assert not client.closed
     assert _pump_until(
         coordinator,
         lambda: coordinator.mode == MODE_STATION_ONLINE and client.closed,
     )
     assert store.is_configured() is True
+    settings = store.load()
+    assert verify_admin_password(
+        "password1", settings["admin_salt"], settings["admin_verifier"]
+    ) is True
+    assert verify_admin_password(
+        "wrong-admin", settings["admin_salt"], settings["admin_verifier"]
+    ) is False
     assert coordinator._setup_ap_active is False
     assert ap.active_value is False
     assert b"Connected" in client.sent

@@ -22,6 +22,7 @@ from src.provisioning.kdf_job import (
     DERIVE_OK,
     PURPOSE_LOGIN_VERIFY,
     PURPOSE_PASSWORD_CHANGE_DERIVE,
+    PURPOSE_SETUP_DERIVE,
     VERIFY_OK,
     VERIFY_REJECTED,
     KdfJob,
@@ -541,6 +542,20 @@ def test_kdf_job_derive_purpose_cooperative():
     assert len(job.verifier_hex) == 64
     assert job._password is None
     assert verify_admin_password("newpass12", job.salt_hex, job.verifier_hex)
+
+
+def test_setup_kdf_failure_is_a_derive_failure_and_wipes_password():
+    job = KdfJob(
+        10,
+        PURPOSE_SETUP_DERIVE,
+        bytearray(b"adminpass"),
+        iterations=0,
+        urandom=lambda n: b"\xcd" * n,
+    )
+    assert job.step(config.KDF_ROUNDS_PER_TICK) == "DERIVE_FAILED"
+    assert job.salt_hex is None
+    assert job.verifier_hex is None
+    assert job._password is None
 
 
 def _http_password_change_post(new_password, cookie):

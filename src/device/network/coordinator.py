@@ -95,6 +95,7 @@ class NetworkCoordinator:
         self._station_attempt_armed = False
         self._sessions = None
         self._kdf_job = None
+        self._setup_kdf_job = None
         self._kdf_correlation = 0
         self._kdf_acting_session_id = None
 
@@ -429,6 +430,13 @@ class NetworkCoordinator:
         if job is not None:
             try:
                 job.cancel()
+            except Exception:
+                pass
+        setup_job = self._setup_kdf_job
+        self._setup_kdf_job = None
+        if setup_job is not None:
+            try:
+                setup_job.cancel()
             except Exception:
                 pass
         if self._http is not None:
@@ -796,6 +804,7 @@ class NetworkCoordinator:
         candidate = self._candidate
         if candidate is None:
             return
+        from src.provisioning.kdf_job import DERIVE_OK, KdfJob, PURPOSE_SETUP_DERIVE
 
         # Still serve HTTP so concurrent Connect receives 503 Busy.
         # Do not scan STA while a candidate join is in flight.
@@ -819,7 +828,7 @@ class NetworkCoordinator:
                     close_non_held()
                 self._web_failure("asset", now=now)
 
-        if self._ticks.ticks_diff(now, self._candidate_deadline) >= 0:
+        if self._setup_kdf_job is None and self._ticks.ticks_diff(now, self._candidate_deadline) >= 0:
             self._fail_candidate(ERROR_JOIN_TIMEOUT)
             return
 
@@ -836,9 +845,31 @@ class NetworkCoordinator:
             self._fail_candidate(ERROR_JOIN_FAIL)
             return
 
-        self._complete_candidate_success()
+        if self._setup_kdf_job is None:
+            password_ba = bytearray(candidate.admin_password.encode("utf-8"))
+            try:
+                self._setup_kdf_job = KdfJob(
+                    self._kdf_correlation + 1,
+                    PURPOSE_SETUP_DERIVE,
+                    password_ba,
+                )
+                self._kdf_correlation += 1
+            except Exception:
+                self._wipe_bytearray(password_ba)
+                self._fail_candidate(ERROR_PERSIST_FAIL)
+                return
 
-    def _complete_candidate_success(self):
+        result = self._setup_kdf_job.step(config.KDF_ROUNDS_PER_TICK)
+        if result is None:
+            return
+        job = self._setup_kdf_job
+        self._setup_kdf_job = None
+        if result != DERIVE_OK or not job.salt_hex or not job.verifier_hex:
+            self._fail_candidate(ERROR_PERSIST_FAIL)
+            return
+        self._complete_candidate_success(job.salt_hex, job.verifier_hex)
+
+    def _complete_candidate_success(self, admin_salt_hex, admin_verifier_hex):
         candidate = self._candidate
         store = self._settings_store
         ip = None
@@ -855,7 +886,8 @@ class NetworkCoordinator:
             store.commit(
                 wifi_ssid=candidate.ssid,
                 wifi_password=candidate.wifi_password,
-                admin_password=candidate.admin_password,
+                admin_salt_hex=admin_salt_hex,
+                admin_verifier_hex=admin_verifier_hex,
             )
         except Exception:
             self._disconnect_station()
@@ -885,6 +917,13 @@ class NetworkCoordinator:
         self._clear_candidate()
 
     def _fail_candidate(self, error_code):
+        setup_job = self._setup_kdf_job
+        self._setup_kdf_job = None
+        if setup_job is not None:
+            try:
+                setup_job.cancel()
+            except Exception:
+                pass
         candidate = self._candidate
         ssid = candidate.ssid if candidate is not None else None
         admin = candidate.admin_password if candidate is not None else ""
