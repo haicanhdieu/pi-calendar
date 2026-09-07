@@ -18,6 +18,9 @@ from src.device.network.models import (
     ERROR_JOIN_FAIL,
     ERROR_JOIN_TIMEOUT,
     ERROR_PERSIST_FAIL,
+    ERROR_WEB_ASSET,
+    ERROR_WEB_CONSTRUCT,
+    ERROR_WEB_LISTEN,
     MODE_SETUP_AP,
     MODE_STATION_CONNECTING,
     MODE_STATION_ONLINE,
@@ -70,6 +73,8 @@ class NetworkCoordinator:
         self._event_sink = event_sink
         self._http = http_server
         self._http_factory = http_factory
+        self._web_next_retry = None
+        self._web_failures_emitted = set()
         self._command = None
         self._take_epoch = None
         self._state = "idle"
@@ -93,7 +98,7 @@ class NetworkCoordinator:
         self._kdf_correlation = 0
         self._kdf_acting_session_id = None
 
-    def _get_http(self):
+    def _get_http(self, now=None, station=False):
         """Create the bounded web surface only when the active mode serves it."""
         if self._http is not None:
             return self._http
@@ -104,9 +109,46 @@ class NetworkCoordinator:
 
                 factory = SetupHttpServer
             self._http = factory(socket_module=self._socket_module)
+        except MemoryError:
+            self._web_failure("construct_memory", station=station, now=now)
+            return None
         except Exception:
+            self._web_failure("construct", station=station, now=now)
             return None
         return self._http
+
+    def _web_failure(self, phase, station=False, now=None):
+        """Record a secret-free web failure once and schedule a later retry."""
+        if phase not in self._web_failures_emitted:
+            self._web_failures_emitted.add(phase)
+            code = (ERROR_WEB_ASSET if phase == "asset" else
+                    ERROR_WEB_LISTEN if phase.startswith("listen") else
+                    ERROR_WEB_CONSTRUCT)
+            try:
+                if station:
+                    self._emit(station_error_event(code, mode=MODE_STATION_ONLINE))
+                else:
+                    self._emit(setup_ap_error_event(code))
+                self._log("web_" + phase)
+            except Exception:
+                pass
+        if now is not None:
+            self._web_next_retry = self._ticks.ticks_add(now, config.HTTP_RETRY_MS)
+
+    def _web_retry_due(self, now):
+        return self._web_next_retry is None or self._ticks.ticks_diff(now, self._web_next_retry) >= 0
+
+    def _heap_checkpoint(self, stage):
+        """Optional device-only heap evidence; never changes serving behavior."""
+        if not config.WEB_HEAP_CHECKPOINTS:
+            return
+        try:
+            import gc
+            self._log("web_heap {} {}".format(stage, gc.mem_free()))
+        except Exception:
+            # CPython has no mem_free(); retain a checkpoint marker for host
+            # injection tests while keeping the device output compact.
+            self._log("web_heap {} unavailable".format(stage))
 
     def _get_sessions(self):
         """Allocate config-auth session state only after reaching station work."""
@@ -121,6 +163,12 @@ class NetworkCoordinator:
         from src.device.web import pages
 
         return pages
+
+    @staticmethod
+    def _setup_pages():
+        from src.device.web import setup_pages
+
+        return setup_pages
 
     def _resolve_boot_mode(self):
         store = self._settings_store
@@ -390,7 +438,9 @@ class NetworkCoordinator:
         Returns True when this tick consumed the config-auth budget (so the
         mailbox NTP path should wait). Idle HTTP with no KDF returns False.
         """
-        http = self._get_http()
+        if not self._web_retry_due(now):
+            return self._kdf_job is not None
+        http = self._get_http(now=now, station=True)
         if http is None:
             return self._kdf_job is not None
 
@@ -407,17 +457,26 @@ class NetworkCoordinator:
                     self._finish_login_kdf(result, now)
 
         if not http.ensure_listening():
+            self._web_failure(getattr(http, "last_failure_phase", None) or "listen", station=True, now=now)
             return kdf_active
 
-        sessions = self._get_sessions()
-        action = http.tick(
-            MODE_STATION_ONLINE,
-            candidate_active=False,
-            scan_fn=None,
-            session_table=sessions,
-            now_ticks=now,
-            kdf_busy=self._kdf_job is not None,
-        )
+        # Session/KDF/auth modules stay absent until the first config request.
+        # The server calls this factory only when it dispatches that request.
+        sessions = self._get_sessions
+        try:
+            action = http.tick(
+                MODE_STATION_ONLINE, candidate_active=False, scan_fn=None,
+                session_table=sessions, now_ticks=now,
+                kdf_busy=self._kdf_job is not None,
+            )
+        except MemoryError:
+            http.close_all()
+            self._web_failure("asset", station=True, now=now)
+            return kdf_active
+        except Exception:
+            http.close_all()
+            self._web_failure("asset", station=True, now=now)
+            return kdf_active
         if action is None:
             return kdf_active
         kind, payload = action
@@ -499,7 +558,7 @@ class NetworkCoordinator:
             except Exception:
                 pass
 
-        http = self._get_http()
+        http = self._get_http(now=now, station=True)
         held = http is not None and http.has_held_client
         if result == VERIFY_OK and held:
             sessions = self._get_sessions()
@@ -631,28 +690,29 @@ class NetworkCoordinator:
             self._tick_candidate_join(now)
             return
 
-        http = self._get_http()
+        if not self._web_retry_due(now):
+            return
+
+        self._heap_checkpoint("setup_before")
+        http = self._get_http(now=now)
         if http is None:
-            if not self._setup_error_emitted:
-                self._setup_error_emitted = True
-                try:
-                    self._emit(setup_ap_error_event("listen_fail"))
-                except Exception:
-                    pass
             return
         if not http.ensure_listening():
-            if not self._setup_error_emitted:
-                self._setup_error_emitted = True
-                try:
-                    self._emit(setup_ap_error_event("listen_fail"))
-                except Exception:
-                    pass
+            self._web_failure(getattr(http, "last_failure_phase", None) or "listen", now=now)
             return
-        action = http.tick(
-            MODE_SETUP_AP,
-            candidate_active=False,
-            scan_fn=self._scan_ssids,
-        )
+        self._heap_checkpoint("setup_listening")
+        try:
+            action = http.tick(
+                MODE_SETUP_AP, candidate_active=False, scan_fn=self._scan_ssids,
+            )
+        except MemoryError:
+            http.close_all()
+            self._web_failure("asset", now=now)
+            return
+        except Exception:
+            http.close_all()
+            self._web_failure("asset", now=now)
+            return
         if action is None:
             return
         kind, candidate = action
@@ -720,12 +780,19 @@ class NetworkCoordinator:
         # Still serve HTTP so concurrent Connect receives 503 Busy.
         # Do not scan STA while a candidate join is in flight.
         http = self._http
-        if http is not None:
-            http.tick(
-                MODE_SETUP_AP,
-                candidate_active=True,
-                scan_fn=lambda: [],
-            )
+        if http is not None and self._web_retry_due(now):
+            try:
+                http.tick(
+                    MODE_SETUP_AP,
+                    candidate_active=True,
+                    scan_fn=lambda: [],
+                )
+            except MemoryError:
+                http.close_all()
+                self._web_failure("asset", now=now)
+            except Exception:
+                http.close_all()
+                self._web_failure("asset", now=now)
 
         if self._ticks.ticks_diff(now, self._candidate_deadline) >= 0:
             self._fail_candidate(ERROR_JOIN_TIMEOUT)
@@ -784,7 +851,7 @@ class NetworkCoordinator:
         except Exception:
             pass
 
-        response = self._pages().response_join_success(ssid)
+        response = self._setup_pages().response_join_success(ssid)
         if self._http is not None:
             self._http.queue_held_response(response)
             self._http.drain_writes()
@@ -806,7 +873,7 @@ class NetworkCoordinator:
         except Exception:
             pass
 
-        body = self._pages().response_join_failure(ssid or "", admin or "")
+        body = self._setup_pages().response_join_failure(ssid or "", admin or "")
         if self._http is not None:
             self._http.queue_held_response(body)
             self._http.drain_writes()

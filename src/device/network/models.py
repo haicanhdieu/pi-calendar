@@ -26,6 +26,9 @@ ERROR_JOIN_TIMEOUT = "join_timeout"
 ERROR_PERSIST_FAIL = "persist_fail"
 ERROR_BUSY = "busy"
 ERROR_SCAN_FAIL = "scan_fail"
+ERROR_WEB_CONSTRUCT = "web_construct"
+ERROR_WEB_ASSET = "web_asset"
+ERROR_WEB_LISTEN = "web_listen"
 
 
 def boot_mode_for_settings(configured):

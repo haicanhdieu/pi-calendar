@@ -119,6 +119,10 @@ HTTP_MAX_CLIENTS = 2
 HTTP_PER_TICK_BYTES = 512
 HTTP_LISTEN_PORT = 80
 HTTP_LISTEN_BACKLOG = 1
+# Retry web construction/listening cooperatively; no sleep or busy loop.
+HTTP_RETRY_MS = 2_000
+# Opt-in serial checkpoints for flashed heap evidence only.
+WEB_HEAP_CHECKPOINTS = False
 
 # Config auth / sessions (AD-5 / story 2.1)
 SESSION_IDLE_MS = 900_000

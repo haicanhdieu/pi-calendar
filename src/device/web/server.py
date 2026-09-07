@@ -7,19 +7,23 @@ imported lazily for the device path.
 
 from src import config
 from src.device.web.http_parse import IncrementalHttpParser
-from src.device.web import pages
-from src.device.web.router import (
+from src.device.web import setup_pages as pages
+from src.device.web.setup_router import (
     ACTION_CONNECT,
-    ACTION_LOGIN_KDF,
-    ACTION_PASSWORD_CHANGE_KDF,
     ACTION_RESPOND,
     ACTION_SCAN,
-    route_config_request,
     route_setup_request,
     scan_response,
 )
 
 _WOULD_BLOCK_ERRNOS = (11, 35, 10035)
+
+
+class WebResourceError(Exception):
+    """A compact, named construction or listener failure."""
+
+    def __init__(self, phase):
+        self.phase = phase
 
 
 class _Client:
@@ -66,10 +70,16 @@ class SetupHttpServer:
         self._listen = None
         self._clients = []
         self._held_client = None
+        self.last_failure_phase = None
 
     @property
     def has_held_client(self):
         return self._held_client is not None
+
+    @property
+    def has_clients(self):
+        """Whether a browser has reached this server (without allocating auth)."""
+        return bool(self._clients)
 
     def _get_socket_module(self):
         if self._socket_module is None:
@@ -81,6 +91,7 @@ class SetupHttpServer:
     def ensure_listening(self):
         if self._listen is not None:
             return True
+        sock = None
         try:
             socket = self._get_socket_module()
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -96,7 +107,22 @@ class SetupHttpServer:
                 sock.settimeout(0)
             self._listen = sock
             return True
+        except MemoryError:
+            if sock is not None:
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+            self.last_failure_phase = "listen_memory"
+            self._listen = None
+            return False
         except Exception:
+            if sock is not None:
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+            self.last_failure_phase = "listen"
             self._listen = None
             return False
 
@@ -293,8 +319,16 @@ class SetupHttpServer:
         return None
 
     def _dispatch_config(self, client, request, session_table, now_ticks, kdf_busy):
+        # Admin routing/pages are intentionally imported only after a browser
+        # reaches the station-online surface.
+        from src.device.web import pages as config_pages
+        from src.device.web.router import (
+            ACTION_LOGIN_KDF, ACTION_PASSWORD_CHANGE_KDF, route_config_request,
+        )
+        if callable(session_table):
+            session_table = session_table()
         if session_table is None or now_ticks is None:
-            client.outbox = pages.response_not_found()
+            client.outbox = config_pages.response_not_found()
             client.out_offset = 0
             client.closing = True
             return None
@@ -323,7 +357,7 @@ class SetupHttpServer:
                 pass
             if self._held_client is not None:
                 self._wipe_password(routed.password)
-                client.outbox = pages.response_busy()
+                client.outbox = config_pages.response_busy()
                 client.out_offset = 0
                 client.closing = True
                 return None
@@ -343,7 +377,7 @@ class SetupHttpServer:
                     pass
             if self._held_client is not None:
                 self._wipe_password(routed.password)
-                client.outbox = pages.response_busy()
+                client.outbox = config_pages.response_busy()
                 client.out_offset = 0
                 client.closing = True
                 return None
@@ -351,7 +385,7 @@ class SetupHttpServer:
             self._held_client = client
             return ("password_change_kdf", (routed.password, acting_id))
         self._wipe_password(getattr(routed, "password", None))
-        client.outbox = pages.response_not_found()
+        client.outbox = config_pages.response_not_found()
         client.out_offset = 0
         client.closing = True
         return None

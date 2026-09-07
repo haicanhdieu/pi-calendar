@@ -1,5 +1,6 @@
 """Host tests for SETUP_AP boot ownership on NetworkCoordinator."""
 
+from src import config
 from src.device.network.coordinator import NetworkCoordinator
 from src.device.network.mailbox import Mailbox, SyncCommand
 from src.device.network.models import (
@@ -202,7 +203,7 @@ def test_default_lazy_http_server_serves_setup_page_after_ap_activation():
     assert b"Pi Calendar Setup" in client.sent
 
 
-def test_setup_http_creation_failure_emits_listen_failure():
+def test_setup_http_creation_failure_emits_named_construction_failure():
     events = []
     coordinator = NetworkCoordinator(
         Mailbox(),
@@ -214,7 +215,75 @@ def test_setup_http_creation_failure_emits_listen_failure():
     coordinator.tick()
     coordinator.tick()
     assert events[-1].kind == EVENT_SETUP_ERROR
-    assert events[-1].error_code == "listen_fail"
+    assert events[-1].error_code == "web_construct"
+
+
+def test_setup_http_memory_failure_is_named_and_retries_cooperatively():
+    events = []
+    ticks = FakeTicks(0)
+    calls = []
+
+    def make_http(**_kwargs):
+        calls.append(True)
+        raise MemoryError()
+
+    coordinator = NetworkCoordinator(
+        Mailbox(), settings_store=UnconfiguredStore(), event_sink=events,
+        ap_wlan=FakeApWlan(), ticks_module=ticks, http_factory=make_http,
+    )
+    coordinator.tick()  # AP activation is deliberately before web allocation.
+    coordinator.tick()
+    assert coordinator._setup_ap_active is True
+    assert events[-1].error_code == "web_construct"
+    assert calls == [True]
+    coordinator.tick()
+    assert calls == [True]
+    ticks.now = config.HTTP_RETRY_MS
+    coordinator.tick()
+    assert calls == [True, True]
+
+
+def test_setup_listener_and_asset_failures_close_and_retry_with_heap_log():
+    class FailingHttp:
+        last_failure_phase = "listen"
+        def __init__(self): self.closed = 0
+        def ensure_listening(self): return False
+        def close_all(self): self.closed += 1
+
+    logs, events = [], []
+    ticks = FakeTicks(0)
+    http = FailingHttp()
+    previous = config.WEB_HEAP_CHECKPOINTS
+    config.WEB_HEAP_CHECKPOINTS = True
+    try:
+        coordinator = NetworkCoordinator(
+            Mailbox(), settings_store=UnconfiguredStore(), event_sink=events,
+            ap_wlan=FakeApWlan(), ticks_module=ticks, http_server=http,
+            log=logs.append,
+        )
+        coordinator.tick()
+        coordinator.tick()
+        assert events[-1].error_code == "web_listen"
+        assert any(line.startswith("web_heap setup_before ") for line in logs)
+        coordinator.tick()
+        assert events.count(events[-1]) == 1
+    finally:
+        config.WEB_HEAP_CHECKPOINTS = previous
+
+    class ExplodingHttp(FailingHttp):
+        def ensure_listening(self): return True
+        def tick(self, *_args, **_kwargs): raise MemoryError()
+
+    events = []
+    exploding = ExplodingHttp()
+    coordinator = NetworkCoordinator(
+        Mailbox(), settings_store=UnconfiguredStore(), event_sink=events,
+        ap_wlan=FakeApWlan(), http_server=exploding,
+    )
+    coordinator.tick()
+    coordinator.tick()
+    assert events[-1].error_code == "web_asset"
+    assert exploding.closed == 1
 
 
 def test_malformed_settings_file_enters_setup_ap_and_preserves_bytes():

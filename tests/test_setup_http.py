@@ -2,6 +2,8 @@
 
 import ast
 from pathlib import Path
+import subprocess
+import sys
 
 from src.device.web.http_parse import (
     ERR_MALFORMED,
@@ -18,6 +20,7 @@ from src.device.web.router import (
     route_setup_request,
 )
 from src.device.web import pages
+from src.device.web import setup_pages
 from src.provisioning.scan import decode_ssid, ssids_from_scan_rows
 from src.provisioning.validation import validate_setup_form_fields
 
@@ -39,6 +42,34 @@ def test_html_escape_and_form_parse():
         "admin_password": "adminpass",
     }
     assert parse_form_urlencoded(b"a=%zz") is None
+
+
+def test_setup_assets_keep_scan_flow_and_escape_json_controls():
+    html = setup_pages.setup_page_html({"status": "failure", "ssid": "Home"})
+    assert 'id="screen2" class="screen active"' in html
+    assert 'fetch(\'/scan\')' in html
+    assert "Couldn't join Home" in html
+    response = setup_pages.response_scan_json(['a\n\t"\\\x01'])
+    assert b'a\\n\\t\\"\\\\\\u0001' in response
+
+
+def test_setup_server_import_does_not_load_config_assets_or_auth():
+    """The AP server's import footprint excludes admin-only resources."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; import src.device.web.server; "
+            "assert 'src.device.web.pages' not in sys.modules; "
+            "assert 'src.device.web.router' not in sys.modules; "
+            "assert 'src.provisioning.session' not in sys.modules; "
+            "assert 'src.provisioning.kdf_job' not in sys.modules",
+        ],
+        cwd=str(_ROOT),
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_incremental_get_and_oversized_line():

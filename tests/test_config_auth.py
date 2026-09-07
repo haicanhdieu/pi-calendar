@@ -6,7 +6,7 @@ from pathlib import Path
 from src import config
 from src.device.network.coordinator import NetworkCoordinator
 from src.device.network.mailbox import Mailbox
-from src.device.network.models import MODE_SETUP_AP, MODE_STATION_ONLINE
+from src.device.network.models import EVENT_STATION_ERROR, MODE_SETUP_AP, MODE_STATION_ONLINE
 from src.device.web.http_parse import cookie_header_value
 from src.device.web.router import (
     ACTION_LOGIN_KDF,
@@ -344,7 +344,9 @@ def test_coordinator_good_login_sets_cookie_and_settings():
 def test_coordinator_session_full_returns_busy():
     ticks = FakeTicks(0)
     coordinator, http, sockets, ticks, _store = _online_coordinator(ticks=ticks)
-    coordinator.tick()  # First station-online HTTP tick creates sessions.
+    coordinator.tick()  # No browser request: config sessions remain deferred.
+    assert coordinator._sessions is None
+    coordinator._get_sessions()
     # Fill session table.
     for i in range(config.SESSION_MAX):
         sid = coordinator._sessions.create(0)
@@ -358,11 +360,40 @@ def test_coordinator_session_full_returns_busy():
     assert b"Set-Cookie: pc_session=" not in client.sent
 
 
-def test_station_online_defers_sessions_until_http_tick():
+def test_station_online_defers_sessions_until_first_browser_request():
     coordinator, _http, _sockets, _ticks, _store = _online_coordinator()
     assert coordinator._sessions is None
+
+
+def test_station_listener_and_asset_failures_emit_named_events_and_close():
+    coordinator, _http, _sockets, _ticks, _store = _online_coordinator()
+    events = []
+    coordinator._event_sink = events
+
+    class BadHttp:
+        last_failure_phase = "listen"
+        def __init__(self): self.closed = 0
+        def ensure_listening(self): return False
+        def close_all(self): self.closed += 1
+
+    bad = BadHttp()
+    coordinator._http = bad
     coordinator.tick()
-    assert coordinator._sessions is not None
+    assert events[-1].kind == EVENT_STATION_ERROR
+    assert events[-1].error_code == "web_listen"
+
+    class ExplodingHttp(BadHttp):
+        def ensure_listening(self): return True
+        def tick(self, *_args, **_kwargs): raise MemoryError()
+
+    coordinator._web_next_retry = None
+    exploding = ExplodingHttp()
+    coordinator._http = exploding
+    coordinator.tick()
+    assert events[-1].error_code == "web_asset"
+    assert exploding.closed == 1
+    coordinator.tick()
+    assert coordinator._sessions is None
 
 
 def test_coordinator_concurrent_kdf_busy():
