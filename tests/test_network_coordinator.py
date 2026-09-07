@@ -325,5 +325,5 @@ def test_production_composition_has_no_threaded_network_worker():
     assert "NetworkWorker" not in main_source
     assert "_thread" not in main_source
     assert main_source.index("coordinator.tick()") < main_source.index("app.step()")
-    assert "SetupHttpServer" in main_source
-    assert "http_server=setup_http" in main_source
+    assert "SetupHttpServer" not in main_source
+    assert "http_server=setup_http" not in main_source

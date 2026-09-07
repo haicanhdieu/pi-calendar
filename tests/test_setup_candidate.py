@@ -451,18 +451,14 @@ def test_concurrent_connect_returns_503_busy():
     assert not first.closed
 
 
-def test_main_wires_setup_http_server():
+def test_main_defers_setup_http_server_to_coordinator():
     from pathlib import Path
 
     main_source = (Path(__file__).resolve().parents[1] / "main.py").read_text(
         encoding="utf-8"
     )
-    assert "SetupHttpServer" in main_source
-    assert "http_server=setup_http" in main_source
-    # Composition order: construct server, then pass into coordinator.
-    assert main_source.index("setup_http = SetupHttpServer") < main_source.index(
-        "http_server=setup_http"
-    )
+    assert "SetupHttpServer" not in main_source
+    assert "http_server=setup_http" not in main_source
 
 
 def test_server_parse_error_oversized_closes_without_candidate():

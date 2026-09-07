@@ -60,6 +60,83 @@ class UnconfiguredStore:
         return False
 
 
+class FakeHttp:
+    def __init__(self, socket_module=None):
+        self.socket_module = socket_module
+
+    def ensure_listening(self):
+        return True
+
+    def tick(self, *args, **kwargs):
+        return None
+
+
+class FakeDefaultHttpClient:
+    def __init__(self):
+        self._inbox = bytearray(b"GET / HTTP/1.1\r\nHost: 192.168.4.1\r\n\r\n")
+        self._outbox = bytearray()
+        self.closed = False
+        self.peer = ("192.168.4.2", 12345)
+
+    def setblocking(self, _value):
+        pass
+
+    def recv(self, size):
+        if not self._inbox:
+            raise OSError(11, "would block")
+        chunk = bytes(self._inbox[:size])
+        del self._inbox[:size]
+        return chunk
+
+    def send(self, data):
+        self._outbox.extend(data)
+        return len(data)
+
+    def close(self):
+        self.closed = True
+
+    @property
+    def sent(self):
+        return bytes(self._outbox)
+
+
+class FakeDefaultHttpListen:
+    def __init__(self, client):
+        self._client = client
+        self._accepted = False
+
+    def setsockopt(self, *_args):
+        pass
+
+    def bind(self, _addr):
+        pass
+
+    def listen(self, _backlog):
+        pass
+
+    def setblocking(self, _value):
+        pass
+
+    def accept(self):
+        if self._accepted:
+            raise OSError(11, "would block")
+        self._accepted = True
+        return self._client, self._client.peer
+
+
+class FakeDefaultHttpSockets:
+    AF_INET = 2
+    SOCK_STREAM = 1
+    SOL_SOCKET = 1
+    SO_REUSEADDR = 2
+
+    def __init__(self, client):
+        self._listen = FakeDefaultHttpListen(client)
+
+    def socket(self, *_args):
+        return self._listen
+
+
 def test_absent_settings_enters_setup_ap_without_crash():
     events = []
     ap = FakeApWlan()
@@ -80,6 +157,64 @@ def test_absent_settings_enters_setup_ap_without_crash():
     assert events[0].mode == MODE_SETUP_AP
     assert events[0].ssid == SETUP_AP_SSID
     assert events[0].ip == SETUP_AP_GATEWAY
+
+
+def test_setup_http_is_deferred_until_after_ap_activation():
+    created = []
+
+    def make_http(socket_module=None):
+        created.append(socket_module)
+        return FakeHttp(socket_module)
+
+    coordinator = NetworkCoordinator(
+        Mailbox(),
+        settings_store=UnconfiguredStore(),
+        event_sink=[],
+        ap_wlan=FakeApWlan(),
+        http_factory=make_http,
+    )
+    assert coordinator._http is None
+    coordinator.tick()
+    assert coordinator._setup_ap_active is True
+    assert created == []
+    coordinator.tick()
+    assert len(created) == 1
+
+
+def test_default_lazy_http_server_serves_setup_page_after_ap_activation():
+    client = FakeDefaultHttpClient()
+    coordinator = NetworkCoordinator(
+        Mailbox(),
+        settings_store=UnconfiguredStore(),
+        event_sink=[],
+        ap_wlan=FakeApWlan(),
+        socket_module=FakeDefaultHttpSockets(client),
+    )
+    coordinator.tick()
+    assert coordinator._setup_ap_active is True
+    assert coordinator._http is None
+    for _ in range(128):
+        coordinator.tick()
+        if client.closed:
+            break
+    assert client.closed is True
+    assert b"200" in client.sent
+    assert b"Pi Calendar Setup" in client.sent
+
+
+def test_setup_http_creation_failure_emits_listen_failure():
+    events = []
+    coordinator = NetworkCoordinator(
+        Mailbox(),
+        settings_store=UnconfiguredStore(),
+        event_sink=events,
+        ap_wlan=FakeApWlan(),
+        http_factory=lambda **kwargs: (_ for _ in ()).throw(OSError("no heap")),
+    )
+    coordinator.tick()
+    coordinator.tick()
+    assert events[-1].kind == EVENT_SETUP_ERROR
+    assert events[-1].error_code == "listen_fail"
 
 
 def test_malformed_settings_file_enters_setup_ap_and_preserves_bytes():

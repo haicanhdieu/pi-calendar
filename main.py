@@ -17,7 +17,6 @@ from src.device.network.models import (
     ntp_sync_enabled,
 )
 from src.device.settings_store import SettingsStore
-from src.device.web import SetupHttpServer
 from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
 from src.ui.compositor import UiCompositor
@@ -58,13 +57,11 @@ def main():
     mailbox = Mailbox()
     settings_store = SettingsStore(path=config.SETTINGS_BASENAME)
     network_events = []
-    setup_http = SetupHttpServer()
     coordinator = make_settings_coordinator(
         mailbox,
         settings_store,
         network_events,
         ntp_address=config.NTP_SERVER_ADDRESS,
-        http_server=setup_http,
     )
     # Store-owned Wi-Fi: hold NTP until App sees station online (story 1.3).
     # Connecting/setup must not enqueue SyncCommands that expire mid-associate.

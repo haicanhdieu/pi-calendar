@@ -344,6 +344,7 @@ def test_coordinator_good_login_sets_cookie_and_settings():
 def test_coordinator_session_full_returns_busy():
     ticks = FakeTicks(0)
     coordinator, http, sockets, ticks, _store = _online_coordinator(ticks=ticks)
+    coordinator.tick()  # First station-online HTTP tick creates sessions.
     # Fill session table.
     for i in range(config.SESSION_MAX):
         sid = coordinator._sessions.create(0)
@@ -355,6 +356,13 @@ def test_coordinator_session_full_returns_busy():
     assert _pump(coordinator, lambda: b"503" in client.sent, limit=300)
     assert b"Busy" in client.sent
     assert b"Set-Cookie: pc_session=" not in client.sent
+
+
+def test_station_online_defers_sessions_until_http_tick():
+    coordinator, _http, _sockets, _ticks, _store = _online_coordinator()
+    assert coordinator._sessions is None
+    coordinator.tick()
+    assert coordinator._sessions is not None
 
 
 def test_coordinator_concurrent_kdf_busy():
@@ -664,7 +672,7 @@ def test_coordinator_password_change_commit_fail_leaves_sessions():
 
 
 def test_coordinator_password_change_derive_fail_leaves_sessions():
-    import src.device.network.coordinator as coord_mod
+    import src.provisioning.kdf_job as kdf_mod
 
     coordinator, http, sockets, ticks, store = _online_coordinator(password="adminpass")
     cookie_a, token_a = _login_for_cookie(coordinator, sockets, "adminpass")
@@ -672,7 +680,7 @@ def test_coordinator_password_change_derive_fail_leaves_sessions():
     before = dict(store.load())
     session_count = len(coordinator._sessions)
 
-    real_kdf = coord_mod.KdfJob
+    real_kdf = kdf_mod.KdfJob
 
     def kdf_bad_urandom(
         correlation_id,
@@ -695,7 +703,7 @@ def test_coordinator_password_change_derive_fail_leaves_sessions():
             urandom=urandom,
         )
 
-    coord_mod.KdfJob = kdf_bad_urandom
+    kdf_mod.KdfJob = kdf_bad_urandom
     try:
         client = FakeStreamSocket()
         sockets.listen.enqueue(client)
@@ -706,7 +714,7 @@ def test_coordinator_password_change_derive_fail_leaves_sessions():
             limit=50,
         )
     finally:
-        coord_mod.KdfJob = real_kdf
+        kdf_mod.KdfJob = real_kdf
 
     assert b"Password changed." not in client.sent
     assert len(coordinator._sessions) == session_count

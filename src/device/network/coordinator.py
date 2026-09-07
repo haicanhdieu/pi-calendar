@@ -31,18 +31,6 @@ from src.device.network.models import (
     station_failures_exhausted,
     station_status_event,
 )
-from src.device.settings_store import SettingsCommitError
-from src.device.web import pages
-from src.provisioning.kdf_job import (
-    DERIVE_OK,
-    PURPOSE_LOGIN_VERIFY,
-    PURPOSE_PASSWORD_CHANGE_DERIVE,
-    VERIFY_OK,
-    KdfJob,
-)
-from src.provisioning.scan import ssids_from_scan_rows
-from src.provisioning.session import SessionTable
-from src.provisioning.validation import COLOR_SCHEME_V1
 from src.time.model import DateTime
 from src import ticks as default_ticks
 
@@ -68,6 +56,7 @@ class NetworkCoordinator:
         settings_store=None,
         event_sink=None,
         http_server=None,
+        http_factory=None,
     ):
         self._mailbox = mailbox
         self._wlan = wlan
@@ -80,6 +69,7 @@ class NetworkCoordinator:
         self._settings_store = settings_store
         self._event_sink = event_sink
         self._http = http_server
+        self._http_factory = http_factory
         self._command = None
         self._take_epoch = None
         self._state = "idle"
@@ -98,10 +88,39 @@ class NetworkCoordinator:
         self._station_started = False
         self._station_next_attempt = None
         self._station_attempt_armed = False
-        self._sessions = SessionTable(ticks_module=self._ticks)
+        self._sessions = None
         self._kdf_job = None
         self._kdf_correlation = 0
         self._kdf_acting_session_id = None
+
+    def _get_http(self):
+        """Create the bounded web surface only when the active mode serves it."""
+        if self._http is not None:
+            return self._http
+        try:
+            factory = self._http_factory
+            if factory is None:
+                from src.device.web import SetupHttpServer
+
+                factory = SetupHttpServer
+            self._http = factory(socket_module=self._socket_module)
+        except Exception:
+            return None
+        return self._http
+
+    def _get_sessions(self):
+        """Allocate config-auth session state only after reaching station work."""
+        if self._sessions is None:
+            from src.provisioning.session import SessionTable
+
+            self._sessions = SessionTable(ticks_module=self._ticks)
+        return self._sessions
+
+    @staticmethod
+    def _pages():
+        from src.device.web import pages
+
+        return pages
 
     def _resolve_boot_mode(self):
         store = self._settings_store
@@ -371,8 +390,14 @@ class NetworkCoordinator:
         Returns True when this tick consumed the config-auth budget (so the
         mailbox NTP path should wait). Idle HTTP with no KDF returns False.
         """
+        http = self._get_http()
+        if http is None:
+            return self._kdf_job is not None
+
         kdf_active = self._kdf_job is not None
         if kdf_active:
+            from src.provisioning.kdf_job import PURPOSE_PASSWORD_CHANGE_DERIVE
+
             result = self._kdf_job.step(config.KDF_ROUNDS_PER_TICK)
             if result is not None:
                 purpose = self._kdf_job.purpose
@@ -381,18 +406,15 @@ class NetworkCoordinator:
                 else:
                     self._finish_login_kdf(result, now)
 
-        http = self._http
-        if http is None:
-            return kdf_active
-
         if not http.ensure_listening():
             return kdf_active
 
+        sessions = self._get_sessions()
         action = http.tick(
             MODE_STATION_ONLINE,
             candidate_active=False,
             scan_fn=None,
-            session_table=self._sessions,
+            session_table=sessions,
             now_ticks=now,
             kdf_busy=self._kdf_job is not None,
         )
@@ -402,7 +424,7 @@ class NetworkCoordinator:
         if kind == "login_kdf":
             if self._kdf_job is not None:
                 self._wipe_bytearray(payload)
-                http.queue_held_response(pages.response_busy())
+                http.queue_held_response(self._pages().response_busy())
                 return True
             self._start_login_kdf(payload, now)
             return True
@@ -410,13 +432,15 @@ class NetworkCoordinator:
             password_ba, acting_id = payload
             if self._kdf_job is not None:
                 self._wipe_bytearray(password_ba)
-                http.queue_held_response(pages.response_busy())
+                http.queue_held_response(self._pages().response_busy())
                 return True
             self._start_password_change_kdf(password_ba, acting_id, now)
             return True
         return True
 
     def _start_login_kdf(self, password_ba, now):
+        from src.provisioning.kdf_job import KdfJob, PURPOSE_LOGIN_VERIFY
+
         salt_hex, verifier_hex = self._load_admin_verifier()
         self._kdf_correlation = int(self._kdf_correlation) + 1
         self._kdf_acting_session_id = None
@@ -424,7 +448,7 @@ class NetworkCoordinator:
             self._wipe_bytearray(password_ba)
             if self._http is not None:
                 self._http.queue_held_response(
-                    pages.response_login_page(incorrect=True)
+                    self._pages().response_login_page(incorrect=True)
                 )
             return
         self._kdf_job = KdfJob(
@@ -439,6 +463,11 @@ class NetworkCoordinator:
             self._finish_login_kdf(self._kdf_job.result, now)
 
     def _start_password_change_kdf(self, password_ba, acting_id, now):
+        from src.provisioning.kdf_job import (
+            KdfJob,
+            PURPOSE_PASSWORD_CHANGE_DERIVE,
+        )
+
         self._kdf_correlation = int(self._kdf_correlation) + 1
         self._kdf_acting_session_id = acting_id
         store = self._settings_store
@@ -446,7 +475,9 @@ class NetworkCoordinator:
             self._wipe_bytearray(password_ba)
             self._kdf_acting_session_id = None
             if self._http is not None:
-                self._http.queue_held_response(pages.response_settings_page())
+                self._http.queue_held_response(
+                    self._pages().response_settings_page()
+                )
             return
         self._kdf_job = KdfJob(
             self._kdf_correlation,
@@ -457,6 +488,8 @@ class NetworkCoordinator:
             self._finish_password_change_kdf(self._kdf_job.result, now)
 
     def _finish_login_kdf(self, result, now):
+        from src.provisioning.kdf_job import VERIFY_OK
+
         job = self._kdf_job
         self._kdf_job = None
         self._kdf_acting_session_id = None
@@ -466,20 +499,21 @@ class NetworkCoordinator:
             except Exception:
                 pass
 
-        http = self._http
+        http = self._get_http()
         held = http is not None and http.has_held_client
         if result == VERIFY_OK and held:
-            session_id = self._sessions.create(now)
+            sessions = self._get_sessions()
+            session_id = sessions.create(now)
             if session_id is None:
-                response = pages.response_busy()
+                response = self._pages().response_busy()
             else:
-                response = pages.response_login_success(session_id)
+                response = self._pages().response_login_success(session_id)
             if not http.queue_held_response(response):
                 # Peer closed between create and queue — drop orphan session.
                 if session_id is not None:
-                    self._sessions._entries = [
+                    sessions._entries = [
                         e
-                        for e in self._sessions._entries
+                        for e in sessions._entries
                         if e.encoded_id != session_id
                     ]
             return
@@ -488,11 +522,13 @@ class NetworkCoordinator:
             # Peer aborted mid-KDF: wipe already done via job terminal; no session.
             return
 
-        response = pages.response_login_page(incorrect=True)
+        response = self._pages().response_login_page(incorrect=True)
         if held:
             http.queue_held_response(response)
 
     def _finish_password_change_kdf(self, result, now):
+        from src.provisioning.kdf_job import DERIVE_OK
+
         job = self._kdf_job
         acting_id = self._kdf_acting_session_id
         self._kdf_job = None
@@ -507,32 +543,34 @@ class NetworkCoordinator:
         held = http is not None and http.has_held_client
         if result != DERIVE_OK or job is None:
             if held:
-                http.queue_held_response(pages.response_settings_page())
+                http.queue_held_response(self._pages().response_settings_page())
             return
 
         salt_hex = job.salt_hex
         verifier_hex = job.verifier_hex
         if not salt_hex or not verifier_hex:
             if held:
-                http.queue_held_response(pages.response_settings_page())
+                http.queue_held_response(self._pages().response_settings_page())
             return
 
         committed = self._commit_password_change(salt_hex, verifier_hex)
         if not committed:
             # Fail-closed: old verifier and every session unchanged.
             if held:
-                http.queue_held_response(pages.response_settings_page())
+                http.queue_held_response(self._pages().response_settings_page())
             return
 
         if acting_id is not None:
-            self._sessions.keep_only(acting_id, now)
+            self._get_sessions().keep_only(acting_id, now)
 
         if held:
             http.queue_held_response(
-                pages.response_settings_page(password_changed=True)
+                self._pages().response_settings_page(password_changed=True)
             )
 
     def _commit_password_change(self, salt_hex, verifier_hex):
+        from src.provisioning.validation import COLOR_SCHEME_V1
+
         store = self._settings_store
         if store is None:
             return False
@@ -554,8 +592,6 @@ class NetworkCoordinator:
                 admin_verifier_hex=verifier_hex,
                 color_scheme=COLOR_SCHEME_V1,
             )
-        except SettingsCommitError:
-            return False
         except Exception:
             return False
         return True
@@ -595,8 +631,14 @@ class NetworkCoordinator:
             self._tick_candidate_join(now)
             return
 
-        http = self._http
+        http = self._get_http()
         if http is None:
+            if not self._setup_error_emitted:
+                self._setup_error_emitted = True
+                try:
+                    self._emit(setup_ap_error_event("listen_fail"))
+                except Exception:
+                    pass
             return
         if not http.ensure_listening():
             if not self._setup_error_emitted:
@@ -650,6 +692,8 @@ class NetworkCoordinator:
             rows = wlan.scan()
         except Exception:
             return []
+        from src.provisioning.scan import ssids_from_scan_rows
+
         return ssids_from_scan_rows(rows)
 
     def _start_candidate(self, candidate, now):
@@ -721,10 +765,6 @@ class NetworkCoordinator:
                 wifi_password=candidate.wifi_password,
                 admin_password=candidate.admin_password,
             )
-        except SettingsCommitError:
-            self._disconnect_station()
-            self._fail_candidate(ERROR_PERSIST_FAIL)
-            return
         except Exception:
             self._disconnect_station()
             self._fail_candidate(ERROR_PERSIST_FAIL)
@@ -744,7 +784,7 @@ class NetworkCoordinator:
         except Exception:
             pass
 
-        response = pages.response_join_success(ssid)
+        response = self._pages().response_join_success(ssid)
         if self._http is not None:
             self._http.queue_held_response(response)
             self._http.drain_writes()
@@ -766,7 +806,7 @@ class NetworkCoordinator:
         except Exception:
             pass
 
-        body = pages.response_join_failure(ssid or "", admin or "")
+        body = self._pages().response_join_failure(ssid or "", admin or "")
         if self._http is not None:
             self._http.queue_held_response(body)
             self._http.drain_writes()
