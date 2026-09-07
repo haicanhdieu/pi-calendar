@@ -316,6 +316,12 @@ class SetupHttpServer:
                 client.out_offset = 0
                 client.closing = True
                 return None
+            # The held request no longer needs its parsed body. Release it
+            # before the coordinator allocates the setup verifier job.
+            try:
+                client.parser.body = b""
+            except Exception:
+                pass
             client.held = True
             self._held_client = client
             return ("connect", routed.candidate)

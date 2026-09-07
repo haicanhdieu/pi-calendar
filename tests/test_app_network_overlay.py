@@ -61,14 +61,14 @@ def test_setup_status_shows_continuous_ssid_and_gateway():
     assert app._sync_enabled is False
     # Still present after another second (no dwell timeout).
     display.clear_ops()
-    ticks.advance(config.STATION_IP_DISPLAY_MS + 500)
+    ticks.advance(60_000)
     app.step(now_ticks=ticks.now)
     texts = _drawn_texts(display)
     assert config.SETUP_AP_SSID in texts
     assert config.SETUP_AP_GATEWAY in texts
 
 
-def test_station_ip_overlay_shows_at_least_ten_seconds_then_clears():
+def test_station_ip_overlay_remains_visible_while_online():
     events = [
         station_status_event(
             mode=MODE_STATION_ONLINE, ssid="Home", ip="192.168.1.77"
@@ -80,14 +80,14 @@ def test_station_ip_overlay_shows_at_least_ten_seconds_then_clears():
     assert app._sync_enabled is True
 
     display.clear_ops()
-    ticks.advance(config.STATION_IP_DISPLAY_MS - 1)
+    ticks.advance(60_000)
     app.step(now_ticks=ticks.now)
     assert "192.168.1.77" in _drawn_texts(display)
 
     display.clear_ops()
-    ticks.advance(2)
+    ticks.advance(60_000)
     app.step(now_ticks=ticks.now)
-    assert "192.168.1.77" not in _drawn_texts(display)
+    assert "192.168.1.77" in _drawn_texts(display)
 
 
 def test_station_online_without_ip_clears_prior_address():
@@ -133,10 +133,10 @@ def test_wrap_safe_ip_dwell_across_tick_period():
     app.step(now_ticks=ticks.now)
     assert "10.0.0.2" in _drawn_texts(display)
 
-    ticks.advance(config.STATION_IP_DISPLAY_MS)
+    ticks.advance(60_000)
     display.clear_ops()
     app.step(now_ticks=ticks.now)
-    assert "10.0.0.2" not in _drawn_texts(display)
+    assert "10.0.0.2" in _drawn_texts(display)
 
 
 def test_setup_overlay_clears_when_station_comes_online():
@@ -158,6 +158,7 @@ def test_setup_overlay_clears_when_station_comes_online():
     assert "192.168.0.5" in texts
     assert app.state.trust == TRUST_UNSYNCED
     assert app._sync_enabled is True
+    assert app.state.retry_deadline == ticks.now
 
 
 def test_overlays_draw_on_calendar_active_view():

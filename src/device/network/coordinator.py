@@ -846,8 +846,12 @@ class NetworkCoordinator:
             return
 
         if self._setup_kdf_job is None:
-            password_ba = bytearray(candidate.admin_password.encode("utf-8"))
+            password_ba = None
             try:
+                import gc
+
+                gc.collect()
+                password_ba = bytearray(candidate.admin_password.encode("utf-8"))
                 self._setup_kdf_job = KdfJob(
                     self._kdf_correlation + 1,
                     PURPOSE_SETUP_DERIVE,

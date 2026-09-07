@@ -105,9 +105,9 @@ SETUP_AP_GATEWAY = "192.168.4.1"
 SETTINGS_BASENAME = ".settings-v1"
 ADMIN_PBKDF2_ITERATIONS = 20_000
 
-# Station recovery (story 1.3): three terminal fails → SETUP_AP; IP overlay dwell
+# Station recovery (story 1.3): three terminal fails → SETUP_AP; persistent IP overlay
 STATION_FAILURE_LIMIT = 3
-STATION_IP_DISPLAY_MS = 10_000
+STATION_IP_DISPLAY_MS = None
 # Gap before the next store-credential reconnect attempt after a terminal fail.
 STATION_RECONNECT_GAP_MS = 1_000
 

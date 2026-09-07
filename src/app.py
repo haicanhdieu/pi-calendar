@@ -224,6 +224,10 @@ class App:
         if kind == _EVENT_STATION_STATUS and mode == _MODE_STATION_ONLINE:
             # NTP only after station is online (not while still connecting).
             self._sync_enabled = True
+            # The boot retry deadline was armed while the station was still
+            # connecting. Queue the first NTP attempt immediately now that
+            # the online event has made synchronization eligible.
+            self.state.retry_deadline = now
             ip = getattr(event, "ip", None)
             # Clear prior Setup / station-IP overlay; never leave a stale address.
             self._overlay_kind = None
@@ -236,8 +240,11 @@ class App:
             self._overlay_kind = _OVERLAY_STATION_IP
             self._overlay_ssid = getattr(event, "ssid", None)
             self._overlay_ip = str(ip)
-            self._overlay_clear_deadline = self._ticks.ticks_add(
-                now, config.STATION_IP_DISPLAY_MS
+            display_ms = config.STATION_IP_DISPLAY_MS
+            self._overlay_clear_deadline = (
+                None
+                if display_ms is None
+                else self._ticks.ticks_add(now, display_ms)
             )
 
     def _expire_station_ip_overlay(self, now):

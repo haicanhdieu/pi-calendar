@@ -66,7 +66,7 @@ def test_boot_mode_helpers_and_failure_count_policy():
     assert station_failures_exhausted(3) is True
     assert station_failures_exhausted(3, limit=3) is True
     assert config.STATION_FAILURE_LIMIT == 3
-    assert config.STATION_IP_DISPLAY_MS >= 10_000
+    assert config.STATION_IP_DISPLAY_MS is None
 
 
 def test_models_module_stays_pure():

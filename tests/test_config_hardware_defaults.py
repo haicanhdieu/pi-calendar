@@ -26,7 +26,7 @@ def test_network_proof_mode_defaults_off():
 
 def test_station_recovery_budgets():
     assert config.STATION_FAILURE_LIMIT == 3
-    assert config.STATION_IP_DISPLAY_MS >= 10_000
+    assert config.STATION_IP_DISPLAY_MS is None
     assert config.STATION_RECONNECT_GAP_MS >= 0
     # Pin map untouched by story 1.3 constants.
     assert config.TFT_SCK == 18
