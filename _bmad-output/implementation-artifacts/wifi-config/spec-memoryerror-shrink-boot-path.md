@@ -13,7 +13,7 @@ deferred:
   - summary: >-
       The flashed Pico has not yet demonstrated that the 1280-byte allocation failure is gone and the setup AP is physically available.
     evidence: |-
-      Host tests prove deferred composition and the real lazy HTTP server under fakes, but cannot execute MicroPython heap allocation, TFT lifecycle, WLAN, or serial checkpoints. Flashing the changed tree and resetting an unconfigured device would settle it.
+      Host tests prove deferred composition and the real lazy HTTP server under fakes. A flashed reset on 2026-09-07 reached `App loop starting (Clock view)` after the TFT checkpoint with no MemoryError; physical WLAN/AP visibility still needs a scan-capable client.
     location: >-
       Pico W runtime at /dev/cu.usbmodem1101
     severity: medium (unverified)
@@ -119,4 +119,4 @@ Review findings: 5 medium patch findings applied; 4 findings rejected with recor
 
 Verification: `uv run pytest tests/test_setup_ap_coordinator.py tests/test_setup_http.py tests/test_config_auth.py tests/test_session.py -q` passed (54 tests); `uv run pytest -q` passed (268 tests); `git diff --check` passed.
 
-Residual risk: The changed firmware has not been flashed and reset on the Pico. It still requires serial confirmation that `App loop starting` is reached and physical confirmation of `PiCalendar-Setup` plus `192.168.4.1`.
+Residual risk: The changed firmware was copied to `/dev/cu.usbmodem1101` and two soft-reset captures reached `App loop starting (Clock view)` after the TFT checkpoint with no MemoryError. This host's Wi-Fi scan tool returned no networks, so physical confirmation of `PiCalendar-Setup` and `192.168.4.1` still needs a scan-capable phone or computer.
