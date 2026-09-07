@@ -141,6 +141,12 @@ class SetupHttpServer:
                 pass
         return held
 
+    def close_non_held_clients(self):
+        """Drop a failed request without losing the setup candidate reply."""
+        for client in tuple(self._clients):
+            if client is not self._held_client:
+                self._close_client(client)
+
     def tick(
         self,
         mode,
@@ -325,9 +331,9 @@ class SetupHttpServer:
         from src.device.web.router import (
             ACTION_LOGIN_KDF, ACTION_PASSWORD_CHANGE_KDF, route_config_request,
         )
-        if callable(session_table):
+        if callable(session_table) and request.path in ("/", "/settings"):
             session_table = session_table()
-        if session_table is None or now_ticks is None:
+        if now_ticks is None:
             client.outbox = config_pages.response_not_found()
             client.out_offset = 0
             client.closing = True

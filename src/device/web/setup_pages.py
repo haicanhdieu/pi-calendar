@@ -19,8 +19,10 @@ def setup_page_html(state=None):
     state = state or {}
     status, ssid = state.get("status"), state.get("ssid") or ""
     admin = state.get("admin_password") or ""
-    screen1 = "" if status in ("failure", "success", "connecting") else " active"
-    screen2 = " active" if status in ("failure", "success", "connecting") else ""
+    # The failed Wi-Fi password is deliberately not retained, so retry begins
+    # on screen one while the SSID and admin-password prefill remain usable.
+    screen1 = "" if status in ("success", "connecting") else " active"
+    screen2 = " active" if status in ("success", "connecting") else ""
     if status == "failure":
         banner = "Couldn't join {}. Check the password and try again.".format(html_escape(ssid or "the network"))
     elif status == "success":

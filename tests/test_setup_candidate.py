@@ -335,9 +335,31 @@ def test_join_timeout_keeps_ap_and_clears_wifi_only_in_response():
     assert b"Couldn't join" in client.sent
     assert b"adminpass" in client.sent  # admin retained in failure page
     assert b"password1" not in client.sent  # wifi password cleared
-    assert b'id="screen2" class="screen active"' in client.sent
+    assert b'id="screen1" class="screen active"' in client.sent
+    assert b'id="screen2" class="screen active"' not in client.sent
     err = [e for e in events if e.kind == EVENT_STATION_ERROR]
     assert err and err[-1].error_code == ERROR_JOIN_TIMEOUT
+
+
+def test_candidate_asset_failure_keeps_held_connect_response():
+    fs = FakeFS()
+    store = _store(fs)
+    wlan = ScanWlan(connected=False)
+    coordinator, http, sockets, _events, _ticks = _make(store=store, wlan=wlan)
+    _activate(coordinator)
+    client = FakeStreamSocket()
+    client.push_client_bytes(_http_connect(ssid="HomeNet", wifi="password1", admin="adminpass"))
+    sockets.listen.enqueue(client)
+    assert _pump_until(coordinator, lambda: coordinator.candidate_active)
+    original_tick = http.tick
+    http.tick = lambda *_args, **_kwargs: (_ for _ in ()).throw(MemoryError())
+    try:
+        coordinator.tick()
+    finally:
+        http.tick = original_tick
+    assert coordinator.candidate_active
+    assert http.has_held_client
+    assert not client.closed
 
 
 def test_join_fail_on_connect_error_disconnects_and_keeps_ap():

@@ -293,7 +293,7 @@ def test_coordinator_bad_password_no_session_cookie():
     )
     assert b"Set-Cookie: pc_session=" not in client.sent or b"Max-Age=0" in client.sent
     assert b"Incorrect password" in client.sent
-    assert len(coordinator._sessions) == 0
+    assert coordinator._sessions is None
 
 
 def test_coordinator_good_login_sets_cookie_and_settings():
@@ -431,7 +431,38 @@ def test_peer_abort_mid_kdf_creates_no_session():
         lambda: coordinator._kdf_job is None and not http.has_held_client,
         limit=300,
     )
-    assert len(coordinator._sessions) == 0
+    assert coordinator._sessions is None
+
+
+def test_login_and_unknown_routes_do_not_allocate_sessions():
+    coordinator, _http, sockets, _ticks, _store = _online_coordinator()
+    for request in (_http_get("/login"), _http_get("/missing"), _http_login_post("wrongpass1")):
+        client = FakeStreamSocket()
+        sockets.listen.enqueue(client)
+        client.push_client_bytes(request)
+        assert _pump(coordinator, lambda: client.closed or bool(client.sent))
+        assert coordinator._sessions is None
+
+
+def test_login_kdf_memory_failure_closes_request_and_emits_web_asset():
+    import src.provisioning.kdf_job as kdf_mod
+
+    coordinator, _http, sockets, _ticks, _store = _online_coordinator()
+    events = []
+    coordinator._event_sink = events
+    real_kdf = kdf_mod.KdfJob
+    kdf_mod.KdfJob = lambda *_args, **_kwargs: (_ for _ in ()).throw(MemoryError())
+    try:
+        client = FakeStreamSocket()
+        sockets.listen.enqueue(client)
+        client.push_client_bytes(_http_login_post("adminpass"))
+        assert _pump(coordinator, lambda: client.closed)
+    finally:
+        kdf_mod.KdfJob = real_kdf
+
+    assert coordinator._kdf_job is None
+    assert events[-1].kind == EVENT_STATION_ERROR
+    assert events[-1].error_code == "web_asset"
     assert b"Set-Cookie: pc_session=" not in client.sent
 
 

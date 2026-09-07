@@ -101,6 +101,7 @@ class NetworkCoordinator:
     def _get_http(self, now=None, station=False):
         """Create the bounded web surface only when the active mode serves it."""
         if self._http is not None:
+            self._web_recovered("construct", "construct_memory")
             return self._http
         try:
             factory = self._http_factory
@@ -134,6 +135,11 @@ class NetworkCoordinator:
                 pass
         if now is not None:
             self._web_next_retry = self._ticks.ticks_add(now, config.HTTP_RETRY_MS)
+
+    def _web_recovered(self, *phases):
+        """Re-arm reporting once a previously failed phase succeeds."""
+        for phase in phases:
+            self._web_failures_emitted.discard(phase)
 
     def _web_retry_due(self, now):
         return self._web_next_retry is None or self._ticks.ticks_diff(now, self._web_next_retry) >= 0
@@ -459,6 +465,7 @@ class NetworkCoordinator:
         if not http.ensure_listening():
             self._web_failure(getattr(http, "last_failure_phase", None) or "listen", station=True, now=now)
             return kdf_active
+        self._web_recovered("listen", "listen_memory")
 
         # Session/KDF/auth modules stay absent until the first config request.
         # The server calls this factory only when it dispatches that request.
@@ -478,6 +485,7 @@ class NetworkCoordinator:
             self._web_failure("asset", station=True, now=now)
             return kdf_active
         if action is None:
+            self._web_recovered("asset")
             return kdf_active
         kind, payload = action
         if kind == "login_kdf":
@@ -485,7 +493,12 @@ class NetworkCoordinator:
                 self._wipe_bytearray(payload)
                 http.queue_held_response(self._pages().response_busy())
                 return True
-            self._start_login_kdf(payload, now)
+            try:
+                self._start_login_kdf(payload, now)
+            except MemoryError:
+                self._wipe_bytearray(payload)
+                http.close_all()
+                self._web_failure("asset", station=True, now=now)
             return True
         if kind == "password_change_kdf":
             password_ba, acting_id = payload
@@ -493,7 +506,12 @@ class NetworkCoordinator:
                 self._wipe_bytearray(password_ba)
                 http.queue_held_response(self._pages().response_busy())
                 return True
-            self._start_password_change_kdf(password_ba, acting_id, now)
+            try:
+                self._start_password_change_kdf(password_ba, acting_id, now)
+            except MemoryError:
+                self._wipe_bytearray(password_ba)
+                http.close_all()
+                self._web_failure("asset", station=True, now=now)
             return True
         return True
 
@@ -700,6 +718,7 @@ class NetworkCoordinator:
         if not http.ensure_listening():
             self._web_failure(getattr(http, "last_failure_phase", None) or "listen", now=now)
             return
+        self._web_recovered("listen", "listen_memory")
         self._heap_checkpoint("setup_listening")
         try:
             action = http.tick(
@@ -714,6 +733,7 @@ class NetworkCoordinator:
             self._web_failure("asset", now=now)
             return
         if action is None:
+            self._web_recovered("asset")
             return
         kind, candidate = action
         if kind != "connect" or candidate is None:
@@ -787,11 +807,16 @@ class NetworkCoordinator:
                     candidate_active=True,
                     scan_fn=lambda: [],
                 )
+                self._web_recovered("asset")
             except MemoryError:
-                http.close_all()
+                close_non_held = getattr(http, "close_non_held_clients", None)
+                if callable(close_non_held):
+                    close_non_held()
                 self._web_failure("asset", now=now)
             except Exception:
-                http.close_all()
+                close_non_held = getattr(http, "close_non_held_clients", None)
+                if callable(close_non_held):
+                    close_non_held()
                 self._web_failure("asset", now=now)
 
         if self._ticks.ticks_diff(now, self._candidate_deadline) >= 0:

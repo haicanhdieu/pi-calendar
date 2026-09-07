@@ -2,7 +2,7 @@
 title: 'Harden Pico web heap paths'
 type: 'bugfix'
 created: '2026-09-07'
-status: 'done'
+status: 'in-review'
 baseline_commit: '263f8294088421edf44540edf56d3b2310dd3f11'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -70,6 +70,16 @@ context:
 ## Spec Change Log
 
 ## Review Triage Log
+
+| Verdict | Route | Evidence |
+| --- | --- | --- |
+| medium | patch | Setup failure left the user on a screen that could only resubmit an empty Wi-Fi password; retry now returns to the usable Wi-Fi step with allowed prefill. |
+| false | reject | Station-online must own a listening socket before a browser can make its first config request; only config pages, sessions, and KDF are deferred. |
+| medium | patch | Session state was created for public login/unknown routes; it now remains deferred until a route that needs it. |
+| medium | patch | KDF import/allocation could raise outside the cooperative web recovery boundary; the password is wiped, held client closed, and named error emitted. |
+| medium | patch | Candidate-time web failure closed the held `/connect` client before its terminal response; the held client is now retained. |
+| medium | patch | A successful retry did not re-arm same-phase diagnostics; recovery now clears its recorded phase. |
+| maybe-false | defer | Host tests cannot prove the flashed Pico's heap or phone gateway response; deployment plus a phone request settles this in the manual evidence row. |
 
 | Verdict | Evidence |
 | --- | --- |

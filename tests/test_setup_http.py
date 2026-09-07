@@ -46,7 +46,8 @@ def test_html_escape_and_form_parse():
 
 def test_setup_assets_keep_scan_flow_and_escape_json_controls():
     html = setup_pages.setup_page_html({"status": "failure", "ssid": "Home"})
-    assert 'id="screen2" class="screen active"' in html
+    assert 'id="screen1" class="screen active"' in html
+    assert 'id="screen2" class="screen active"' not in html
     assert 'fetch(\'/scan\')' in html
     assert "Couldn't join Home" in html
     response = setup_pages.response_scan_json(['a\n\t"\\\x01'])

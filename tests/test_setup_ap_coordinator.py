@@ -286,6 +286,30 @@ def test_setup_listener_and_asset_failures_close_and_retry_with_heap_log():
     assert exploding.closed == 1
 
 
+def test_web_failure_is_reported_again_after_successful_recovery():
+    class FlakyHttp:
+        last_failure_phase = "listen"
+        def __init__(self): self.fail = True
+        def ensure_listening(self): return not self.fail
+        def tick(self, *_args, **_kwargs): return None
+
+    events, ticks = [], FakeTicks(0)
+    http = FlakyHttp()
+    coordinator = NetworkCoordinator(
+        Mailbox(), settings_store=UnconfiguredStore(), event_sink=events,
+        ap_wlan=FakeApWlan(), ticks_module=ticks, http_server=http,
+    )
+    coordinator.tick()
+    coordinator.tick()
+    assert events[-1].error_code == "web_listen"
+    http.fail = False
+    ticks.now = config.HTTP_RETRY_MS
+    coordinator.tick()
+    http.fail = True
+    coordinator.tick()
+    assert [event.error_code for event in events].count("web_listen") == 2
+
+
 def test_malformed_settings_file_enters_setup_ap_and_preserves_bytes():
     fs = FakeFS({".settings-v1": b"{bad"})
     store = _store(fs)
