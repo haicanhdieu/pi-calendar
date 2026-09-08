@@ -101,6 +101,7 @@ class NetworkCoordinator:
         self._kdf_acting_session_id = None
         self._scan_response_ready = False
         self._scan_response_fail_logged = False
+        self._station_assets_ready = False
 
     def _get_http(self, now=None, station=False):
         """Create the bounded web surface only when the active mode serves it."""
@@ -480,6 +481,30 @@ class NetworkCoordinator:
             self._web_failure(getattr(http, "last_failure_phase", None) or "listen", station=True, now=now)
             return kdf_active
         self._web_recovered("listen", "listen_memory")
+
+        # Warm only the small station web policy/page modules while the loop
+        # is idle.  A first browser request also carries parser/socket state;
+        # importing these modules at that boundary can fail on a fragmented
+        # Pico heap even though the rendered response is small.  Sessions and
+        # KDF remain lazy until an authenticated request actually needs them.
+        if not self._station_assets_ready:
+            try:
+                import gc
+
+                gc.collect()
+                import src.device.web.page_login_content  # noqa: F401
+                import src.device.web.page_settings_content  # noqa: F401
+                import src.device.web.pages  # noqa: F401
+                import src.device.web.router  # noqa: F401
+                self._station_assets_ready = True
+                self._log("station_assets_ready")
+            except MemoryError:
+                self._web_failure("asset", station=True, now=now)
+                return kdf_active
+            except Exception as exc:
+                self._log("web_asset " + type(exc).__name__)
+                self._web_failure("asset", station=True, now=now)
+                return kdf_active
 
         # Session/KDF/auth modules stay absent until the first config request.
         # The server calls this factory only when it dispatches that request.
