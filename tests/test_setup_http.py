@@ -49,10 +49,11 @@ def test_html_escape_and_form_parse():
 
 
 def test_setup_assets_keep_scan_flow_and_escape_json_controls():
-    html = setup_pages.setup_page_html({"status": "failure", "ssid": "Home"})
-    assert 'fetch(\'/scan\')' in html
+    html = pages.setup_page_html({"status": "failure", "ssid": "Home"})
+    assert "fetch(" not in html
     assert "Couldn't join Home" in html
     assert '<select id="ssid" name="ssid" required>' in html
+    assert 'href="/"' in html
     assert 'minlength="8" maxlength="63"' in html
     assert 'name="wifi_password"' in html
     assert 'name="admin_password"' in html
@@ -144,8 +145,7 @@ def test_route_allowlist_and_connect_candidate():
             self.body = body
 
     r = route_setup_request(Req("GET", "/"), "SETUP_AP", False)
-    assert r.action == ACTION_RESPOND
-    assert b"Set Up Wi-Fi" in r.response
+    assert r.action == ACTION_SCAN
 
     r = route_setup_request(Req("GET", "/scan"), "SETUP_AP", False)
     assert r.action == ACTION_SCAN
@@ -214,20 +214,17 @@ def test_setup_page_has_tokens_and_a11y():
     assert "#12161c" in html
     assert "#7c6cf6" in html
     assert "aria-live" in html
-    assert 'aria-label="Show Wi-Fi password"' in html
     assert "min-height:44px" in html
     assert "Connecting…" in pages.setup_page_html({"status": "connecting"})
-    assert 'setAttribute("aria-live","polite")' in html
-    assert 'charAt(0)==="<"' in html
+    assert "No networks found" in html
+    assert "charAt(0)===" not in html
 
     failure = pages.setup_page_html(
         {"status": "failure", "ssid": "HomeNet", "admin_password": "adminpass"}
     )
-    assert 'id="screen2" class="screen active"' in failure
     assert "Couldn't join HomeNet" in failure
-    assert "__setupPrefill" in failure
-    assert "setTimeout" not in failure
-    assert "applyPrefillSelection" in failure
+    assert 'value="adminpass"' in failure
+    assert 'value=""' in failure
 
 
 def test_scan_decode_dedupe_omits_bad():

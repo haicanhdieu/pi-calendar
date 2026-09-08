@@ -25,7 +25,7 @@ class RouteResult:
 
 def route_setup_request(request, mode, candidate_active):
     if mode != "SETUP_AP": return RouteResult(ACTION_RESPOND, pages.response_not_found())
-    if request.path == "/" and request.method == "GET": return RouteResult(ACTION_RESPOND, pages.response_setup_page())
+    if request.path == "/" and request.method == "GET": return RouteResult(ACTION_SCAN)
     if request.path == "/scan" and request.method == "GET": return RouteResult(ACTION_SCAN)
     if request.path != "/connect" or request.method != "POST":
         return RouteResult(ACTION_RESPOND, pages.response_unsupported() if request.path in ("/", "/scan", "/connect") else pages.response_not_found())

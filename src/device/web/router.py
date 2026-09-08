@@ -75,7 +75,7 @@ def route_setup_request(request, mode, candidate_active):
     path = request.path
 
     if path == "/" and method == "GET":
-        return RouteResult(ACTION_RESPOND, pages.response_setup_page())
+        return RouteResult(ACTION_SCAN)
 
     if path == "/scan" and method == "GET":
         return RouteResult(ACTION_SCAN)

@@ -317,9 +317,11 @@ class SetupHttpServer:
                 gc.collect()
             except Exception:
                 pass
-            from src.device.web.scan_response import scan_response_stream
-
-            client.outbox = scan_response_stream(ssids)
+            if request.path == "/":
+                client.outbox = pages.response_setup_page({"ssids": ssids})
+            else:
+                from src.device.web.scan_response import scan_response_stream
+                client.outbox = scan_response_stream(ssids)
             client.out_offset = 0
             client.closing = True
             return None

@@ -68,9 +68,8 @@ def test_login_and_settings_pages_tokens():
     assert "Admin Password" in login
     assert "username" not in login.lower() or 'name="username"' not in login
     assert 'name="password"' in login
-    assert "#12161c" in login
-    assert "#7c6cf6" in login
-    assert "min-height:44px" in login
+    assert "water.css" in login
+    assert "fetch(" not in login
     assert "Incorrect password" in pages.login_page_html(incorrect=True)
     assert "aria-live" in pages.login_page_html(incorrect=True)
 
@@ -79,14 +78,13 @@ def test_login_and_settings_pages_tokens():
     assert "Admin Password" in settings
     assert "Color Scheme" in settings
     assert "Forest &amp; Amber" in settings
-    assert 'aria-disabled="true"' in settings
+    assert '<details' in settings
+    assert 'disabled' in settings
     assert 'name="new_password"' in settings
     assert 'method="POST"' in settings
     assert 'action="/settings"' in settings
-    assert "#12161c" in settings
-    assert "min-height:44px" in settings
+    assert "water.css" in settings
     assert "http://" not in settings
-    assert "https://" not in settings
     assert "Password changed." not in settings
 
     changed = pages.settings_page_html(password_changed=True)
