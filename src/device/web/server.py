@@ -307,10 +307,12 @@ class SetupHttpServer:
             client.closing = True
             return None
         if routed.action == ACTION_SCAN:
+            scan_failed = False
             try:
                 ssids = scan_fn() if scan_fn is not None else []
             except Exception:
                 ssids = []
+                scan_failed = True
             try:
                 import gc
 
@@ -318,7 +320,7 @@ class SetupHttpServer:
             except Exception:
                 pass
             if request.path == "/":
-                client.outbox = pages.response_setup_page({"ssids": ssids})
+                client.outbox = pages.response_setup_page({"ssids": ssids, "scan_failed": scan_failed})
             else:
                 from src.device.web.scan_response import scan_response_stream
                 client.outbox = scan_response_stream(ssids)

@@ -45,7 +45,7 @@ def response_not_found(): return http_response("404 Not Found", "Not Found")
 def response_too_large(): return http_response("413 Payload Too Large", "Too Large")
 def response_unsupported(): return http_response("405 Method Not Allowed", "Method Not Allowed")
 def response_join_failure(ssid, admin_password=""):
-    return response_setup_page({"status": "failure", "ssid": ssid, "admin_password": admin_password})
+    return response_setup_page({"status": "failure", "ssid": ssid, "admin_password": admin_password, "ssids": (ssid,)})
 def response_join_success(ssid):
     return http_response("200 OK", '<!doctype html><meta name=viewport content=width=device-width><title>Pi Calendar Connected</title><h1>Connected to %s.</h1><p>Reconnect your phone to your home Wi-Fi, then open the IP shown on the clock.</p>' % html_escape(ssid or "Wi-Fi"))
 def response_for_parse_error(error_code):

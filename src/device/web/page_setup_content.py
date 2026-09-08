@@ -12,6 +12,8 @@ def setup_page_html(state=None):
     ssid = str(state.get("ssid") or "")
     admin = str(state.get("admin_password") or "")
     ssids = state.get("ssids") or ()
+    if not ssids and ssid:
+        ssids = (ssid,)
     options = ['<option value="">Choose a network</option>']
     for value in ssids:
         value = str(value)
@@ -27,8 +29,12 @@ def setup_page_html(state=None):
         banner = '<p class="banner success" aria-live="polite">Connected to {}.</p>'.format(html_escape(ssid or "Wi-Fi"))
     elif status == "form_error":
         banner = '<p class="banner failure" aria-live="polite">Choose a network and use passwords between 8 and 63 characters.</p>'
+    elif state.get("scan_failed"):
+        banner = '<p class="banner failure" aria-live="polite">Could not scan networks. Select Rescan networks to try again.</p>'
     else:
         banner = ""
+    if state.get("message"):
+        banner = '<p class="banner" aria-live="polite">{}</p>'.format(html_escape(state["message"]))
     if not ssids and not banner:
         banner = '<p class="banner" aria-live="polite">No networks found. Select Rescan networks to try again.</p>'
     elif not banner:
@@ -43,4 +49,4 @@ def setup_page_html(state=None):
         '<input id="wifi-password" name="wifi_password" type="password" autocomplete="current-password" minlength="8" maxlength="63" required value="">'
         '<label for="admin-password">Admin Password</label>'
         '<input id="admin-password" name="admin_password" type="password" autocomplete="new-password" minlength="8" maxlength="63" required value="' + html_escape(admin) + '">'
-        '<button type="submit">Connect</button></form></body></html>')
+        '<button type="submit"' + (' disabled' if status in ("connecting", "success") else '') + '>Connect</button></form></body></html>')

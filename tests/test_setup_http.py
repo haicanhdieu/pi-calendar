@@ -225,6 +225,7 @@ def test_setup_page_has_tokens_and_a11y():
     assert "Couldn't join HomeNet" in failure
     assert 'value="adminpass"' in failure
     assert 'value=""' in failure
+    assert '<option value="HomeNet" selected>HomeNet</option>' in failure
 
 
 def test_scan_decode_dedupe_omits_bad():
