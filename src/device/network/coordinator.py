@@ -500,8 +500,9 @@ class NetworkCoordinator:
             http.close_clients()
             self._web_failure("asset", station=True, now=now)
             return kdf_active
-        except Exception:
+        except Exception as exc:
             http.close_clients()
+            self._log("web_asset " + type(exc).__name__)
             self._web_failure("asset", station=True, now=now)
             return kdf_active
         if action is None:
