@@ -54,7 +54,19 @@ def _json_string(value):
 
 def response_setup_page(state=None): return http_response("200 OK", setup_page_html(state))
 def response_setup_form_error(): return response_setup_page({"status": "form_error"})
-def response_scan_json(ssids): return http_response("200 OK", '{"ssids":[' + ','.join(_json_string(value) for value in ssids) + ']}', "application/json")
+def response_scan_json(ssids):
+    """Build the scan response without a large intermediate JSON string."""
+    payload = bytearray(b'{"ssids":[')
+    first = True
+    for value in ssids:
+        if not first:
+            payload.extend(b",")
+        payload.extend(_json_string(value).encode("utf-8"))
+        first = False
+    payload.extend(b"]}")
+    return http_response("200 OK", payload, "application/json")
+
+
 def response_busy(): return http_response("503 Service Unavailable", "Busy")
 def response_bad_request(): return http_response("400 Bad Request", "Bad Request")
 def response_not_found(): return http_response("404 Not Found", "Not Found")

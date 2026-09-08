@@ -61,6 +61,21 @@ def test_setup_assets_keep_scan_flow_and_escape_json_controls():
     assert b'a\\n\\t\\"\\\\\\u0001' in response
 
 
+def test_scan_response_accepts_an_iterable_without_copying_it():
+    response = setup_pages.response_scan_json(iter(("Home", "Cafe")))
+    assert b'{"ssids":["Home","Cafe"]}' in response
+
+
+def test_scan_response_stream_matches_json_response():
+    from src.device.web.scan_response import scan_response_stream, scan_response_chunk
+    response = scan_response_stream(("Home", "Cafe"))
+    raw = b"".join(
+        scan_response_chunk(response, index, index + 64)
+        for index in range(0, response[1], 64)
+    )
+    assert b'{"ssids":["Home","Cafe"]}' in raw
+
+
 def test_setup_server_import_does_not_load_config_assets_or_auth():
     """The AP server's import footprint excludes admin-only resources."""
     result = subprocess.run(

@@ -271,8 +271,12 @@ def test_setup_listener_and_asset_failures_close_and_retry_with_heap_log():
         config.WEB_HEAP_CHECKPOINTS = previous
 
     class ExplodingHttp(FailingHttp):
+        def __init__(self):
+            super().__init__()
+            self.clients_closed = 0
         def ensure_listening(self): return True
         def tick(self, *_args, **_kwargs): raise MemoryError()
+        def close_clients(self): self.clients_closed += 1
 
     events = []
     exploding = ExplodingHttp()
@@ -283,7 +287,9 @@ def test_setup_listener_and_asset_failures_close_and_retry_with_heap_log():
     coordinator.tick()
     coordinator.tick()
     assert events[-1].error_code == "web_asset"
-    assert exploding.closed == 1
+    assert exploding.clients_closed == 1
+    # Listener must survive a per-request MemoryError so the AP stays reachable.
+    assert exploding.closed == 0
 
 
 def test_web_failure_is_reported_again_after_successful_recovery():

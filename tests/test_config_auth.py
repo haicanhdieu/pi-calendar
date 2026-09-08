@@ -384,15 +384,21 @@ def test_station_listener_and_asset_failures_emit_named_events_and_close():
     assert events[-1].error_code == "web_listen"
 
     class ExplodingHttp(BadHttp):
+        def __init__(self):
+            super().__init__()
+            self.clients_closed = 0
         def ensure_listening(self): return True
         def tick(self, *_args, **_kwargs): raise MemoryError()
+        def close_clients(self): self.clients_closed += 1
 
     coordinator._web_next_retry = None
     exploding = ExplodingHttp()
     coordinator._http = exploding
     coordinator.tick()
     assert events[-1].error_code == "web_asset"
-    assert exploding.closed == 1
+    assert exploding.clients_closed == 1
+    # Listener must survive a per-request MemoryError so config stays reachable.
+    assert exploding.closed == 0
     coordinator.tick()
     assert coordinator._sessions is None
 

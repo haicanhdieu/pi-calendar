@@ -126,12 +126,17 @@ class SetupHttpServer:
             self._listen = None
             return False
 
-    def close_all(self):
+    def close_clients(self):
+        """Drop every client connection but leave the listen socket bound."""
         held = self._held_client
         self._held_client = None
         for client in list(self._clients):
             self._close_client(client)
         self._clients = []
+        return held
+
+    def close_all(self):
+        held = self.close_clients()
         listen = self._listen
         self._listen = None
         if listen is not None:
@@ -303,10 +308,18 @@ class SetupHttpServer:
             return None
         if routed.action == ACTION_SCAN:
             try:
-                ssids = list(scan_fn() if scan_fn is not None else [])
+                ssids = scan_fn() if scan_fn is not None else []
             except Exception:
                 ssids = []
-            client.outbox = scan_response(ssids)
+            try:
+                import gc
+
+                gc.collect()
+            except Exception:
+                pass
+            from src.device.web.scan_response import scan_response_stream
+
+            client.outbox = scan_response_stream(ssids)
             client.out_offset = 0
             client.closing = True
             return None
@@ -414,9 +427,20 @@ class SetupHttpServer:
             return
         # Slice only the bounded write window.  Slicing ``outbox[offset:]``
         # first duplicates the entire page response on the Pico heap.
-        chunk = outbox[
-            client.out_offset : client.out_offset + self._per_tick_bytes
-        ]
+        if isinstance(outbox, tuple):
+            from src.device.web.scan_response import scan_response_chunk
+
+            chunk = scan_response_chunk(
+                outbox,
+                client.out_offset,
+                client.out_offset + self._per_tick_bytes,
+            )
+            outbox_length = outbox[1]
+        else:
+            chunk = outbox[
+                client.out_offset : client.out_offset + self._per_tick_bytes
+            ]
+            outbox_length = len(outbox)
         if not chunk:
             self._close_client(client)
             return
@@ -433,7 +457,7 @@ class SetupHttpServer:
         if sent is None:
             sent = len(chunk)
         client.out_offset += int(sent)
-        if client.out_offset >= len(outbox):
+        if client.out_offset >= outbox_length:
             self._close_client(client)
 
     def _close_client(self, client):

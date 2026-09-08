@@ -36,3 +36,14 @@ Firmware and planning repository for a Raspberry Pi Pico W clock and calendar de
 - Pure logic — calendar math, date arithmetic, view-state decisions, lunar conversion — must not import `machine`, `network`, or `ntptime`; those imports fail under CPython and take the whole host test suite down. Keep hardware access in the display and device layers and pass values in.
 
 <!-- /bmad:context -->
+
+## Critical Pico W runtime rules
+
+- Treat heap availability and allocation timing as part of the firmware contract. A successful `gc.mem_free()` reading does not prove that a later import or native WLAN allocation will succeed; verify the actual allocation boundary on the Pico.
+- Keep the first-boot path small: activate the setup AP, construct/listen on the setup-only HTTP server, and keep admin pages, sessions, and the full admin KDF lazy. Do not preload a large module merely to avoid a later import if that makes web-server construction fail.
+- The first-boot KDF must be available before `/connect` holds a browser request. Load a compact setup-only KDF while the setup scan/page path is active; never import the full admin KDF for the first time after Wi-Fi association or after retaining form/request buffers.
+- Before `WLAN.scan()`, run `gc.collect()` and explicitly activate `STA_IF`. Treat scan `MemoryError`/radio errors as a named, serial-visible failure; do not silently convert them into an indistinguishable empty network list.
+- Keep request bodies and generated response/page bytes short-lived. Release parsed form bodies before allocating KDF state, use setup-only responses during setup, and avoid rebuilding the full page at KDF completion.
+- Every runtime allocation/listen/scan/KDF failure must leave the cooperative loop and AP recoverable, emit a secret-free phase/code, and retry or return a bounded browser response. Broad exception handling must not erase the diagnostic.
+- Host pytest cannot prove Pico heap, WLAN scan, AP reachability, or browser behavior. For changes touching these paths, flash the board, clear `.settings-v1` for first-boot tests, capture serial checkpoints, and record device evidence separately from host-test results. Remove copied `__pycache__` trees before recursive `mpremote fs cp` deployment.
+- When investigating a setup failure, distinguish these checkpoints in serial output: `App loop starting`, web construction/listen, `scan_ok`/`scan_fail`, `setup_wifi_connect`, `setup_kdf_start`/`setup_kdf_done`, `setup_persist`, and terminal `setup_fail <code>`.

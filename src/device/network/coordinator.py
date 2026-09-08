@@ -96,8 +96,11 @@ class NetworkCoordinator:
         self._sessions = None
         self._kdf_job = None
         self._setup_kdf_job = None
+        self._setup_kdf_class = None
         self._kdf_correlation = 0
         self._kdf_acting_session_id = None
+        self._scan_response_ready = False
+        self._scan_response_fail_logged = False
 
     def _get_http(self, now=None, station=False):
         """Create the bounded web surface only when the active mode serves it."""
@@ -105,6 +108,9 @@ class NetworkCoordinator:
             self._web_recovered("construct", "construct_memory")
             return self._http
         try:
+            import gc
+
+            gc.collect()
             factory = self._http_factory
             if factory is None:
                 from src.device.web import SetupHttpServer
@@ -479,17 +485,23 @@ class NetworkCoordinator:
         # The server calls this factory only when it dispatches that request.
         sessions = self._get_sessions
         try:
+            import gc
+
+            gc.collect()
+        except Exception:
+            pass
+        try:
             action = http.tick(
                 MODE_STATION_ONLINE, candidate_active=False, scan_fn=None,
                 session_table=sessions, now_ticks=now,
                 kdf_busy=self._kdf_job is not None,
             )
         except MemoryError:
-            http.close_all()
+            http.close_clients()
             self._web_failure("asset", station=True, now=now)
             return kdf_active
         except Exception:
-            http.close_all()
+            http.close_clients()
             self._web_failure("asset", station=True, now=now)
             return kdf_active
         if action is None:
@@ -505,7 +517,7 @@ class NetworkCoordinator:
                 self._start_login_kdf(payload, now)
             except MemoryError:
                 self._wipe_bytearray(payload)
-                http.close_all()
+                http.close_clients()
                 self._web_failure("asset", station=True, now=now)
             return True
         if kind == "password_change_kdf":
@@ -518,7 +530,7 @@ class NetworkCoordinator:
                 self._start_password_change_kdf(password_ba, acting_id, now)
             except MemoryError:
                 self._wipe_bytearray(password_ba)
-                http.close_all()
+                http.close_clients()
                 self._web_failure("asset", station=True, now=now)
             return True
         return True
@@ -728,16 +740,29 @@ class NetworkCoordinator:
             return
         self._web_recovered("listen", "listen_memory")
         self._heap_checkpoint("setup_listening")
+        if not self._scan_response_ready:
+            try:
+                import src.device.web.scan_response  # noqa: F401
+
+                self._scan_response_ready = True
+                self._scan_response_fail_logged = False
+                self._log("scan_response_ready")
+            except Exception:
+                if not self._scan_response_fail_logged:
+                    self._scan_response_fail_logged = True
+                    self._log("scan_response_import_fail")
         try:
             action = http.tick(
                 MODE_SETUP_AP, candidate_active=False, scan_fn=self._scan_ssids,
             )
         except MemoryError:
-            http.close_all()
+            http.close_clients()
+            self._log("web_asset MemoryError")
             self._web_failure("asset", now=now)
             return
-        except Exception:
-            http.close_all()
+        except Exception as exc:
+            http.close_clients()
+            self._log("web_asset " + type(exc).__name__)
             self._web_failure("asset", now=now)
             return
         if action is None:
@@ -772,20 +797,35 @@ class NetworkCoordinator:
 
     def _scan_ssids(self):
         try:
+            import gc
+
+            gc.collect()
             wlan = self._get_wlan()
             try:
                 wlan.active(True)
             except Exception:
                 pass
             rows = wlan.scan()
-        except Exception:
+        except Exception as exc:
+            self._log("scan_fail " + type(exc).__name__)
             return []
         from src.provisioning.scan import ssids_from_scan_rows
 
-        return ssids_from_scan_rows(rows)
+        try:
+            from src.provisioning.setup_kdf import SetupKdfJob
+
+            self._setup_kdf_class = SetupKdfJob
+            self._log("setup_kdf_ready")
+        except Exception:
+            self._log("setup_kdf_import_fail")
+
+        ssids = ssids_from_scan_rows(rows)
+        self._log("scan_ok " + str(len(ssids)))
+        return ssids
 
     def _start_candidate(self, candidate, now):
         self._candidate = candidate
+        self._log("setup_candidate")
         self._candidate_started = False
         self._candidate_deadline = self._ticks.ticks_add(
             now, config.SYNC_COMMAND_DEADLINE_MS
@@ -804,7 +844,6 @@ class NetworkCoordinator:
         candidate = self._candidate
         if candidate is None:
             return
-        from src.provisioning.kdf_job import DERIVE_OK, KdfJob, PURPOSE_SETUP_DERIVE
 
         # Still serve HTTP so concurrent Connect receives 503 Busy.
         # Do not scan STA while a candidate join is in flight.
@@ -838,6 +877,7 @@ class NetworkCoordinator:
                 wlan.active(True)
                 wlan.connect(candidate.ssid, candidate.wifi_password)
                 self._candidate_started = True
+                self._log("setup_wifi_connect")
                 return
             if not wlan.isconnected():
                 return
@@ -851,11 +891,14 @@ class NetworkCoordinator:
                 import gc
 
                 gc.collect()
+                self._log("setup_kdf_start")
                 password_ba = bytearray(candidate.admin_password.encode("utf-8"))
-                self._setup_kdf_job = KdfJob(
-                    self._kdf_correlation + 1,
-                    PURPOSE_SETUP_DERIVE,
-                    password_ba,
+                if self._setup_kdf_class is None:
+                    from src.provisioning.setup_kdf import SetupKdfJob
+
+                    self._setup_kdf_class = SetupKdfJob
+                self._setup_kdf_job = self._setup_kdf_class(
+                    password_ba, config.ADMIN_PBKDF2_ITERATIONS
                 )
                 self._kdf_correlation += 1
             except Exception:
@@ -863,14 +906,20 @@ class NetworkCoordinator:
                 self._fail_candidate(ERROR_PERSIST_FAIL)
                 return
 
-        result = self._setup_kdf_job.step(config.KDF_ROUNDS_PER_TICK)
+        try:
+            result = self._setup_kdf_job.step(config.KDF_ROUNDS_PER_TICK)
+        except Exception:
+            self._fail_candidate(ERROR_PERSIST_FAIL)
+            return
         if result is None:
             return
         job = self._setup_kdf_job
         self._setup_kdf_job = None
-        if result != DERIVE_OK or not job.salt_hex or not job.verifier_hex:
+        if result != "DERIVE_OK" or not job.salt_hex or not job.verifier_hex:
+            self._log("setup_kdf_fail")
             self._fail_candidate(ERROR_PERSIST_FAIL)
             return
+        self._log("setup_kdf_done")
         self._complete_candidate_success(job.salt_hex, job.verifier_hex)
 
     def _complete_candidate_success(self, admin_salt_hex, admin_verifier_hex):
@@ -887,6 +936,7 @@ class NetworkCoordinator:
             return
 
         try:
+            self._log("setup_persist")
             store.commit(
                 wifi_ssid=candidate.ssid,
                 wifi_password=candidate.wifi_password,
@@ -894,6 +944,7 @@ class NetworkCoordinator:
                 admin_verifier_hex=admin_verifier_hex,
             )
         except Exception:
+            self._log("setup_persist_fail")
             self._disconnect_station()
             self._fail_candidate(ERROR_PERSIST_FAIL)
             return
@@ -921,6 +972,7 @@ class NetworkCoordinator:
         self._clear_candidate()
 
     def _fail_candidate(self, error_code):
+        self._log("setup_fail " + str(error_code))
         setup_job = self._setup_kdf_job
         self._setup_kdf_job = None
         if setup_job is not None:

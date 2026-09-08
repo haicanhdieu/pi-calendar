@@ -36,6 +36,9 @@ def main():
         return
 
     print("Initializing SPI0 TFT + App loop")
+    import gc
+
+    gc.threshold(gc.mem_free() // 4 + gc.mem_alloc())
     spi = SPI(
         0,
         baudrate=config.SPI_BAUDRATE,
