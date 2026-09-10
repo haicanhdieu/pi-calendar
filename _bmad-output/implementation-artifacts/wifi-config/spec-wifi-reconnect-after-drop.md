@@ -112,6 +112,18 @@ deferred:
 
 ## Spec Change Log
 
+### 2026-09-10 — Post-ship regression correction (out-of-band, reported by user)
+
+**Triggering report:** after this spec shipped (`19e088a`), the user reported: "Pi started successfully but I cannot access the setup page" (station-mode admin/config page, joined the LAN, page just wouldn't load).
+
+**Root cause:** `_handle_online_sync_failure` reacted to *every single* failed periodic sync by disconnecting and forcing an immediate rejoin. This device's NTP server is one fixed address (`config.NTP_SERVER_ADDRESS`), not a pool — an unreachable/blocked NTP endpoint on an otherwise perfectly healthy Wi-Fi link is a common, often-permanent condition, and produces the exact same symptom (no reply within the deadline) as the zombie-`isconnected()` case this fix targeted. Reacting on the first failure meant a permanently-unreachable NTP server put the station into a repeating disconnect/reconnect cycle, during which the station admin HTTP page is not served at all (`_tick_store_station` serves no HTTP) — trading the original bug for a worse, more common one. This is the same trade-off the review pass's Blind Hunter finding #4 raised and I (wrongly, in hindsight) rejected as `false` at the time.
+
+**Amendment:** Added a separate `_online_sync_fail_streak` counter (`config.STATION_ONLINE_SYNC_FAILURE_STREAK_LIMIT = 2`), independent of `_station_failure_count`. A sync failure only increments the streak; only once the streak reaches the limit does the coordinator perform one bounded reconnect (streak resets to 0 either way — on escalation or on the next successful sync). Crucially, `_handle_online_sync_failure` no longer touches `_station_failure_count`/`SETUP_AP` at all — that fallback is now reachable only through a genuine subsequent join failure (`_fail_store_station`, pre-existing/untouched), never directly from an NTP-only symptom.
+
+**Known-bad state avoided:** a station that is fully healthy except for a blocked/unreachable NTP endpoint no longer gets disconnected on every retry (previously: every ~1h, forever) or ever routed into `SETUP_AP` for a problem that has nothing to do with the stored Wi-Fi credentials — it now takes at most one brief (~15s) reconnect blip per streak, self-healing back to normal.
+
+**KEEP:** the zombie-`isconnected()`-lying recovery this spec was written for is preserved — once escalated, the forced reconnect attempt is a real join attempt through the existing, unmodified `_fail_store_station`/`_enter_setup_ap_from_failures` machinery, so a genuinely dead link still reaches `SETUP_AP` within `STATION_FAILURE_LIMIT` escalations, exactly as this spec intended. Test coverage: `tests/test_station_recover.py::test_permanently_unreachable_ntp_never_reaches_setup_ap` (never reaches `SETUP_AP`, one disconnect per streak) and `::test_repeated_sync_failure_streaks_still_reach_setup_ap_via_real_join_failures` (still recovers a genuinely dead link).
+
 ## Review Triage Log
 
 ### 2026-09-10 — Review pass

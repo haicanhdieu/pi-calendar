@@ -308,8 +308,11 @@ def _online_store_coordinator(socket=None, ticks=None, events=None):
     return coordinator, events, ticks, wlan
 
 
-def test_online_sync_failure_arms_immediate_reconnect():
-    """Matrix: sync fails once while online -> counter +1, reconnect armed."""
+def test_single_online_sync_failure_does_not_disconnect_station():
+    """A lone sync failure (e.g. blocked/unreachable NTP server) must not
+    disconnect an otherwise healthy station link -- the device's NTP server
+    is one fixed address, not a pool, so this is a routine, expected outcome
+    that must never make the station admin HTTP page unreachable."""
     ticks = FakeTicks()
     socket = FakeSocketModule(recv_exc=OSError(113, "unreachable"))
     coordinator, events, ticks, wlan = _online_store_coordinator(
@@ -321,9 +324,10 @@ def test_online_sync_failure_arms_immediate_reconnect():
     coordinator.tick()  # send NTP request -> state=recv_ntp
     coordinator.tick()  # recv fails -> ntp_fail -> _handle_online_sync_failure
 
-    assert coordinator._station_failure_count == 1
-    assert coordinator.mode == MODE_STATION_CONNECTING
-    assert wlan.disconnect_calls == 1
+    assert coordinator._online_sync_fail_streak == 1
+    assert coordinator._station_failure_count == 0
+    assert coordinator.mode == MODE_STATION_ONLINE
+    assert wlan.disconnect_calls == 0
 
     result = coordinator._mailbox.try_take_result()
     assert result is not None
@@ -331,8 +335,30 @@ def test_online_sync_failure_arms_immediate_reconnect():
     assert result.error_code == "ntp_fail"
 
 
+def test_online_sync_failure_streak_arms_reconnect_without_touching_setup_ap_counter():
+    """Matrix: STREAK_LIMIT consecutive sync failures -> one bounded reconnect,
+    but the SETUP_AP failure counter is never touched by an NTP-only streak."""
+    ticks = FakeTicks()
+    socket = FakeSocketModule(recv_exc=OSError(113, "unreachable"))
+    coordinator, events, ticks, wlan = _online_store_coordinator(
+        socket=socket, ticks=ticks
+    )
+
+    for _ in range(config.STATION_ONLINE_SYNC_FAILURE_STREAK_LIMIT):
+        coordinator._mailbox.enqueue(SyncCommand(1, 100))
+        coordinator.tick()
+        coordinator.tick()
+        coordinator.tick()
+        coordinator._mailbox.try_take_result()
+
+    assert coordinator.mode == MODE_STATION_CONNECTING
+    assert coordinator._online_sync_fail_streak == 0
+    assert coordinator._station_failure_count == 0
+    assert wlan.disconnect_calls == 1
+
+
 def test_online_sync_failure_cancels_inflight_config_auth():
-    """Matrix: config-auth in flight -> cancelled/closed before reconnect arms.
+    """Matrix: config-auth in flight -> cancelled/closed once the streak escalates.
 
     Exercises ``_handle_online_sync_failure`` directly: the coordinator's own
     dispatch (``_tick_station_config``) never lets the mailbox NTP state
@@ -343,6 +369,9 @@ def test_online_sync_failure_cancels_inflight_config_auth():
     """
     ticks = FakeTicks()
     coordinator, events, ticks, wlan = _online_store_coordinator(ticks=ticks)
+    coordinator._online_sync_fail_streak = (
+        config.STATION_ONLINE_SYNC_FAILURE_STREAK_LIMIT - 1
+    )
     kdf_job = _FakeKdfJob()
     coordinator._kdf_job = kdf_job
     coordinator._kdf_acting_session_id = "sess-1"
@@ -354,23 +383,27 @@ def test_online_sync_failure_cancels_inflight_config_auth():
     assert coordinator._kdf_job is None
     assert coordinator._kdf_acting_session_id is None
     assert http.close_all_calls == 1
-    assert coordinator._station_failure_count == 1
+    assert coordinator._station_failure_count == 0
+    assert coordinator._online_sync_fail_streak == 0
     assert coordinator.mode == MODE_STATION_CONNECTING
 
 
-def test_online_sync_failure_reconnect_succeeds_resets_failure_count():
-    """Matrix: forced reconnect (from a sync failure) succeeds -> counter resets."""
+def test_online_sync_failure_reconnect_succeeds_resets_streak():
+    """Matrix: forced reconnect (from an escalated sync-failure streak)
+    succeeds -> streak resets, SETUP_AP counter was never touched."""
     ticks = FakeTicks()
     socket = FakeSocketModule(recv_exc=OSError(113, "unreachable"))
     coordinator, events, ticks, wlan = _online_store_coordinator(
         socket=socket, ticks=ticks
     )
-    coordinator._mailbox.enqueue(SyncCommand(1, 100))
-    coordinator.tick()
-    coordinator.tick()
-    coordinator.tick()
+    for _ in range(config.STATION_ONLINE_SYNC_FAILURE_STREAK_LIMIT):
+        coordinator._mailbox.enqueue(SyncCommand(1, 100))
+        coordinator.tick()
+        coordinator.tick()
+        coordinator.tick()
+        coordinator._mailbox.try_take_result()
     assert coordinator.mode == MODE_STATION_CONNECTING
-    assert coordinator._station_failure_count == 1
+    assert coordinator._station_failure_count == 0
 
     coordinator.tick()  # begin the rearmed store attempt
     wlan.connected = True
@@ -379,6 +412,7 @@ def test_online_sync_failure_reconnect_succeeds_resets_failure_count():
 
     assert coordinator.mode == MODE_STATION_ONLINE
     assert coordinator._station_failure_count == 0
+    assert coordinator._online_sync_fail_streak == 0
     online = [
         e
         for e in events
@@ -388,22 +422,64 @@ def test_online_sync_failure_reconnect_succeeds_resets_failure_count():
     assert online[-1].ip == "10.0.0.9"
 
 
-def test_three_consecutive_sync_failures_enter_setup_ap():
-    """Matrix: three consecutive terminal failures (sync-triggered) -> SETUP_AP."""
+def test_permanently_unreachable_ntp_never_reaches_setup_ap():
+    """Regression: an NTP server that never answers (but a healthy, always-
+    rejoinable station link) must never accumulate toward SETUP_AP and must
+    only disconnect the station once per streak, not on every failure."""
     ticks = FakeTicks()
     socket = FakeSocketModule(recv_exc=OSError(113, "unreachable"))
     coordinator, events, ticks, wlan = _online_store_coordinator(
         socket=socket, ticks=ticks
     )
-    # Two prior failures already accumulated (join- and/or sync-triggered).
-    coordinator._station_failure_count = 2
-    coordinator._mailbox.enqueue(SyncCommand(1, 100))
 
-    coordinator.tick()
-    coordinator.tick()
-    coordinator.tick()  # third terminal failure -> exhausted
+    streaks = 4  # far more than STATION_FAILURE_LIMIT worth of failures
+    for _ in range(streaks):
+        for _ in range(config.STATION_ONLINE_SYNC_FAILURE_STREAK_LIMIT):
+            coordinator._mailbox.enqueue(SyncCommand(1, 100))
+            coordinator.tick()
+            coordinator.tick()
+            coordinator.tick()
+            coordinator._mailbox.try_take_result()
+        assert coordinator.mode == MODE_STATION_CONNECTING
+        coordinator.tick()  # begin the rearmed (always-healthy) rejoin
+        wlan.connected = True
+        ticks.now = ticks.ticks_add(ticks.now, 10)
+        coordinator.tick()  # rejoin succeeds -> back online
+        assert coordinator.mode == MODE_STATION_ONLINE
 
-    assert coordinator._station_failure_count == 3
+    assert coordinator._station_failure_count == 0
+    assert wlan.disconnect_calls == streaks
+
+
+def test_repeated_sync_failure_streaks_still_reach_setup_ap_via_real_join_failures():
+    """A genuinely dead link: each escalated reconnect's real join attempt
+    also fails -> the existing join-failure counter (untouched by this
+    story) still reaches SETUP_AP, proving the zombie-link case still
+    recovers even though NTP failures alone never drive that counter."""
+    ticks = FakeTicks()
+    socket = FakeSocketModule(recv_exc=OSError(113, "unreachable"))
+    coordinator, events, ticks, wlan = _online_store_coordinator(
+        socket=socket, ticks=ticks
+    )
+
+    for attempt in range(config.STATION_FAILURE_LIMIT):
+        for _ in range(config.STATION_ONLINE_SYNC_FAILURE_STREAK_LIMIT):
+            coordinator._mailbox.enqueue(SyncCommand(1, 100))
+            coordinator.tick()
+            coordinator.tick()
+            coordinator.tick()
+            coordinator._mailbox.try_take_result()
+        assert coordinator.mode == MODE_STATION_CONNECTING
+        # The escalated reconnect's own join now fails for real (zombie link).
+        ticks.now = ticks.ticks_add(ticks.now, config.SYNC_COMMAND_DEADLINE_MS)
+        coordinator.tick()  # begin
+        ticks.now = ticks.ticks_add(ticks.now, config.SYNC_COMMAND_DEADLINE_MS)
+        coordinator.tick()  # terminal join timeout -> _fail_store_station
+        if attempt < config.STATION_FAILURE_LIMIT - 1:
+            assert coordinator.mode == MODE_STATION_CONNECTING
+            ticks.now = ticks.ticks_add(ticks.now, config.STATION_RECONNECT_GAP_MS)
+
+    assert coordinator._station_failure_count == config.STATION_FAILURE_LIMIT
     assert coordinator.mode == MODE_SETUP_AP
     setup = [e for e in events if e.kind == EVENT_SETUP_STATUS]
     assert setup
@@ -412,46 +488,26 @@ def test_three_consecutive_sync_failures_enter_setup_ap():
 
 
 def test_finish_fatal_mailbox_saturation_skips_online_sync_failure_handling():
-    """A fatal mailbox-saturation result must not also force a teardown."""
+    """A fatal mailbox-saturation result must not also advance the streak."""
     ticks = FakeTicks()
     coordinator, events, ticks, wlan = _online_store_coordinator(ticks=ticks)
+    coordinator._online_sync_fail_streak = (
+        config.STATION_ONLINE_SYNC_FAILURE_STREAK_LIMIT - 1
+    )
     coordinator._command = SyncCommand(1, 100)
     coordinator._take_epoch = coordinator._mailbox.epoch
     # Pre-occupy the result slot so publish_result raises MailboxSaturationError.
     coordinator._mailbox.occupy_result(SyncResult(99, True, None, None))
-    before_count = coordinator._station_failure_count
 
     coordinator._finish(False, None, "ntp_fail")
 
     assert coordinator.fatal is not None
-    assert coordinator._station_failure_count == before_count
+    assert coordinator._online_sync_fail_streak == (
+        config.STATION_ONLINE_SYNC_FAILURE_STREAK_LIMIT - 1
+    )
+    assert coordinator._station_failure_count == 0
     assert coordinator.mode == MODE_STATION_ONLINE
     assert wlan.disconnect_calls == 0
-
-
-def test_online_sync_failure_exhausted_disconnects_and_emits_error_before_setup_ap():
-    """Matrix: exhausted sync-triggered failure disconnects + emits station_error
-    before SETUP_AP activates, mirroring ``_fail_store_station``."""
-    ticks = FakeTicks()
-    coordinator, events, ticks, wlan = _online_store_coordinator(ticks=ticks)
-    coordinator._station_failure_count = config.STATION_FAILURE_LIMIT - 1
-
-    coordinator._handle_online_sync_failure("ntp_fail")
-
-    assert coordinator._station_failure_count == config.STATION_FAILURE_LIMIT
-    assert coordinator.mode == MODE_SETUP_AP
-    assert wlan.disconnect_calls == 1
-
-    error_index = next(
-        i
-        for i, e in enumerate(events)
-        if e.kind == EVENT_STATION_ERROR and e.error_code == "ntp_fail"
-    )
-    setup_index = next(
-        i for i, e in enumerate(events) if e.kind == EVENT_SETUP_STATUS
-    )
-    assert error_index < setup_index
-    assert events[error_index].mode == MODE_STATION_ONLINE
 
 
 def test_proof_1_3_checklist_records_coexistence_fields():

@@ -87,6 +87,7 @@ class NetworkCoordinator:
         self._candidate_deadline = None
         self._candidate_started = False
         self._station_failure_count = reset_station_failure_count()
+        self._online_sync_fail_streak = 0
         self._station_ssid = None
         self._station_password = None
         self._station_deadline = None
@@ -384,6 +385,7 @@ class NetworkCoordinator:
         except Exception:
             ip = None
         self._station_failure_count = reset_station_failure_count()
+        self._online_sync_fail_streak = 0
         self._clear_store_station_attempt()
         self._mode = MODE_STATION_ONLINE
         try:
@@ -437,27 +439,24 @@ class NetworkCoordinator:
 
     def _handle_online_sync_failure(self, error_code):
         """
-        Treat a failed periodic sync while nominally online as a station-
-        health signal in its own right (CYW43 firmware can keep reporting
-        ``isconnected() == True`` on a dead association). Folds into the
-        same consecutive-terminal-failure counter and SETUP_AP contract as
-        an ``isconnected()``-detected drop (story 1.3).
+        A failed periodic sync while nominally online is ambiguous: it is
+        both the only symptom of a dead station link that ``isconnected()``
+        keeps lying about (CYW43 firmware quirk), and the routine result of
+        an unreachable/blocked NTP endpoint on an otherwise perfectly
+        healthy Wi-Fi link (this device's NTP server is one fixed address,
+        not a pool). Reacting to every single failure — as an earlier
+        version of this method did — disconnects a healthy station on the
+        very common "NTP blocked, LAN fine" case, making the station HTTP
+        admin page repeatedly unreachable. Only escalate after several
+        consecutive failures, and only as a single bounded reconnect
+        attempt: this stays a plain sync failure (never counted toward
+        ``_station_failure_count``/SETUP_AP) unless the escalated reconnect
+        itself then fails as a real join attempt.
         """
-        self._station_failure_count = next_station_failure_count(
-            self._station_failure_count
-        )
-        if station_failures_exhausted(self._station_failure_count):
-            self._disconnect_station()
-            try:
-                self._emit(
-                    station_error_event(
-                        error_code, mode=MODE_STATION_ONLINE, ssid=self._station_ssid
-                    )
-                )
-            except Exception:
-                pass
-            self._enter_setup_ap_from_failures()
+        self._online_sync_fail_streak += 1
+        if self._online_sync_fail_streak < config.STATION_ONLINE_SYNC_FAILURE_STREAK_LIMIT:
             return
+        self._online_sync_fail_streak = 0
         self._abort_config_auth()
         self._disconnect_station()
         self._arm_store_station_attempt(self._ticks.ticks_ms(), 0)
@@ -1069,6 +1068,7 @@ class NetworkCoordinator:
         ssid = candidate.ssid
         # Order: emit online → flush browser success → close clients → drop AP.
         self._station_failure_count = reset_station_failure_count()
+        self._online_sync_fail_streak = 0
         self._clear_store_station_attempt()
         self._mode = MODE_STATION_ONLINE
         try:
@@ -1264,13 +1264,11 @@ class NetworkCoordinator:
         except MailboxSaturationError as exc:
             self.fatal = exc
             self._log("FATAL:MAILBOX_SATURATION", "result slot occupied")
-        if (
-            not ok
-            and self._settings_store is not None
-            and self._mode == MODE_STATION_ONLINE
-            and self.fatal is None
-        ):
-            self._handle_online_sync_failure(error_code)
+        if self._settings_store is not None and self._mode == MODE_STATION_ONLINE:
+            if ok:
+                self._online_sync_fail_streak = 0
+            elif self.fatal is None:
+                self._handle_online_sync_failure(error_code)
 
     def _close_socket(self):
         sock = self._sock

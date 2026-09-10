@@ -112,6 +112,12 @@ STATION_FAILURE_LIMIT = 3
 STATION_IP_DISPLAY_MS = None
 # Gap before the next store-credential reconnect attempt after a terminal fail.
 STATION_RECONNECT_GAP_MS = 1_000
+# Consecutive periodic-sync failures while station-online (e.g. a blocked or
+# unreachable NTP server) tolerated before proactively reconnecting the
+# station link once. Deliberately independent of STATION_FAILURE_LIMIT: an
+# NTP-only failure must never by itself count toward the SETUP_AP fallback,
+# only a genuine subsequent join failure can.
+STATION_ONLINE_SYNC_FAILURE_STREAK_LIMIT = 2
 
 # Bounded local HTTP limits (AD-4 / story 1.2); join reuses SYNC_COMMAND_DEADLINE_MS
 HTTP_MAX_REQUEST_LINE = 256
