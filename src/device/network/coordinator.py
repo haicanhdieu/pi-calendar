@@ -435,6 +435,33 @@ class NetworkCoordinator:
         self._station_attempt_armed = False
         self._station_next_attempt = None
 
+    def _handle_online_sync_failure(self, error_code):
+        """
+        Treat a failed periodic sync while nominally online as a station-
+        health signal in its own right (CYW43 firmware can keep reporting
+        ``isconnected() == True`` on a dead association). Folds into the
+        same consecutive-terminal-failure counter and SETUP_AP contract as
+        an ``isconnected()``-detected drop (story 1.3).
+        """
+        self._station_failure_count = next_station_failure_count(
+            self._station_failure_count
+        )
+        if station_failures_exhausted(self._station_failure_count):
+            self._disconnect_station()
+            try:
+                self._emit(
+                    station_error_event(
+                        error_code, mode=MODE_STATION_ONLINE, ssid=self._station_ssid
+                    )
+                )
+            except Exception:
+                pass
+            self._enter_setup_ap_from_failures()
+            return
+        self._abort_config_auth()
+        self._disconnect_station()
+        self._arm_store_station_attempt(self._ticks.ticks_ms(), 0)
+
     def _watch_station_drop(self, now):
         """If a formerly-online station drops, start a reconnect attempt."""
         try:
@@ -1237,6 +1264,13 @@ class NetworkCoordinator:
         except MailboxSaturationError as exc:
             self.fatal = exc
             self._log("FATAL:MAILBOX_SATURATION", "result slot occupied")
+        if (
+            not ok
+            and self._settings_store is not None
+            and self._mode == MODE_STATION_ONLINE
+            and self.fatal is None
+        ):
+            self._handle_online_sync_failure(error_code)
 
     def _close_socket(self):
         sock = self._sock

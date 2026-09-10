@@ -5,7 +5,7 @@ from pathlib import Path
 
 from src import config
 from src.device.network.coordinator import NetworkCoordinator
-from src.device.network.mailbox import Mailbox
+from src.device.network.mailbox import Mailbox, SyncCommand, SyncResult
 from src.device.network.models import (
     EVENT_SETUP_STATUS,
     EVENT_STATION_ERROR,
@@ -22,7 +22,7 @@ from src.device.network.models import (
 )
 from src.provisioning.verifier import derive_admin_verifier
 
-from tests.test_network_coordinator import FakeTicks, FakeWlan
+from tests.test_network_coordinator import FakeSocketModule, FakeTicks, FakeWlan
 from tests.test_setup_ap_coordinator import FakeApWlan
 from tests.test_settings_store import FakeFS, _record_bytes, _store
 
@@ -253,6 +253,205 @@ def test_station_error_events_do_not_carry_secrets():
     assert err[-1].error_code in ("join_timeout", "join_fail")
     assert not hasattr(err[-1], "wifi_password")
     assert err[-1].ip is None
+
+
+class _IdleHttp:
+    """Minimal station-web stub: always listening, never serves a client."""
+
+    has_held_client = False
+
+    def ensure_listening(self):
+        return True
+
+    def tick(self, *_args, **_kwargs):
+        return None
+
+    def __init__(self):
+        self.close_all_calls = 0
+
+    def close_all(self):
+        self.close_all_calls += 1
+
+    def close_clients(self):
+        pass
+
+
+class _FakeKdfJob:
+    """Minimal in-flight KDF job stub: tracks whether it was cancelled."""
+
+    def __init__(self):
+        self.cancelled = False
+
+    def cancel(self):
+        self.cancelled = True
+
+
+def _online_store_coordinator(socket=None, ticks=None, events=None):
+    """Configured station-online coordinator wired for a mailbox NTP command."""
+    store = _configured_store(wifi_ssid="HomeNet", wifi_password="password1")
+    ticks = ticks if ticks is not None else FakeTicks()
+    wlan = FakeWlan(True, ip="10.0.0.9")
+    events = events if events is not None else []
+    coordinator = NetworkCoordinator(
+        Mailbox(),
+        wlan=wlan,
+        ap_wlan=FakeApWlan(),
+        settings_store=store,
+        event_sink=events,
+        ticks_module=ticks,
+        http_server=_IdleHttp(),
+        socket_module=socket,
+    )
+    coordinator.tick()  # begin store attempt (emit connecting)
+    coordinator.tick()  # already associated -> online
+    assert coordinator.mode == MODE_STATION_ONLINE
+    return coordinator, events, ticks, wlan
+
+
+def test_online_sync_failure_arms_immediate_reconnect():
+    """Matrix: sync fails once while online -> counter +1, reconnect armed."""
+    ticks = FakeTicks()
+    socket = FakeSocketModule(recv_exc=OSError(113, "unreachable"))
+    coordinator, events, ticks, wlan = _online_store_coordinator(
+        socket=socket, ticks=ticks
+    )
+    coordinator._mailbox.enqueue(SyncCommand(1, 100))
+
+    coordinator.tick()  # take command; already associated -> state=start_ntp
+    coordinator.tick()  # send NTP request -> state=recv_ntp
+    coordinator.tick()  # recv fails -> ntp_fail -> _handle_online_sync_failure
+
+    assert coordinator._station_failure_count == 1
+    assert coordinator.mode == MODE_STATION_CONNECTING
+    assert wlan.disconnect_calls == 1
+
+    result = coordinator._mailbox.try_take_result()
+    assert result is not None
+    assert result.ok is False
+    assert result.error_code == "ntp_fail"
+
+
+def test_online_sync_failure_cancels_inflight_config_auth():
+    """Matrix: config-auth in flight -> cancelled/closed before reconnect arms.
+
+    Exercises ``_handle_online_sync_failure`` directly: the coordinator's own
+    dispatch (``_tick_station_config``) never lets the mailbox NTP state
+    machine reach ``_finish`` while a KDF job is mid-flight (it claims the
+    tick's budget first), so a real held-client-plus-KDF-job moment cannot be
+    driven through ``tick()`` alone -- this isolates the abort/close sequence
+    the method itself must run whenever it fires.
+    """
+    ticks = FakeTicks()
+    coordinator, events, ticks, wlan = _online_store_coordinator(ticks=ticks)
+    kdf_job = _FakeKdfJob()
+    coordinator._kdf_job = kdf_job
+    coordinator._kdf_acting_session_id = "sess-1"
+    http = coordinator._http
+
+    coordinator._handle_online_sync_failure("ntp_fail")
+
+    assert kdf_job.cancelled is True
+    assert coordinator._kdf_job is None
+    assert coordinator._kdf_acting_session_id is None
+    assert http.close_all_calls == 1
+    assert coordinator._station_failure_count == 1
+    assert coordinator.mode == MODE_STATION_CONNECTING
+
+
+def test_online_sync_failure_reconnect_succeeds_resets_failure_count():
+    """Matrix: forced reconnect (from a sync failure) succeeds -> counter resets."""
+    ticks = FakeTicks()
+    socket = FakeSocketModule(recv_exc=OSError(113, "unreachable"))
+    coordinator, events, ticks, wlan = _online_store_coordinator(
+        socket=socket, ticks=ticks
+    )
+    coordinator._mailbox.enqueue(SyncCommand(1, 100))
+    coordinator.tick()
+    coordinator.tick()
+    coordinator.tick()
+    assert coordinator.mode == MODE_STATION_CONNECTING
+    assert coordinator._station_failure_count == 1
+
+    coordinator.tick()  # begin the rearmed store attempt
+    wlan.connected = True
+    ticks.now = ticks.ticks_add(ticks.now, 10)
+    coordinator.tick()  # observe already-associated -> online
+
+    assert coordinator.mode == MODE_STATION_ONLINE
+    assert coordinator._station_failure_count == 0
+    online = [
+        e
+        for e in events
+        if e.kind == EVENT_STATION_STATUS and e.mode == MODE_STATION_ONLINE
+    ]
+    assert online
+    assert online[-1].ip == "10.0.0.9"
+
+
+def test_three_consecutive_sync_failures_enter_setup_ap():
+    """Matrix: three consecutive terminal failures (sync-triggered) -> SETUP_AP."""
+    ticks = FakeTicks()
+    socket = FakeSocketModule(recv_exc=OSError(113, "unreachable"))
+    coordinator, events, ticks, wlan = _online_store_coordinator(
+        socket=socket, ticks=ticks
+    )
+    # Two prior failures already accumulated (join- and/or sync-triggered).
+    coordinator._station_failure_count = 2
+    coordinator._mailbox.enqueue(SyncCommand(1, 100))
+
+    coordinator.tick()
+    coordinator.tick()
+    coordinator.tick()  # third terminal failure -> exhausted
+
+    assert coordinator._station_failure_count == 3
+    assert coordinator.mode == MODE_SETUP_AP
+    setup = [e for e in events if e.kind == EVENT_SETUP_STATUS]
+    assert setup
+    assert setup[-1].ssid == SETUP_AP_SSID
+    assert setup[-1].ip == SETUP_AP_GATEWAY
+
+
+def test_finish_fatal_mailbox_saturation_skips_online_sync_failure_handling():
+    """A fatal mailbox-saturation result must not also force a teardown."""
+    ticks = FakeTicks()
+    coordinator, events, ticks, wlan = _online_store_coordinator(ticks=ticks)
+    coordinator._command = SyncCommand(1, 100)
+    coordinator._take_epoch = coordinator._mailbox.epoch
+    # Pre-occupy the result slot so publish_result raises MailboxSaturationError.
+    coordinator._mailbox.occupy_result(SyncResult(99, True, None, None))
+    before_count = coordinator._station_failure_count
+
+    coordinator._finish(False, None, "ntp_fail")
+
+    assert coordinator.fatal is not None
+    assert coordinator._station_failure_count == before_count
+    assert coordinator.mode == MODE_STATION_ONLINE
+    assert wlan.disconnect_calls == 0
+
+
+def test_online_sync_failure_exhausted_disconnects_and_emits_error_before_setup_ap():
+    """Matrix: exhausted sync-triggered failure disconnects + emits station_error
+    before SETUP_AP activates, mirroring ``_fail_store_station``."""
+    ticks = FakeTicks()
+    coordinator, events, ticks, wlan = _online_store_coordinator(ticks=ticks)
+    coordinator._station_failure_count = config.STATION_FAILURE_LIMIT - 1
+
+    coordinator._handle_online_sync_failure("ntp_fail")
+
+    assert coordinator._station_failure_count == config.STATION_FAILURE_LIMIT
+    assert coordinator.mode == MODE_SETUP_AP
+    assert wlan.disconnect_calls == 1
+
+    error_index = next(
+        i
+        for i, e in enumerate(events)
+        if e.kind == EVENT_STATION_ERROR and e.error_code == "ntp_fail"
+    )
+    setup_index = next(
+        i for i, e in enumerate(events) if e.kind == EVENT_SETUP_STATUS
+    )
+    assert error_index < setup_index
+    assert events[error_index].mode == MODE_STATION_ONLINE
 
 
 def test_proof_1_3_checklist_records_coexistence_fields():
