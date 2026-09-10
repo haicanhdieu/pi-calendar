@@ -101,6 +101,10 @@ class NetworkCoordinator:
         self._kdf_acting_session_id = None
         self._scan_response_ready = False
         self._scan_response_fail_logged = False
+        self._scan_cache = ()
+        self._scan_status = "empty"
+        self._scan_error = None
+        self._setup_notice = None
         self._station_assets_ready = False
 
     def _get_http(self, now=None, station=False):
@@ -207,6 +211,20 @@ class NetworkCoordinator:
     @property
     def candidate_active(self):
         return self._candidate is not None
+
+    @property
+    def scan_status(self):
+        """Compact setup scan state: ``empty``, ``ok``, or ``failed``."""
+        return self._scan_status
+
+    @property
+    def scan_error(self):
+        """Secret-free diagnostic name for the last failed scan."""
+        return self._scan_error
+
+    @property
+    def scan_cache(self):
+        return self._scan_cache
 
     def _emit(self, event):
         sink = self._event_sink
@@ -469,7 +487,9 @@ class NetworkCoordinator:
         if kdf_active:
             from src.provisioning.kdf_job import PURPOSE_PASSWORD_CHANGE_DERIVE
 
-            result = self._kdf_job.step(config.KDF_ROUNDS_PER_TICK)
+            result = self._kdf_job.step(
+                config.KDF_ROUNDS_PER_TICK, max_ms=config.KDF_MAX_STEP_MS
+            )
             if result is not None:
                 purpose = self._kdf_job.purpose
                 if purpose == PURPOSE_PASSWORD_CHANGE_DERIVE:
@@ -509,12 +529,6 @@ class NetworkCoordinator:
         # Session/KDF/auth modules stay absent until the first config request.
         # The server calls this factory only when it dispatches that request.
         sessions = self._get_sessions
-        try:
-            import gc
-
-            gc.collect()
-        except Exception:
-            pass
         try:
             action = http.tick(
                 MODE_STATION_ONLINE, candidate_active=False, scan_fn=None,
@@ -563,8 +577,13 @@ class NetworkCoordinator:
 
     def _start_login_kdf(self, password_ba, now):
         from src.provisioning.kdf_job import KdfJob, PURPOSE_LOGIN_VERIFY
+        from src.provisioning.constants import (
+            LEGACY_ADMIN_VERIFIER_VERSION,
+            LEGACY_PBKDF2_ITERATIONS,
+            PBKDF2_ITERATIONS,
+        )
 
-        salt_hex, verifier_hex = self._load_admin_verifier()
+        salt_hex, verifier_hex, verifier_iterations = self._load_admin_verifier()
         self._kdf_correlation = int(self._kdf_correlation) + 1
         self._kdf_acting_session_id = None
         if salt_hex is None or verifier_hex is None:
@@ -580,6 +599,7 @@ class NetworkCoordinator:
             password_ba,
             salt_hex,
             verifier_hex,
+            iterations=verifier_iterations or PBKDF2_ITERATIONS,
         )
         # Password ownership transferred into the job (wiped on terminal).
         if self._kdf_job.done:
@@ -728,15 +748,25 @@ class NetworkCoordinator:
         except Exception:
             return None, None
         if not settings:
-            return None, None
+            return None, None, None
         version = settings.get("admin_verifier_version")
         salt = settings.get("admin_salt")
         verifier = settings.get("admin_verifier")
-        if version != "pbkdf2-sha256-v1":
-            return None, None
+        from src.provisioning.constants import (
+            ADMIN_VERIFIER_VERSION,
+            LEGACY_ADMIN_VERIFIER_VERSION,
+            LEGACY_PBKDF2_ITERATIONS,
+            PBKDF2_ITERATIONS,
+        )
+        if version == ADMIN_VERIFIER_VERSION:
+            iterations = PBKDF2_ITERATIONS
+        elif version == LEGACY_ADMIN_VERIFIER_VERSION:
+            iterations = LEGACY_PBKDF2_ITERATIONS
+        else:
+            return None, None, None
         if not salt or not verifier:
-            return None, None
-        return str(salt), str(verifier)
+            return None, None, None
+        return str(salt), str(verifier), iterations
 
     @staticmethod
     def _wipe_bytearray(buf):
@@ -779,7 +809,10 @@ class NetworkCoordinator:
                     self._log("scan_response_import_fail")
         try:
             action = http.tick(
-                MODE_SETUP_AP, candidate_active=False, scan_fn=self._scan_ssids,
+                MODE_SETUP_AP,
+                candidate_active=False,
+                scan_fn=self._scan_ssids,
+                page_state=self._setup_notice,
             )
         except MemoryError:
             http.close_clients()
@@ -821,7 +854,13 @@ class NetworkCoordinator:
             # AP is up but sink failed; retry status emit on a later tick.
             pass
 
-    def _scan_ssids(self):
+    def _scan_ssids(self, force=False):
+        if force:
+            self._scan_status = "empty"
+            self._scan_error = None
+            self._scan_cache = ()
+        if self._scan_status == "ok":
+            return self._scan_cache
         try:
             import gc
 
@@ -829,14 +868,26 @@ class NetworkCoordinator:
             wlan = self._get_wlan()
             try:
                 wlan.active(True)
-            except Exception:
-                pass
+            except Exception as exc:
+                raise RuntimeError("scan_sta_active") from exc
             rows = wlan.scan()
         except Exception as exc:
+            self._scan_status = "failed"
+            self._scan_error = type(exc).__name__
             self._log("scan_fail " + type(exc).__name__)
-            return []
-        from src.provisioning.scan import ssids_from_scan_rows
-
+            raise RuntimeError("scan_failed")
+        try:
+            from src.provisioning.scan import ssids_from_scan_rows
+            ssids = ssids_from_scan_rows(rows, limit=config.HTTP_SCAN_CACHE_MAX)
+            rows = None
+        except Exception as exc:
+            rows = None
+            self._scan_status = "failed"
+            self._scan_error = type(exc).__name__
+            self._log("scan_fail " + type(exc).__name__)
+            raise RuntimeError("scan_failed") from exc
+        # Warming the setup KDF class is opportunistic. A failure here (heap
+        # pressure most often) must not report the completed scan as failed.
         try:
             from src.provisioning.setup_kdf import SetupKdfJob
 
@@ -844,14 +895,26 @@ class NetworkCoordinator:
             self._log("setup_kdf_ready")
         except Exception:
             self._log("setup_kdf_import_fail")
-
-        ssids = ssids_from_scan_rows(rows)
+        self._scan_cache = tuple(ssids)
+        # An empty result is not a usable cache entry: the radio commonly
+        # returns nothing on the first scan after the interface is activated.
+        # Caching it as "ok" would freeze the page on "No networks found".
+        self._scan_status = "ok" if ssids else "empty"
+        self._scan_error = None
         self._log("scan_ok " + str(len(ssids)))
-        return ssids
+        return self._scan_cache
 
     def _start_candidate(self, candidate, now):
         self._candidate = candidate
         self._log("setup_candidate")
+        self._setup_notice = None
+        # Push the acknowledgement out before the radio moves the AP to the
+        # station's channel and the phone loses this connection.
+        if self._http is not None:
+            try:
+                self._http.drain_writes()
+            except Exception:
+                pass
         self._candidate_started = False
         self._candidate_deadline = self._ticks.ticks_add(
             now, config.SYNC_COMMAND_DEADLINE_MS
@@ -879,7 +942,8 @@ class NetworkCoordinator:
                 http.tick(
                     MODE_SETUP_AP,
                     candidate_active=True,
-                    scan_fn=lambda: [],
+                    scan_fn=lambda force=False: [],
+                    page_state={"status": "connecting"},
                 )
                 self._web_recovered("asset")
             except MemoryError:
@@ -1019,8 +1083,12 @@ class NetworkCoordinator:
         except Exception:
             pass
 
-        body = self._setup_pages().response_join_failure(ssid or "", admin or "")
-        if self._http is not None:
+        # The phone usually lost the AP during the join attempt, so keep the
+        # outcome for whichever page load comes next. Still flush it to a held
+        # client when one survived (config-mode callers and host tests).
+        self._setup_notice = {"status": "failure", "ssid": ssid or ""}
+        if self._http is not None and self._http.has_held_client:
+            body = self._setup_pages().response_join_failure(ssid or "", admin or "")
             self._http.queue_held_response(body)
             self._http.drain_writes()
 

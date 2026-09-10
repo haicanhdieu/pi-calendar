@@ -33,7 +33,7 @@ def decode_ssid(raw):
     return text
 
 
-def ssids_from_scan_rows(rows):
+def ssids_from_scan_rows(rows, limit=None):
     """
     Extract deduplicated SSIDs from MicroPython-style scan rows.
 
@@ -45,11 +45,14 @@ def ssids_from_scan_rows(rows):
         return []
     seen = set()
     out = []
+    cap = None if limit is None else max(0, int(limit))
     for row in rows:
         raw = row[0] if isinstance(row, (tuple, list)) and row else row
         ssid = decode_ssid(raw)
         if ssid is None or ssid in seen:
             continue
+        if cap is not None and len(out) >= cap:
+            break
         seen.add(ssid)
         out.append(ssid)
     return out

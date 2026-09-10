@@ -61,14 +61,14 @@ def test_setup_status_shows_continuous_ssid_and_gateway():
     assert app._sync_enabled is False
     # Still present after another second (no dwell timeout).
     display.clear_ops()
-    ticks.advance(60_000)
+    ticks.advance(1_000)
     app.step(now_ticks=ticks.now)
     texts = _drawn_texts(display)
     assert config.SETUP_AP_SSID in texts
     assert config.SETUP_AP_GATEWAY in texts
 
 
-def test_station_ip_overlay_remains_visible_while_online():
+def test_station_ip_status_stays_visible_with_clock():
     events = [
         station_status_event(
             mode=MODE_STATION_ONLINE, ssid="Home", ip="192.168.1.77"
@@ -76,18 +76,22 @@ def test_station_ip_overlay_remains_visible_while_online():
     ]
     app, display, ticks = _app(events=events)
     app.step(now_ticks=ticks.now)
-    assert "192.168.1.77" in _drawn_texts(display)
+    texts = _drawn_texts(display)
+    assert "192.168.1.77" in texts
+    assert "19:00" in texts
     assert app._sync_enabled is True
 
     display.clear_ops()
-    ticks.advance(60_000)
+    ticks.advance(1_000)
     app.step(now_ticks=ticks.now)
-    assert "192.168.1.77" in _drawn_texts(display)
+    texts = _drawn_texts(display)
+    assert "192.168.1.77" in texts
 
     display.clear_ops()
     ticks.advance(60_000)
     app.step(now_ticks=ticks.now)
-    assert "192.168.1.77" in _drawn_texts(display)
+    texts = _drawn_texts(display)
+    assert "192.168.1.77" in texts
 
 
 def test_station_online_without_ip_clears_prior_address():
@@ -127,7 +131,7 @@ def test_wrap_safe_ip_dwell_across_tick_period():
     app.step(now_ticks=ticks.now)
     assert "10.0.0.2" in _drawn_texts(display)
 
-    # Advance past wrap but still within the 10s dwell.
+    # Advance past wrap; persistent station status must remain visible.
     ticks.advance(2_000)
     display.clear_ops()
     app.step(now_ticks=ticks.now)

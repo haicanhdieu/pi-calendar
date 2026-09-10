@@ -26,9 +26,9 @@ class RouteResult:
 def route_setup_request(request, mode, candidate_active):
     if mode != "SETUP_AP": return RouteResult(ACTION_RESPOND, pages.response_not_found())
     if request.path == "/" and request.method == "GET": return RouteResult(ACTION_SCAN)
-    if request.path == "/scan" and request.method == "GET": return RouteResult(ACTION_SCAN)
+    if request.path in ("/scan", "/rescan") and request.method == "GET": return RouteResult(ACTION_SCAN)
     if request.path != "/connect" or request.method != "POST":
-        return RouteResult(ACTION_RESPOND, pages.response_unsupported() if request.path in ("/", "/scan", "/connect") else pages.response_not_found())
+        return RouteResult(ACTION_RESPOND, pages.response_unsupported() if request.path in ("/", "/scan", "/rescan", "/connect") else pages.response_not_found())
     if candidate_active: return RouteResult(ACTION_RESPOND, pages.response_busy())
     content_type = request.headers.get("content-type", "")
     # Native browser forms include application/x-www-form-urlencoded, but

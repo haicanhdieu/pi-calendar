@@ -327,3 +327,57 @@ def test_production_composition_has_no_threaded_network_worker():
     assert main_source.index("coordinator.tick()") < main_source.index("app.step()")
     assert "SetupHttpServer" not in main_source
     assert "http_server=setup_http" not in main_source
+
+
+class ScanWlan(FakeWlan):
+    def __init__(self, results):
+        super().__init__(False)
+        self.results = list(results)
+        self.scan_calls = 0
+
+    def scan(self):
+        self.scan_calls += 1
+        return self.results.pop(0) if self.results else []
+
+
+def test_empty_scan_is_not_cached_so_a_later_page_load_rescans():
+    wlan = ScanWlan([[], [(b"Home", 0, 0, -40, 0, 0)]])
+    coordinator, _box, _ticks = make_coordinator(wlan=wlan)
+
+    assert coordinator._scan_ssids() == ()
+    assert coordinator.scan_status == "empty"
+    assert coordinator._scan_ssids() == ("Home",)
+    assert coordinator.scan_status == "ok"
+    assert wlan.scan_calls == 2
+
+
+def test_successful_scan_survives_a_failed_setup_kdf_warmup(monkeypatch):
+    wlan = ScanWlan([[(b"Home", 0, 0, -40, 0, 0)]])
+    coordinator, _box, _ticks = make_coordinator(wlan=wlan)
+    import builtins
+
+    real_import = builtins.__import__
+
+    def fail_setup_kdf(name, *args, **kwargs):
+        if name == "src.provisioning.setup_kdf":
+            raise MemoryError("no heap for setup kdf")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fail_setup_kdf)
+    ssids = coordinator._scan_ssids()
+    monkeypatch.undo()
+
+    assert ssids == ("Home",)
+    assert coordinator.scan_status == "ok"
+    assert coordinator.scan_error is None
+
+
+def test_cached_scan_is_reused_until_a_rescan_forces_a_refresh():
+    wlan = ScanWlan([[(b"Home", 0, 0, -40, 0, 0)], [(b"Other", 0, 0, -50, 0, 0)]])
+    coordinator, _box, _ticks = make_coordinator(wlan=wlan)
+
+    assert coordinator._scan_ssids() == ("Home",)
+    assert coordinator._scan_ssids() == ("Home",)
+    assert wlan.scan_calls == 1
+    assert coordinator._scan_ssids(force=True) == ("Other",)
+    assert wlan.scan_calls == 2

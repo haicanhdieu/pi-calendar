@@ -7,14 +7,10 @@ imported lazily for the device path.
 
 from src import config
 from src.device.web.http_parse import IncrementalHttpParser
-from src.device.web import setup_pages as pages
-from src.device.web.setup_router import (
-    ACTION_CONNECT,
-    ACTION_RESPOND,
-    ACTION_SCAN,
-    route_setup_request,
-    scan_response,
-)
+
+ACTION_RESPOND = "respond"
+ACTION_SCAN = "scan"
+ACTION_CONNECT = "connect"
 
 _WOULD_BLOCK_ERRNOS = (11, 35, 10035)
 
@@ -70,6 +66,7 @@ class SetupHttpServer:
         self._listen = None
         self._clients = []
         self._held_client = None
+        self._page_state = None
         self.last_failure_phase = None
 
     @property
@@ -87,6 +84,12 @@ class SetupHttpServer:
 
             self._socket_module = socket
         return self._socket_module
+
+    @staticmethod
+    def _setup_pages():
+        from src.device.web import setup_pages
+
+        return setup_pages
 
     def ensure_listening(self):
         if self._listen is not None:
@@ -160,6 +163,7 @@ class SetupHttpServer:
         session_table=None,
         now_ticks=None,
         kdf_busy=False,
+        page_state=None,
     ):
         """
         Advance one bounded unit of HTTP work.
@@ -171,6 +175,8 @@ class SetupHttpServer:
         """
         if self._listen is None:
             return None
+        # Carried into the setup page render for the current tick only.
+        self._page_state = page_state
         self._try_accept()
         # Prefer draining write buffers, then read one client.
         for client in list(self._clients):
@@ -204,7 +210,7 @@ class SetupHttpServer:
             return False
         client.held = False
         self._held_client = None
-        client.outbox = response_bytes
+        client.outbox = self._as_source(response_bytes)
         client.out_offset = 0
         client.closing = True
         return True
@@ -286,7 +292,9 @@ class SetupHttpServer:
 
         request, error, _consumed = client.parser.feed(data)
         if error is not None:
-            client.outbox = pages.response_for_parse_error(error)
+            pages = self._setup_pages()
+            client.outbox = self._as_source(pages.response_for_parse_error(error))
+            client.parser.release()
             client.out_offset = 0
             client.closing = True
             return None
@@ -294,12 +302,23 @@ class SetupHttpServer:
             return None
 
         if mode == "STATION_ONLINE":
-            return self._dispatch_config(
+            result = self._dispatch_config(
                 client, request, session_table, now_ticks, kdf_busy
             )
-        return self._dispatch_setup(client, request, mode, candidate_active, scan_fn)
+        else:
+            result = self._dispatch_setup(client, request, mode, candidate_active, scan_fn)
+        if client.outbox is not None:
+            client.outbox = self._as_source(client.outbox)
+        # The route has copied only its owned values (or selected a response).
+        # Do not retain the parser's headers/body alongside KDF/job state.
+        if not client.held:
+            client.parser.release()
+        return result
 
     def _dispatch_setup(self, client, request, mode, candidate_active, scan_fn):
+        from src.device.web.setup_router import route_setup_request
+
+        pages = self._setup_pages()
         routed = route_setup_request(request, mode, candidate_active)
         if routed.action == ACTION_RESPOND:
             client.outbox = routed.response
@@ -309,7 +328,11 @@ class SetupHttpServer:
         if routed.action == ACTION_SCAN:
             scan_failed = False
             try:
-                ssids = scan_fn() if scan_fn is not None else []
+                ssids = (
+                    scan_fn(force=request.path != "/")
+                    if scan_fn is not None
+                    else []
+                )
             except Exception:
                 ssids = []
                 scan_failed = True
@@ -319,11 +342,16 @@ class SetupHttpServer:
                 gc.collect()
             except Exception:
                 pass
-            if request.path == "/":
-                client.outbox = pages.response_setup_page({"ssids": ssids, "scan_failed": scan_failed})
+            if request.path in ("/", "/rescan"):
+                state = {"ssids": ssids, "scan_failed": scan_failed}
+                # A join that failed after the AP dropped the phone leaves its
+                # outcome here; the reloaded page is the only way to show it.
+                if self._page_state:
+                    state.update(self._page_state)
+                client.outbox = pages.response_setup_page(state)
             else:
                 from src.device.web.scan_response import scan_response_stream
-                client.outbox = scan_response_stream(ssids)
+                client.outbox = scan_response_stream(ssids, failed=scan_failed)
             client.out_offset = 0
             client.closing = True
             return None
@@ -333,14 +361,21 @@ class SetupHttpServer:
                 client.out_offset = 0
                 client.closing = True
                 return None
-            # The held request no longer needs its parsed body. Release it
-            # before the coordinator allocates the setup verifier job.
+            # The request body is no longer needed. Release it before the
+            # coordinator allocates the setup verifier job.
             try:
-                client.parser.body = b""
+                client.parser.release()
             except Exception:
                 pass
-            client.held = True
-            self._held_client = client
+            # Answer now rather than holding the socket across the join. The
+            # Pico's single radio moves the AP to the station's channel, so the
+            # phone loses this connection before any later response could be
+            # written, leaving the browser loading forever.
+            client.outbox = self._as_source(
+                pages.response_join_started(routed.candidate.ssid)
+            )
+            client.out_offset = 0
+            client.closing = True
             return ("connect", routed.candidate)
         client.outbox = pages.response_not_found()
         client.out_offset = 0
@@ -381,7 +416,7 @@ class SetupHttpServer:
         if routed.action == ACTION_LOGIN_KDF:
             # Body already cleared on the request; drop parser copy too.
             try:
-                client.parser.body = b""
+                client.parser.release()
             except Exception:
                 pass
             if self._held_client is not None:
@@ -395,7 +430,7 @@ class SetupHttpServer:
             return ("login_kdf", routed.password)
         if routed.action == ACTION_PASSWORD_CHANGE_KDF:
             try:
-                client.parser.body = b""
+                client.parser.release()
             except Exception:
                 pass
             acting_id = routed.renew_session_id
@@ -431,7 +466,11 @@ class SetupHttpServer:
             return
         # Slice only the bounded write window.  Slicing ``outbox[offset:]``
         # first duplicates the entire page response on the Pico heap.
-        if isinstance(outbox, tuple):
+        if hasattr(outbox, "read"):
+            chunk = outbox.read(self._per_tick_bytes)
+            outbox_length = outbox.total
+            current_offset = outbox.offset - len(chunk)
+        elif isinstance(outbox, tuple):
             from src.device.web.scan_response import scan_response_chunk
 
             chunk = scan_response_chunk(
@@ -440,11 +479,13 @@ class SetupHttpServer:
                 client.out_offset + self._per_tick_bytes,
             )
             outbox_length = outbox[1]
+            current_offset = client.out_offset
         else:
             chunk = outbox[
                 client.out_offset : client.out_offset + self._per_tick_bytes
             ]
             outbox_length = len(outbox)
+            current_offset = client.out_offset
         if not chunk:
             self._close_client(client)
             return
@@ -452,6 +493,8 @@ class SetupHttpServer:
             sent = client.sock.send(chunk)
         except OSError as exc:
             if self._would_block(exc):
+                if hasattr(outbox, "offset"):
+                    outbox.offset = current_offset
                 return
             self._close_client(client)
             return
@@ -460,11 +503,19 @@ class SetupHttpServer:
             return
         if sent is None:
             sent = len(chunk)
+        if int(sent) < 0:
+            self._close_client(client)
+            return
+        # A source advances only after a successful send. Rewind unsent bytes
+        # when a socket accepts a short write.
+        if hasattr(outbox, "offset"):
+            outbox.offset = current_offset + int(sent)
         client.out_offset += int(sent)
         if client.out_offset >= outbox_length:
             self._close_client(client)
 
     def _close_client(self, client):
+        outbox = client.outbox
         if client is self._held_client:
             self._held_client = None
         if client in self._clients:
@@ -474,7 +525,17 @@ class SetupHttpServer:
         except Exception:
             pass
         client.outbox = None
+        if hasattr(outbox, "close"):
+            outbox.close()
         client.held = False
+
+    @staticmethod
+    def _as_source(response):
+        if hasattr(response, "read"):
+            return response
+        from src.device.web.scan_response import ResponseSource
+
+        return ResponseSource((response or b"",))
 
     @staticmethod
     def _would_block(exc):

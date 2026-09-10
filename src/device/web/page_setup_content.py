@@ -44,7 +44,7 @@ def setup_page_html(state=None):
         '<title>Pi Calendar Setup</title><style>' + _CSS + '</style></head><body>'
         '<h1>Set Up Wi-Fi</h1>' + banner + '<form method="POST" action="/connect">'
         '<label for="ssid">Network</label><select id="ssid" name="ssid" required>'
-        + ''.join(options) + '</select><a class="rescan" href="/">Rescan networks</a>'
+        + ''.join(options) + '</select><a class="rescan" href="/rescan">Rescan networks</a>'
         '<label for="wifi-password">Wi-Fi Password</label>'
         '<input id="wifi-password" name="wifi_password" type="password" autocomplete="current-password" minlength="8" maxlength="63" required value="">'
         '<label for="admin-password">Admin Password</label>'

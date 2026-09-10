@@ -4,16 +4,19 @@ Host-testable: no ``machine``/``network``/``ntptime``. Coordinator owns at most
 one job; wipe password bytearrays on every terminal outcome.
 """
 
+import time
+
 from src import config
+from src.provisioning.constants import DIGEST_LEN, PBKDF2_ITERATIONS, SALT_LEN
 from src.provisioning.verifier import (
-    DIGEST_LEN,
-    PBKDF2_ITERATIONS,
-    SALT_LEN,
     bytes_to_hex,
     constant_time_equal,
-    hmac_sha256,
+    _hmac_pads,
+    hmac_sha256_pads,
     hex_to_bytes,
 )
+
+_DEFAULT_CLOCK = getattr(time, "monotonic", time.time)
 
 PURPOSE_LOGIN_VERIFY = "login_verify"
 PURPOSE_PASSWORD_CHANGE_DERIVE = "password_change_derive"
@@ -61,11 +64,16 @@ class KdfJob:
         "_iterations",
         "_u",
         "_out",
+        "_pads",
         "_round",
         "_result",
         "_started",
         "_salt_hex",
         "_verifier_hex",
+        "_clock",
+        "_max_step_ms",
+        "_native_factory",
+        "_native_job",
     )
 
     def __init__(
@@ -77,22 +85,41 @@ class KdfJob:
         verifier_hex=None,
         iterations=None,
         urandom=None,
+        clock=None,
+        max_step_ms=None,
     ):
         self.correlation_id = correlation_id
         self.purpose = purpose
-        self._iterations = (
-            PBKDF2_ITERATIONS if iterations is None else int(iterations)
-        )
+        try:
+            self._iterations = (
+                PBKDF2_ITERATIONS if iterations is None else int(iterations)
+            )
+        except Exception:
+            self._iterations = 0
         self._password = None
         self._salt = None
         self._expected = None
         self._u = None
         self._out = None
+        self._pads = None
         self._round = 0
         self._result = None
         self._started = False
         self._salt_hex = None
         self._verifier_hex = None
+        self._clock = _DEFAULT_CLOCK if clock is None else clock
+        self._max_step_ms = max_step_ms
+        self._native_factory = None
+        self._native_job = None
+        try:
+            import sys
+
+            if sys.implementation.name == "micropython":
+                from src.provisioning.native_kdf import Pbkdf2Job
+
+                self._native_factory = Pbkdf2Job
+        except Exception:
+            self._native_fn = None
 
         if isinstance(password, bytearray):
             self._password = password
@@ -121,6 +148,18 @@ class KdfJob:
             return
         self._salt = salt
         self._expected = expected
+        if self._native_factory is not None:
+            try:
+                self._native_job = self._native_factory(
+                    self._password, self._salt, self._iterations
+                )
+            except Exception:
+                self._finish(VERIFY_FAILED)
+                return
+        try:
+            self._pads = _hmac_pads(self._password)
+        except Exception:
+            self._finish(VERIFY_FAILED)
 
     def _init_derive(self, urandom):
         if self._iterations < 1:
@@ -140,6 +179,18 @@ class KdfJob:
             return
         self._salt = bytes(salt)
         self._salt_hex = bytes_to_hex(self._salt)
+        if self._native_factory is not None:
+            try:
+                self._native_job = self._native_factory(
+                    self._password, self._salt, self._iterations
+                )
+            except Exception:
+                self._finish(DERIVE_FAILED)
+                return
+        try:
+            self._pads = _hmac_pads(self._password)
+        except Exception:
+            self._finish(DERIVE_FAILED)
 
     @property
     def done(self):
@@ -159,7 +210,7 @@ class KdfJob:
         """Derived verifier hex after a successful derive (``None`` otherwise)."""
         return self._verifier_hex
 
-    def step(self, max_rounds=None):
+    def step(self, max_rounds=None, max_ms=None):
         """
         Advance at most ``max_rounds`` HMAC rounds.
 
@@ -167,18 +218,46 @@ class KdfJob:
         """
         if self._result is not None:
             return self._result
-        budget = (
-            config.KDF_ROUNDS_PER_TICK if max_rounds is None else int(max_rounds)
-        )
+        if self._native_job is not None:
+            return self._step_native(max_rounds)
+        try:
+            budget = config.KDF_ROUNDS_PER_TICK if max_rounds is None else int(max_rounds)
+        except Exception:
+            self._finish(
+                DERIVE_FAILED
+                if self.purpose in (PURPOSE_PASSWORD_CHANGE_DERIVE, PURPOSE_SETUP_DERIVE)
+                else VERIFY_FAILED
+            )
+            return self._result
         if budget < 1:
             return None
+        time_budget = self._max_step_ms if max_ms is None else max_ms
+        started = self._clock()
         fail_code = (
             DERIVE_FAILED
             if self.purpose in (PURPOSE_PASSWORD_CHANGE_DERIVE, PURPOSE_SETUP_DERIVE)
             else VERIFY_FAILED
         )
         try:
-            return self._step(budget)
+            return self._step(budget, time_budget, started)
+        except Exception:
+            self._finish(fail_code)
+            return self._result
+
+    def _step_native(self, max_rounds=None):
+        fail_code = (
+            DERIVE_FAILED
+            if self.purpose in (PURPOSE_PASSWORD_CHANGE_DERIVE, PURPOSE_SETUP_DERIVE)
+            else VERIFY_FAILED
+        )
+        try:
+            budget = config.KDF_ROUNDS_PER_TICK if max_rounds is None else int(max_rounds)
+            digest = self._native_job.step(budget)
+            if digest is None:
+                return None
+            self._out = bytearray(digest)
+            self._round = self._iterations
+            return self._complete()
         except Exception:
             self._finish(fail_code)
             return self._result
@@ -193,12 +272,13 @@ class KdfJob:
             self._finish(VERIFY_CANCELLED)
         return self._result
 
-    def _step(self, budget):
+    def _step(self, budget, time_budget=None, started=None):
         used = 0
         if not self._started:
             # First HMAC: U1 = HMAC(password, salt || INT(1))
-            self._u = hmac_sha256(
-                self._password, self._salt + (1).to_bytes(4, "big")
+            self._u = hmac_sha256_pads(
+                self._pads,
+                self._salt + (1).to_bytes(4, "big")
             )
             self._out = bytearray(self._u)
             self._round = 1
@@ -210,7 +290,13 @@ class KdfJob:
                 return None
 
         while used < budget and self._round < self._iterations:
-            self._u = hmac_sha256(self._password, self._u)
+            if (
+                time_budget is not None
+                and used > 0
+                and (self._clock() - started) * 1000 >= float(time_budget)
+            ):
+                break
+            self._u = hmac_sha256_pads(self._pads, self._u)
             for i, byte in enumerate(self._u):
                 self._out[i] ^= byte
             self._round += 1
@@ -255,6 +341,7 @@ class KdfJob:
         self._password = None
         self._salt = None
         self._expected = None
+        self._pads = None
         self._u = None
         if isinstance(self._out, bytearray):
             _wipe(self._out)

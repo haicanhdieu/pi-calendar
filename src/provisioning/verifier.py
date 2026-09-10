@@ -6,12 +6,12 @@ plaintext passwords beyond the call that derives or verifies them.
 
 import hashlib
 
-from src import config
-
-ADMIN_VERIFIER_VERSION = "pbkdf2-sha256-v1"
-PBKDF2_ITERATIONS = config.ADMIN_PBKDF2_ITERATIONS
-SALT_LEN = 16
-DIGEST_LEN = 32
+from src.provisioning.constants import (
+    ADMIN_VERIFIER_VERSION,
+    DIGEST_LEN,
+    PBKDF2_ITERATIONS,
+    SALT_LEN,
+)
 
 _HMAC_BLOCK = 64
 
@@ -27,15 +27,25 @@ def _to_bytes(value):
 def hmac_sha256(key, message):
     """RFC 2104 HMAC-SHA256."""
     key = _to_bytes(key)
-    message = _to_bytes(message)
+    return hmac_sha256_pads(_hmac_pads(key), message)
+
+
+def _hmac_pads(key):
+    """Return reusable inner/outer HMAC pads for a key."""
+    key = _to_bytes(key)
     if len(key) > _HMAC_BLOCK:
         key = hashlib.sha256(key).digest()
     if len(key) < _HMAC_BLOCK:
         key = key + (b"\x00" * (_HMAC_BLOCK - len(key)))
-    o_key = bytes(b ^ 0x5C for b in key)
-    i_key = bytes(b ^ 0x36 for b in key)
-    inner = hashlib.sha256(i_key + message).digest()
-    return hashlib.sha256(o_key + inner).digest()
+    return (bytes(b ^ 0x36 for b in key), bytes(b ^ 0x5C for b in key))
+
+
+def hmac_sha256_pads(pads, message):
+    """HMAC-SHA256 using pads produced by :func:`_hmac_pads`."""
+    inner_pad, outer_pad = pads
+    message = _to_bytes(message)
+    inner = hashlib.sha256(inner_pad + message).digest()
+    return hashlib.sha256(outer_pad + inner).digest()
 
 
 def pbkdf2_hmac_sha256(password, salt, iterations=PBKDF2_ITERATIONS, dklen=DIGEST_LEN):

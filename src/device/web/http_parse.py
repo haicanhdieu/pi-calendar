@@ -164,6 +164,16 @@ class IncrementalHttpParser:
         self._content_length = 0
         self.body = b""
 
+    def release(self):
+        """Release request-owned buffers after routing transfers ownership."""
+        self._buf = bytearray()
+        self.headers.clear()
+        self.body = b""
+        self.method = None
+        self.path = None
+        self.version = None
+        self._content_length = 0
+
     def feed(self, data):
         """
         Consume ``data`` bytes.

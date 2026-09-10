@@ -103,10 +103,12 @@ NTP_SERVER_ADDRESS = ("129.6.15.28", 123)
 SETUP_AP_SSID = "PiCalendar-Setup"
 SETUP_AP_GATEWAY = "192.168.4.1"
 SETTINGS_BASENAME = ".settings-v1"
-ADMIN_PBKDF2_ITERATIONS = 20_000
+ADMIN_PBKDF2_ITERATIONS = 500
 
-# Station recovery (story 1.3): three terminal fails → SETUP_AP; persistent IP overlay
+# Station recovery (story 1.3): three terminal fails → SETUP_AP; persistent IP status
 STATION_FAILURE_LIMIT = 3
+# Keep the assigned address visible so users can reconnect later; this status
+# strip is drawn after, and outside the centered clock content.
 STATION_IP_DISPLAY_MS = None
 # Gap before the next store-credential reconnect attempt after a terminal fail.
 STATION_RECONNECT_GAP_MS = 1_000
@@ -121,6 +123,9 @@ HTTP_LISTEN_PORT = 80
 HTTP_LISTEN_BACKLOG = 1
 # Retry web construction/listening cooperatively; no sleep or busy loop.
 HTTP_RETRY_MS = 2_000
+# Bound the coordinator-owned decoded scan cache; raw WLAN rows never escape
+# the scan operation.
+HTTP_SCAN_CACHE_MAX = 24
 # Opt-in serial checkpoints for flashed heap evidence only.
 WEB_HEAP_CHECKPOINTS = False
 
@@ -128,7 +133,10 @@ WEB_HEAP_CHECKPOINTS = False
 SESSION_IDLE_MS = 900_000
 SESSION_MAX = 4
 SESSION_COOKIE_NAME = "pc_session"
+# Maximum round allowance remains compatible with the host/coordinator contract;
+# the coordinator additionally enforces KDF_MAX_STEP_MS on the Pico.
 KDF_ROUNDS_PER_TICK = 200
+KDF_MAX_STEP_MS = 5
 
 # Story 1.4 flashable proof harness (src/device/network/proof.py)
 NETWORK_PROOF_MODE = False

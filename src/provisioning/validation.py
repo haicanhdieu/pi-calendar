@@ -3,7 +3,10 @@
 Pure module: no ``machine``, ``network``, or socket imports.
 """
 
-from src.provisioning.verifier import ADMIN_VERIFIER_VERSION
+from src.provisioning.constants import (
+    ADMIN_VERIFIER_VERSION,
+    LEGACY_ADMIN_VERIFIER_VERSION,
+)
 
 SETTINGS_VERSION = 1
 COLOR_SCHEME_V1 = "forest-amber"
@@ -104,7 +107,10 @@ def validate_settings_object(obj):
     if "\x00" in password or b"\x00" in password_bytes:
         return ValidationResult(False, REASON_INVALID)
 
-    if obj.get("admin_verifier_version") != ADMIN_VERIFIER_VERSION:
+    if obj.get("admin_verifier_version") not in (
+        ADMIN_VERIFIER_VERSION,
+        LEGACY_ADMIN_VERIFIER_VERSION,
+    ):
         return ValidationResult(False, REASON_UNSUPPORTED)
 
     salt = obj.get("admin_salt")

@@ -218,6 +218,25 @@ def test_get_setup_page_and_scan_from_phone():
     assert b"\x11\x11" not in client2.sent
 
 
+def test_rescan_forces_fresh_scan_after_empty_result():
+    wlan = ScanWlan(scan_rows=[])
+    coordinator, http, sockets, events, ticks = _make(wlan=wlan)
+    _activate(coordinator)
+
+    first = FakeStreamSocket()
+    first.push_client_bytes(_http_get("/"))
+    sockets.listen.enqueue(first)
+    assert _pump_until(coordinator, lambda: first.closed)
+    assert coordinator.scan_cache == ()
+
+    wlan.scan_rows = [(b"HomeNet", b"\x11" * 6, 1, -40, 3, False)]
+    second = FakeStreamSocket()
+    second.push_client_bytes(_http_get("/scan"))
+    sockets.listen.enqueue(second)
+    assert _pump_until(coordinator, lambda: second.closed)
+    assert b'"HomeNet"' in second.sent
+
+
 def test_next_is_client_only_no_candidate_before_connect():
     fs = FakeFS()
     store = _store(fs)
@@ -254,8 +273,8 @@ def test_connect_join_commit_success_order():
         def active(self, value=None):
             if value is False:
                 client = client_holder[0] if client_holder else None
-                assert client is not None and b"Connected" in client.sent, (
-                    "browser success must flush before AP deactivates"
+                assert client is not None and b"Setup Saved" in client.sent, (
+                    "browser acknowledgement must flush before AP deactivates"
                 )
             return super().active(value)
 
@@ -283,21 +302,21 @@ def test_connect_join_commit_success_order():
     assert _pump_until(coordinator, lambda: coordinator.candidate_active)
     assert coordinator.mode == MODE_STATION_CONNECTING
     assert store.is_configured() is False  # not persisted yet
-    assert not client.closed  # held through join
+    # The acknowledgement is written before the radio moves the AP channel.
+    assert b"Setup Saved" in client.sent
+    assert b"Joining HomeNet" in client.sent
 
     assert _pump_until(coordinator, lambda: wlan.connect_calls == [("HomeNet", "password1")])
     assert store.is_configured() is False
-    assert not client.closed
 
     wlan.connected = True
     ticks.now = 2000
     coordinator.tick()
     assert coordinator.mode == MODE_STATION_CONNECTING
     assert coordinator._setup_kdf_job is not None
-    assert not client.closed
     assert _pump_until(
         coordinator,
-        lambda: coordinator.mode == MODE_STATION_ONLINE and client.closed,
+        lambda: coordinator.mode == MODE_STATION_ONLINE,
     )
     assert store.is_configured() is True
     settings = store.load()
@@ -309,7 +328,7 @@ def test_connect_join_commit_success_order():
     ) is False
     assert coordinator._setup_ap_active is False
     assert ap.active_value is False
-    assert b"Connected" in client.sent
+    assert client.closed
     kinds = [e.kind for e in events]
     assert EVENT_STATION_STATUS in kinds
     online = [e for e in events if e.kind == EVENT_STATION_STATUS and e.mode == MODE_STATION_ONLINE]
@@ -336,6 +355,8 @@ def test_join_timeout_keeps_ap_and_clears_wifi_only_in_response():
     sockets.listen.enqueue(client)
     assert _pump_until(coordinator, lambda: coordinator.candidate_active)
 
+    # The POST is acknowledged up front; the join outcome cannot reach it.
+    assert b"Setup Saved" in client.sent
     ticks.now = 20_000
     assert _pump_until(
         coordinator, lambda: not coordinator.candidate_active and client.closed
@@ -344,16 +365,23 @@ def test_join_timeout_keeps_ap_and_clears_wifi_only_in_response():
     assert coordinator.mode == MODE_SETUP_AP
     assert coordinator._setup_ap_active is True
     assert wlan.disconnect_calls >= 1
-    assert b"Couldn't join" in client.sent
-    assert b"adminpass" in client.sent  # admin retained in failure page
-    assert b"password1" not in client.sent  # wifi password cleared
-    assert b'<form method="POST" action="/connect">' in client.sent
-    assert b'name="wifi_password"' in client.sent
+
+    # Reconnecting to the still-running AP shows why the join failed.
+    retry = FakeStreamSocket()
+    retry.push_client_bytes(_http_get("/"))
+    sockets.listen.enqueue(retry)
+    assert _pump_until(coordinator, lambda: retry.closed)
+    assert b"Couldn't join HomeNet" in retry.sent
+    assert b'<form method="POST" action="/connect">' in retry.sent
+    assert b'name="wifi_password"' in retry.sent
+    # Neither password is echoed back to the open AP.
+    assert b"adminpass" not in retry.sent
+    assert b"password1" not in retry.sent
     err = [e for e in events if e.kind == EVENT_STATION_ERROR]
     assert err and err[-1].error_code == ERROR_JOIN_TIMEOUT
 
 
-def test_candidate_asset_failure_keeps_held_connect_response():
+def test_candidate_asset_failure_keeps_the_join_in_flight():
     fs = FakeFS()
     store = _store(fs)
     wlan = ScanWlan(connected=False)
@@ -363,15 +391,15 @@ def test_candidate_asset_failure_keeps_held_connect_response():
     client.push_client_bytes(_http_connect(ssid="HomeNet", wifi="password1", admin="adminpass"))
     sockets.listen.enqueue(client)
     assert _pump_until(coordinator, lambda: coordinator.candidate_active)
+    assert b"Setup Saved" in client.sent
     original_tick = http.tick
     http.tick = lambda *_args, **_kwargs: (_ for _ in ()).throw(MemoryError())
     try:
         coordinator.tick()
     finally:
         http.tick = original_tick
+    # A web-surface failure must not abandon the candidate mid-join.
     assert coordinator.candidate_active
-    assert http.has_held_client
-    assert not client.closed
 
 
 def test_join_fail_on_connect_error_disconnects_and_keeps_ap():
@@ -398,9 +426,14 @@ def test_join_fail_on_connect_error_disconnects_and_keeps_ap():
     assert coordinator.mode == MODE_SETUP_AP
     assert coordinator._setup_ap_active is True
     assert wlan.disconnect_calls >= 1
-    assert b"Couldn't join" in client.sent
-    assert b"adminpass" in client.sent
-    assert b"password1" not in client.sent
+
+    retry = FakeStreamSocket()
+    retry.push_client_bytes(_http_get("/"))
+    sockets.listen.enqueue(retry)
+    assert _pump_until(coordinator, lambda: retry.closed)
+    assert b"Couldn't join HomeNet" in retry.sent
+    assert b"adminpass" not in retry.sent
+    assert b"password1" not in retry.sent
     err = [e for e in events if e.kind == EVENT_STATION_ERROR]
     assert err and err[-1].error_code == ERROR_JOIN_FAIL
 
@@ -475,14 +508,13 @@ def test_concurrent_connect_returns_503_busy():
     first.push_client_bytes(_http_connect())
     sockets.listen.enqueue(first)
     assert _pump_until(coordinator, lambda: coordinator.candidate_active)
-    assert not first.closed
+    assert b"Setup Saved" in first.sent
 
     second = FakeStreamSocket()
     second.push_client_bytes(_http_connect(ssid="Other", wifi="password1", admin="password1"))
     sockets.listen.enqueue(second)
     assert _pump_until(coordinator, lambda: second.closed and b"503" in second.sent)
     assert coordinator.candidate_active is True
-    assert not first.closed
 
 
 def test_main_defers_setup_http_server_to_coordinator():

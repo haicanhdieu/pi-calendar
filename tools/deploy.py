@@ -31,9 +31,16 @@ PRECOMPILE = [
     "src/device/web/setup_router.py",
     "src/device/web/router.py",
     "src/provisioning/kdf_job.py",
+    "src/provisioning/setup_kdf.py",
+    "src/provisioning/constants.py",
+    "src/provisioning/scan.py",
     "src/provisioning/validation.py",
     "src/provisioning/verifier.py",
 ]
+
+NATIVE_PRECOMPILE = {
+    "src/provisioning/native_kdf.py": ("armv6m", "native"),
+}
 
 
 def find_mpy_cross():
@@ -66,6 +73,14 @@ def stage_tree(mpy_cross):
             dest.parent.mkdir(parents=True, exist_ok=True)
             subprocess.run(
                 [mpy_cross, str(path), "-o", str(dest)], check=True
+            )
+        elif str(path.relative_to(ROOT)) in NATIVE_PRECOMPILE:
+            arch, emit = NATIVE_PRECOMPILE[str(path.relative_to(ROOT))]
+            dest = (src_out / rel).with_suffix(".mpy")
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            subprocess.run(
+                [mpy_cross, "-march=" + arch, str(path), "-X", "emit=" + emit, "-o", str(dest)],
+                check=True,
             )
         else:
             dest = src_out / rel

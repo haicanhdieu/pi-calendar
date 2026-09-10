@@ -39,6 +39,10 @@ def response_scan_json(ssids):
     return http_response("200 OK", payload, "application/json")
 
 
+def response_join_started(ssid):
+    return http_response("200 OK", '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pi Calendar Connecting</title><style>body{background:#12161c;color:#e8ecf1;font:15px sans-serif;max-width:480px;margin:0 auto;padding:20px}.banner{padding:12px;border-radius:12px;border:1px solid #3ddc84;color:#3ddc84;margin:16px 0}</style></head><body><h1>Setup Saved</h1><p class="banner">Joining %s now.</p><p>The <b>PiCalendar-Setup</b> network is shutting down, so this page will stop responding. That is expected.</p><p>The clock shows its new IP address once it is online. Reconnect your phone to your home Wi-Fi and open that address.</p><p>If the join fails, <b>PiCalendar-Setup</b> comes back within a minute. Reconnect to it and reload this page to see what went wrong.</p></body></html>' % html_escape(ssid or "the network"))
+
+
 def response_busy(): return http_response("503 Service Unavailable", "Busy")
 def response_bad_request(): return http_response("400 Bad Request", "Bad Request")
 def response_not_found(): return http_response("404 Not Found", "Not Found")

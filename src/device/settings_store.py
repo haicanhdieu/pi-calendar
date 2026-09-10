@@ -8,10 +8,7 @@ from src.provisioning.validation import (
     SETTINGS_VERSION,
     validate_settings_json,
 )
-from src.provisioning.verifier import (
-    ADMIN_VERIFIER_VERSION,
-    derive_admin_verifier,
-)
+from src.provisioning.constants import ADMIN_VERIFIER_VERSION
 
 SETTINGS_BASENAME = config.SETTINGS_BASENAME
 COMMIT_OK = "ok"
@@ -211,6 +208,8 @@ class SettingsStore:
         if not salt_given:
             if admin_password is None:
                 raise SettingsCommitError(COMMIT_VALIDATE_FAIL, "missing admin")
+            from src.provisioning.verifier import derive_admin_verifier
+
             admin_salt_hex, admin_verifier_hex = derive_admin_verifier(
                 admin_password, urandom=self._urandom
             )

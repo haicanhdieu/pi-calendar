@@ -53,7 +53,7 @@ def test_setup_assets_keep_scan_flow_and_escape_json_controls():
     assert "fetch(" not in html
     assert "Couldn't join Home" in html
     assert '<select id="ssid" name="ssid" required>' in html
-    assert 'href="/"' in html
+    assert 'href="/rescan"' in html
     assert 'minlength="8" maxlength="63"' in html
     assert 'name="wifi_password"' in html
     assert 'name="admin_password"' in html
