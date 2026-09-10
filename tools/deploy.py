@@ -18,8 +18,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 # Modules whose on-device .py compile has been observed to raise MemoryError
-# (setup-AP HTTP surface and the station-mode admin site). Ship these as
-# precompiled .mpy; everything else deploys as plain .py.
+# (setup-AP HTTP surface, the station-mode admin site, and the display/UI
+# render path, which is the biggest single chunk of on-device compile cost).
+# Ship these as precompiled .mpy; everything else deploys as plain .py.
 PRECOMPILE = [
     "src/device/web/pages.py",
     "src/device/web/page_setup_content.py",
@@ -36,6 +37,18 @@ PRECOMPILE = [
     "src/provisioning/scan.py",
     "src/provisioning/validation.py",
     "src/provisioning/verifier.py",
+    "src/ui/clock_view.py",
+    "src/ui/calendar_view.py",
+    "src/ui/compositor.py",
+    "src/ui/components.py",
+    "src/ui/display_port.py",
+    "src/ui/view_state.py",
+    "src/device/display/font.py",
+    "src/device/display/ili9341.py",
+    "src/device/display/adapter.py",
+    "src/device/display/bootstrap.py",
+    "src/device/display/splash.py",
+    "src/device/display/color.py",
 ]
 
 NATIVE_PRECOMPILE = {
