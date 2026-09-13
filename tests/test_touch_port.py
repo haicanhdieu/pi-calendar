@@ -35,7 +35,7 @@ def _port(samples, events=None):
     )
 
 
-def _stable(x=1234, y=2345, pressure=20):
+def _stable(x=1234, y=2345, pressure=200):
     return [(x, y, pressure)] * config.TOUCH_SAMPLE_COUNT
 
 
@@ -63,7 +63,7 @@ def test_every_poll_hands_spi_to_touch_and_restores_tft():
 
 
 def test_noisy_or_invalid_samples_never_emit_a_false_edge_and_remain_usable():
-    noisy = [(100, 200, 20)] * (config.TOUCH_SAMPLE_COUNT - 1) + [(300, 200, 20)]
+    noisy = [(100, 200, 200)] * (config.TOUCH_SAMPLE_COUNT - 1) + [(300, 200, 200)]
     invalid = [(100, 200, 0)]
     port, _events = _port(noisy + invalid + _stable(444, 555))
 

@@ -19,6 +19,7 @@ from src.device.network.models import (
 )
 from src.device.settings_store import SettingsStore
 from src.device.touch_port import TouchPort
+from src.ui.touch_calibration import CalibratedTouchPort
 from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
 from src.ui.compositor import UiCompositor
@@ -58,7 +59,7 @@ def main():
     display = initialize_display(spi, ILI9341, splash_screen, sleep_ms, print)
 
     # Reuse the display-owned TFT CS; a second Pin would compete for SPI0.
-    touch_port = TouchPort(spi, touch_cs, display.cs)
+    touch_port = CalibratedTouchPort(TouchPort(spi, touch_cs, display.cs))
     reboot_port = RebootPort(reset)
 
     # Splash rendering creates temporary command and pixel buffers. Release

@@ -463,14 +463,9 @@ def test_settings_render_suspends_clock_and_hides_bar():
         config.BAR_HEIGHT_PX,
     )
     assert ("fill_rect", bx, by, bw, bh, config.COLOR_BAR_PANEL) not in display.ops
-    assert (
-        "fill_rect",
-        0,
-        0,
-        display.width,
-        display.height,
-        config.COLOR_BACKGROUND,
-    ) in display.ops
+    # Settings content is static while open (captured once on entry), so a
+    # later redraw tick with nothing changed repaints nothing at all.
+    assert display.ops == []
 
 
 def test_settings_reboot_tap_flashes_then_resets_once():

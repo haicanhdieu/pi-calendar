@@ -26,7 +26,15 @@ MADCTL = 0xA8
 TOUCH_SPI_BAUDRATE = 2_000_000
 TOUCH_SAMPLE_COUNT = 5
 TOUCH_SAMPLE_MAX_SPREAD = 80
-TOUCH_PRESSURE_MIN = 1
+TOUCH_PRESSURE_MIN = 25
+
+# Touch coordinate calibration (this physical unit). The panel is mounted
+# rotated relative to the display: raw X tracks screen Y, raw Y tracks
+# screen X. Captured via a 4-corner tap probe; see docs/hardware_configuration.md.
+TOUCH_RAW_X_MIN = 411  # raw X at screen y=0 (top)
+TOUCH_RAW_X_MAX = 3553  # raw X at screen y=SCREEN_HEIGHT-1 (bottom)
+TOUCH_RAW_Y_MIN = 476  # raw Y at screen x=0 (left)
+TOUCH_RAW_Y_MAX = 3698  # raw Y at screen x=SCREEN_WIDTH-1 (right)
 
 # Touch UI timing and geometry (consumed by later UI stories).
 # The Bar and Settings share this one timeout; neither surface owns a variant.

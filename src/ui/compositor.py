@@ -25,6 +25,7 @@ class UiCompositor:
         self._display = display
         self._prev_badge = None
         self._prev_bar_height = 0
+        self._prev_was_settings = False
 
     def bar_gear_hit(self, x, y):
         """Test a sampled point against the named Bar gear geometry."""
@@ -71,20 +72,32 @@ class UiCompositor:
         bar_retract_start_height=None,
     ):
         if active_surface == SURFACE_SETTINGS:
-            if self._prev_badge or self._prev_bar_height > 0:
-                self._display.fill_rect(
-                    0,
-                    0,
-                    self._display.width,
-                    self._display.height,
-                    config.COLOR_BACKGROUND,
-                )
+            if not self._prev_was_settings:
+                # Settings content is static for the whole time it's open
+                # (the status snapshot is captured once on entry); redrawing
+                # identical content every tick just flickers the screen.
+                if self._prev_badge or self._prev_bar_height > 0:
+                    self._display.fill_rect(
+                        0,
+                        0,
+                        self._display.width,
+                        self._display.height,
+                        config.COLOR_BACKGROUND,
+                    )
+                if hasattr(base_view, "invalidate"):
+                    base_view.invalidate()
+                base_view.render(snapshot)
+                self._prev_badge = False
+                self._prev_bar_height = 0
+                self._prev_was_settings = True
+            return
+        if self._prev_was_settings:
+            # Settings painted the whole screen; the base view's own
+            # previously-drawn pixels no longer match what it thinks is on
+            # screen, so a resumed diff-redraw would only repaint deltas.
             if hasattr(base_view, "invalidate"):
                 base_view.invalidate()
-            base_view.render(snapshot)
-            self._prev_badge = False
-            self._prev_bar_height = 0
-            return
+            self._prev_was_settings = False
         show_badge = snapshot.trust == TRUST_UNSYNCED
         if bar_retract_elapsed_ms is not None:
             elapsed = max(0, int(bar_retract_elapsed_ms))
