@@ -67,7 +67,7 @@ class App:
     Reads advancing UTC only through an injected ClockPort, derives immutable
     TimeSnapshots via pure time logic, and schedules work with ticks helpers.
     Loop order (AD-12): adapter results → network events → snapshot → rollover
-    → view deadline → base render → status layer.
+    → view deadline → base render → UNSYNCED badge.
     """
 
     def __init__(
@@ -166,22 +166,10 @@ class App:
         self._consume_sync_result(now)
         self._maybe_enqueue_sync(now)
 
-        # 1b. Drain coordinator NetworkEvents into overlay state (story 1.3).
-        overlay_before = (
-            self._overlay_kind,
-            self._overlay_ssid,
-            self._overlay_ip,
-            self._overlay_clear_deadline,
-        )
+        # 1b. Drain coordinator NetworkEvents into retained network state.
         self._drain_network_events(now)
         self._expire_station_ip_overlay(now)
-        overlay_after = (
-            self._overlay_kind,
-            self._overlay_ssid,
-            self._overlay_ip,
-            self._overlay_clear_deadline,
-        )
-        force_redraw = overlay_before != overlay_after
+        force_redraw = False
 
         # 2. Derive snapshot.
         utc = self._clock.read_utc()
@@ -198,7 +186,7 @@ class App:
         if t.ticks_diff(self.state.view_deadline, now) <= 0:
             force_redraw = self._handle_view_deadline(snapshot, now) or force_redraw
 
-        # 5–6. Render base view + status layer via compositor.
+        # 5–6. Render base view + UNSYNCED badge via compositor.
         if force_redraw or t.ticks_diff(self.state.redraw_deadline, now) <= 0:
             self._render(snapshot)
             self.state.redraw_deadline = t.ticks_add(now, config.CLOCK_REDRAW_MS)
@@ -229,7 +217,7 @@ class App:
             # the online event has made synchronization eligible.
             self.state.retry_deadline = now
             ip = getattr(event, "ip", None)
-            # Clear prior Setup / station-IP overlay; never leave a stale address.
+            # Clear prior status; never retain a stale address.
             self._overlay_kind = None
             self._overlay_ssid = None
             self._overlay_ip = None
@@ -260,7 +248,7 @@ class App:
             self._overlay_clear_deadline = None
 
     def _network_status(self):
-        """Immutable-ish status payload for the compositor status layer."""
+        """Immutable-ish retained network-status payload for Settings."""
         kind = self._overlay_kind
         if kind is None:
             return None
@@ -405,15 +393,14 @@ class App:
             self._calendar_view.invalidate()
 
     def _render(self, snapshot):
-        status = self._network_status()
         if self.state.active_view == VIEW_CALENDAR:
             grid = self._month_grid
             if grid is None and snapshot.local is not None:
                 self._rebuild_month_grid(snapshot.local)
                 grid = self._month_grid
-            self._compositor.render(self._calendar_view, snapshot, grid, status=status)
+            self._compositor.render(self._calendar_view, snapshot, grid)
         else:
-            self._compositor.render(self._view, snapshot, status=status)
+            self._compositor.render(self._view, snapshot)
 
     def run_forever(self, sleep_ms_fn=None):
         """Device loop: step + short sleep. Not used by host tests."""
