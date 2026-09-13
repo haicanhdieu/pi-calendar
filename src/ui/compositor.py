@@ -49,6 +49,17 @@ class UiCompositor:
         """Test a sampled point against the Settings reboot tap geometry."""
         return point_in_rect(x, y, settings_reboot_item_rect(self._display))
 
+    def settings_outside_edge(self, x, y):
+        """True when coords are valid integers outside the reboot tap target."""
+        if self.settings_reboot_hit(x, y):
+            return False
+        try:
+            int(x)
+            int(y)
+        except (TypeError, ValueError, OverflowError):
+            return False
+        return True
+
     def render(
         self,
         base_view,

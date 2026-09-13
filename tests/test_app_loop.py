@@ -324,7 +324,7 @@ def test_bar_gear_edge_enters_settings_without_rotation_dwell_rearm():
     app.step(now_ticks=ft.now)
 
     assert app.state.active_surface == SURFACE_SETTINGS
-    assert app.state.surface_deadline is None
+    assert app.state.surface_deadline == ft.ticks_add(ft.now, config.TOUCH_IDLE_TIMEOUT_MS)
     assert app.state.view_deadline == old_deadline
     assert app._bar_retract_started == ft.now
 
@@ -511,7 +511,7 @@ def test_settings_reboot_tap_flashes_then_resets_once():
     assert events == ["sleep", "reset"]
 
 
-def test_settings_reboot_miss_does_not_reset():
+def test_settings_reboot_miss_dismisses_without_reset():
     ft = FakeTicks(0)
     display = FakeDisplayPort()
     touch = FakeTouchPort([(True, 0, 0), (True, 160, 222), (True, 10, 10)])
@@ -520,12 +520,16 @@ def test_settings_reboot_miss_does_not_reset():
         ticks_mod=ft, touch_port=touch, reboot_port=reboot
     )
     _enter_settings_via_gear(app, ft)
+    old_view_deadline = app.state.view_deadline
     display.clear_ops()
     ft.advance(1)
     app.step(now_ticks=ft.now)
 
     assert reboot.reset_count == 0
-    assert app.state.active_surface == SURFACE_SETTINGS
+    assert app.state.active_surface == SURFACE_ROTATION
+    assert app.state.surface_deadline is None
+    assert app.state.view_deadline == ft.ticks_add(ft.now, config.CLOCK_DWELL_MS)
+    assert app.state.view_deadline != old_view_deadline
     assert not any(
         op[0] == "fill_rect" and op[5] == config.COLOR_PRESS_FLASH
         for op in display.ops
@@ -563,6 +567,138 @@ def test_settings_reboot_none_port_still_flashes_without_exception():
         config.COLOR_PRESS_FLASH,
     ) in display.ops
     assert sleep.calls == [config.PRESS_FLASH_MS]
+
+
+def test_settings_idle_timeout_returns_to_rotation_and_rearms_clock_dwell():
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    _enter_settings_via_gear(app, ft)
+    ft.advance(config.TOUCH_IDLE_TIMEOUT_MS)
+    app.step(now_ticks=ft.now)
+
+    assert app.state.active_surface == SURFACE_ROTATION
+    assert app.state.surface_deadline is None
+    assert app.state.view_deadline == ft.ticks_add(ft.now, config.CLOCK_DWELL_MS)
+
+
+def test_settings_outside_tap_returns_to_rotation_and_rearms_calendar_dwell():
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222), (True, 10, 10)])
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    app.boot()
+    app.state.active_view = VIEW_CALENDAR
+    app.step(now_ticks=ft.now)
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+    assert app.state.active_surface == SURFACE_SETTINGS
+
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+
+    assert app.state.active_surface == SURFACE_ROTATION
+    assert app.state.surface_deadline is None
+    assert app.state.view_deadline == ft.ticks_add(ft.now, config.CALENDAR_DWELL_MS)
+
+
+def test_settings_malformed_edge_stays_on_settings_without_error():
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222), (True,)])
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    _enter_settings_via_gear(app, ft)
+    deadline = app.state.surface_deadline
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+
+    assert app.state.active_surface == SURFACE_SETTINGS
+    assert app.state.surface_deadline == deadline
+
+
+def test_settings_idle_timeout_rearms_calendar_dwell():
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    app.boot()
+    app.state.active_view = VIEW_CALENDAR
+    app.step(now_ticks=ft.now)
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+    ft.advance(config.TOUCH_IDLE_TIMEOUT_MS)
+    app.step(now_ticks=ft.now)
+
+    assert app.state.active_surface == SURFACE_ROTATION
+    assert app.state.view_deadline == ft.ticks_add(ft.now, config.CALENDAR_DWELL_MS)
+
+
+def test_settings_outside_tap_clears_bar_retract_state():
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222), (True, 10, 10)])
+    app, _clock, _view, display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    _enter_settings_via_gear(app, ft)
+    assert app._bar_retract_started is not None
+    display.clear_ops()
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+
+    assert app.state.active_surface == SURFACE_ROTATION
+    assert app._bar_retract_started is None
+    assert app._bar_visible_height == 0
+    assert not any(op[-1] == config.COLOR_BAR_PANEL for op in display.ops)
+
+
+def test_settings_reboot_tap_preserves_settings_surface():
+    ft = FakeTicks(0)
+    display = FakeDisplayPort()
+    reboot_x, reboot_y = _settings_reboot_center(display)
+    touch = FakeTouchPort(
+        [(True, 0, 0), (True, 160, 222), (True, reboot_x, reboot_y)]
+    )
+    reboot = FakeRebootPort()
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft,
+        touch_port=touch,
+        reboot_port=reboot,
+        sleep_ms_fn=RecordingSleepMs(),
+    )
+    _enter_settings_via_gear(app, ft)
+    armed_deadline = app.state.surface_deadline
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+
+    assert app.state.active_surface == SURFACE_SETTINGS
+    assert app.state.surface_deadline == armed_deadline
+
+
+def test_settings_reboot_tap_wins_when_idle_deadline_is_due():
+    ft = FakeTicks(0)
+    display = FakeDisplayPort()
+    reboot_x, reboot_y = _settings_reboot_center(display)
+    touch = FakeTouchPort(
+        [(True, 0, 0), (True, 160, 222), (True, reboot_x, reboot_y)]
+    )
+    reboot = FakeRebootPort()
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft,
+        touch_port=touch,
+        reboot_port=reboot,
+        sleep_ms_fn=RecordingSleepMs(),
+    )
+    _enter_settings_via_gear(app, ft)
+    ft.advance(config.TOUCH_IDLE_TIMEOUT_MS)
+    app.step(now_ticks=ft.now)
+
+    assert app.state.active_surface == SURFACE_SETTINGS
+    assert reboot.reset_count == 1
 
 
 def test_settings_retains_the_interrupted_view_after_its_dwell_is_due():

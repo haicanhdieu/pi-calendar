@@ -11,6 +11,7 @@ from src.ui.touch_state import (
     BAR_TARGET_GEAR,
     BAR_TARGET_IN_PANEL,
     BAR_TARGET_OUTSIDE,
+    SETTINGS_TARGET_REBOOT,
     SURFACE_BAR,
     SURFACE_ROTATION,
     SURFACE_SETTINGS,
@@ -250,10 +251,6 @@ class App:
                     # A malformed sample is never a Bar target hit.
                     pass
         previous = self.state.active_surface
-        if previous == SURFACE_SETTINGS and edge_down:
-            if self._compositor.settings_reboot_hit(x, y):
-                self._handle_settings_reboot_tap()
-                return True
         bar_target = None
         if previous == SURFACE_BAR and edge_down:
             if self._compositor.bar_gear_hit(x, y):
@@ -262,11 +259,30 @@ class App:
                 bar_target = BAR_TARGET_IN_PANEL
             elif self._compositor.bar_outside_edge(x, y):
                 bar_target = BAR_TARGET_OUTSIDE
+        settings_target = None
+        surface_edge_down = edge_down
+        if previous == SURFACE_SETTINGS and edge_down:
+            if self._compositor.settings_reboot_hit(x, y):
+                settings_target = SETTINGS_TARGET_REBOOT
+            elif not self._compositor.settings_outside_edge(x, y):
+                surface_edge_down = False
         surface, deadline = next_surface(
-            previous, self.state.surface_deadline, edge_down, now, bar_target
+            previous,
+            self.state.surface_deadline,
+            surface_edge_down,
+            now,
+            bar_target,
+            settings_target,
+        )
+        reboot_tap = (
+            previous == SURFACE_SETTINGS
+            and edge_down
+            and settings_target == SETTINGS_TARGET_REBOOT
         )
         self.state.active_surface = surface
         self.state.surface_deadline = deadline
+        if reboot_tap:
+            self._handle_settings_reboot_tap()
         if surface != previous:
             if surface == SURFACE_BAR:
                 self._bar_reveal_started = now
@@ -280,8 +296,14 @@ class App:
                     self.state.settings_status_snapshot = self._network_status()
                 elif surface == SURFACE_ROTATION:
                     self._rearm_active_view_dwell(now)
+            elif previous == SURFACE_SETTINGS and surface == SURFACE_ROTATION:
+                self._bar_reveal_started = None
+                self._bar_retract_started = None
+                self._bar_retract_start_height = None
+                self._bar_visible_height = 0
+                self._rearm_active_view_dwell(now)
             return True
-        return False
+        return reboot_tap
 
     def _handle_settings_reboot_tap(self):
         """Draw Press Flash, dwell, then invoke the injected reboot port once."""
