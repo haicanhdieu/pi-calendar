@@ -284,6 +284,150 @@ def test_bar_gear_edge_enters_settings_without_rotation_dwell_rearm():
     assert app._bar_retract_started == ft.now
 
 
+def _enter_settings_via_gear(app, ft):
+    app.boot()
+    app.step(now_ticks=ft.now)
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+
+
+def test_bar_gear_entering_settings_captures_network_status_snapshot():
+    from src.device.network.models import setup_ap_status_event
+
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    app._network_events = [setup_ap_status_event()]
+    _enter_settings_via_gear(app, ft)
+
+    assert app.state.active_surface == SURFACE_SETTINGS
+    assert app.state.settings_status_snapshot == {
+        "kind": "setup",
+        "ssid": config.SETUP_AP_SSID,
+        "ip": config.SETUP_AP_GATEWAY,
+    }
+
+
+def test_settings_entry_with_no_network_status_leaves_none_snapshot():
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    _enter_settings_via_gear(app, ft)
+
+    assert app.state.settings_status_snapshot is None
+
+
+def test_settings_snapshot_is_not_refreshed_while_open():
+    from src.device.network.models import setup_ap_status_event
+
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    app._network_events = [setup_ap_status_event()]
+    _enter_settings_via_gear(app, ft)
+    captured = app.state.settings_status_snapshot
+
+    app._overlay_kind = "station_ip"
+    app._overlay_ssid = "Changed"
+    app._overlay_ip = "10.0.0.99"
+    ft.advance(config.CLOCK_REDRAW_MS)
+    app.step(now_ticks=ft.now)
+
+    assert app.state.settings_status_snapshot == captured
+    assert app.state.settings_status_snapshot["kind"] == "setup"
+
+
+def test_settings_reentry_overwrites_snapshot_from_current_network_state():
+    from src.device.network.models import setup_ap_status_event
+
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    app._network_events = [setup_ap_status_event()]
+    _enter_settings_via_gear(app, ft)
+    assert app.state.settings_status_snapshot["kind"] == "setup"
+
+    app.state.active_surface = SURFACE_BAR
+    app._overlay_kind = "station_ip"
+    app._overlay_ssid = "Home"
+    app._overlay_ip = "192.168.1.50"
+    app._touch_port = FakeTouchPort([(True, 160, 222)])
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+
+    assert app.state.settings_status_snapshot == {
+        "kind": "station_ip",
+        "ssid": "Home",
+        "ip": "192.168.1.50",
+    }
+
+
+def test_settings_render_suspends_calendar_and_hides_bar():
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    app, _clock, _view, display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    app.boot()
+    app.state.active_view = VIEW_CALENDAR
+    app.step(now_ticks=ft.now)
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+    assert app.state.active_surface == SURFACE_SETTINGS
+    display.clear_ops()
+    ft.advance(config.CLOCK_REDRAW_MS)
+    app.step(now_ticks=ft.now)
+
+    texts = [op[1] for op in display.ops if op[0] == "draw_text"]
+    assert "14:00" not in texts
+    assert config.BADGE_TEXT not in texts
+    calendar_fills = [
+        op
+        for op in display.ops
+        if op[0] == "fill_rect" and op[5] == config.COLOR_PRIMARY
+    ]
+    assert not calendar_fills
+
+
+def test_settings_render_suspends_clock_and_hides_bar():
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    app, _clock, _view, display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    _enter_settings_via_gear(app, ft)
+    display.clear_ops()
+    ft.advance(config.CLOCK_REDRAW_MS)
+    app.step(now_ticks=ft.now)
+
+    texts = [op[1] for op in display.ops if op[0] == "draw_text"]
+    assert "14:00" not in texts
+    assert config.BADGE_TEXT not in texts
+    bx, by, bw, bh = (
+        0,
+        display.height - config.BAR_HEIGHT_PX,
+        display.width,
+        config.BAR_HEIGHT_PX,
+    )
+    assert ("fill_rect", bx, by, bw, bh, config.COLOR_BAR_PANEL) not in display.ops
+    assert (
+        "fill_rect",
+        0,
+        0,
+        display.width,
+        display.height,
+        config.COLOR_BACKGROUND,
+    ) in display.ops
+
+
 def test_settings_retains_the_interrupted_view_after_its_dwell_is_due():
     ft = FakeTicks(0)
     touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])

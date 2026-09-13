@@ -6,12 +6,14 @@ from src.calendar.gregorian import build_month_grid
 from src.time.model import TRUST_SYNCED, TRUST_UNSYNCED
 from src.time.service import make_snapshot
 from src.ui.compositor import UiCompositor
+from src.ui.settings_view import SettingsView
 from src.ui.touch_state import (
     BAR_TARGET_GEAR,
     BAR_TARGET_IN_PANEL,
     BAR_TARGET_OUTSIDE,
     SURFACE_BAR,
     SURFACE_ROTATION,
+    SURFACE_SETTINGS,
     next_surface,
 )
 from src.ui.view_state import (
@@ -101,6 +103,7 @@ class App:
         self._clock = clock_port
         self._view = clock_view
         self._calendar_view = calendar_view
+        self._settings_view = SettingsView(clock_view._display)
         self._ticks = ticks_module if ticks_module is not None else default_ticks
         self._log = log if log is not None else print
         if compositor is None:
@@ -259,7 +262,9 @@ class App:
                 self._bar_reveal_started = None
                 self._bar_retract_started = now
                 self._bar_retract_start_height = self._bar_visible_height
-                if surface == SURFACE_ROTATION:
+                if surface == SURFACE_SETTINGS:
+                    self.state.settings_status_snapshot = self._network_status()
+                elif surface == SURFACE_ROTATION:
                     self._rearm_active_view_dwell(now)
             return True
         return False
@@ -489,6 +494,13 @@ class App:
             self._calendar_view.invalidate()
 
     def _render(self, snapshot, now):
+        if self.state.active_surface == SURFACE_SETTINGS:
+            self._compositor.render(
+                self._settings_view,
+                self.state.settings_status_snapshot,
+                active_surface=SURFACE_SETTINGS,
+            )
+            return
         reveal_started = self._bar_reveal_started
         if self.state.active_surface == SURFACE_BAR and reveal_started == now:
             bar_elapsed = config.BAR_ANIMATION_FRAME_MS

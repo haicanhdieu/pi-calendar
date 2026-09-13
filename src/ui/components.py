@@ -56,6 +56,26 @@ def bar_gear_item_rect(display):
     )
 
 
+def settings_status_rect(display):
+    """Return the Settings status region rect (x, y, w, h)."""
+    y = config.SETTINGS_TOP_PADDING_PX
+    return (0, y, display.width, config.TAP_TARGET_SIZE_PX)
+
+
+def settings_guideline_rect(display):
+    """Return the Settings guideline region rect (x, y, w, h)."""
+    _x, status_y, _w, status_h = settings_status_rect(display)
+    y = status_y + status_h + config.SETTINGS_STATUS_GUIDELINE_GAP_PX
+    return (0, y, display.width, config.TAP_TARGET_SIZE_PX // 2)
+
+
+def settings_reboot_rect(display):
+    """Return the Settings reboot control region rect (x, y, w, h)."""
+    _x, guide_y, _w, guide_h = settings_guideline_rect(display)
+    y = guide_y + guide_h + config.SETTINGS_GUIDELINE_REBOOT_GAP_PX
+    return (0, y, display.width, config.TAP_TARGET_SIZE_PX)
+
+
 def point_in_rect(x, y, rect):
     """Return whether an integer point lies in the rect's half-open bounds.
 

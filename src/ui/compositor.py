@@ -9,7 +9,7 @@ from src.ui.components import (
     draw_unsynced_badge,
     point_in_rect,
 )
-from src.ui.touch_state import SURFACE_BAR
+from src.ui.touch_state import SURFACE_BAR, SURFACE_SETTINGS
 
 
 class UiCompositor:
@@ -54,6 +54,21 @@ class UiCompositor:
         bar_retract_elapsed_ms=None,
         bar_retract_start_height=None,
     ):
+        if active_surface == SURFACE_SETTINGS:
+            if self._prev_badge or self._prev_bar_height > 0:
+                self._display.fill_rect(
+                    0,
+                    0,
+                    self._display.width,
+                    self._display.height,
+                    config.COLOR_BACKGROUND,
+                )
+            if hasattr(base_view, "invalidate"):
+                base_view.invalidate()
+            base_view.render(snapshot)
+            self._prev_badge = False
+            self._prev_bar_height = 0
+            return
         show_badge = snapshot.trust == TRUST_UNSYNCED
         if bar_retract_elapsed_ms is not None:
             elapsed = max(0, int(bar_retract_elapsed_ms))

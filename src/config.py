@@ -37,6 +37,11 @@ BAR_HEIGHT_PX = 36
 TAP_TARGET_SIZE_PX = 48
 PRESS_FLASH_MS = 120
 
+# Settings view layout (Story 3.1)
+SETTINGS_TOP_PADDING_PX = 28
+SETTINGS_STATUS_GUIDELINE_GAP_PX = 18
+SETTINGS_GUIDELINE_REBOOT_GAP_PX = 40
+
 # Instrument-panel palette seeds (RGB888); convert at the display boundary.
 COLOR_BACKGROUND_RGB = (0x0A, 0x0A, 0x0A)
 COLOR_PRIMARY_RGB = (0x3D, 0xFF, 0x7A)

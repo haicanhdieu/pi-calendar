@@ -18,8 +18,12 @@ from src.ui.components import (
     badge_rect,
     draw_unsynced_badge,
     point_in_rect,
+    settings_guideline_rect,
+    settings_reboot_rect,
+    settings_status_rect,
 )
 from src.ui.compositor import UiCompositor
+from src.ui.settings_view import SettingsView
 from src.ui.display_port import FakeDisplayPort
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -380,6 +384,72 @@ def test_draw_unsynced_badge_hidden_draws_nothing():
     display = FakeDisplayPort()
     draw_unsynced_badge(display, False)
     assert display.ops == []
+
+
+def test_settings_layout_rects_match_specified_spacing():
+    display = FakeDisplayPort()
+    status_x, status_y, status_w, status_h = settings_status_rect(display)
+    guide_x, guide_y, guide_w, guide_h = settings_guideline_rect(display)
+    reboot_x, reboot_y, reboot_w, reboot_h = settings_reboot_rect(display)
+
+    assert status_y == config.SETTINGS_TOP_PADDING_PX
+    assert guide_y == status_y + status_h + config.SETTINGS_STATUS_GUIDELINE_GAP_PX
+    assert reboot_y == guide_y + guide_h + config.SETTINGS_GUIDELINE_REBOOT_GAP_PX
+    assert status_w == guide_w == reboot_w == display.width
+    assert reboot_h == config.TAP_TARGET_SIZE_PX
+
+
+def test_settings_view_tolerates_none_snapshot():
+    display = FakeDisplayPort()
+    view = SettingsView(display)
+    view.render(None)
+    assert any(
+        op[0] == "fill_rect"
+        and op[3] == display.width
+        and op[4] == display.height
+        for op in display.ops
+    )
+
+
+def test_settings_surface_suppresses_badge_and_bar():
+    display = FakeDisplayPort()
+    clock = ClockView(display)
+    settings = SettingsView(display)
+    compositor = UiCompositor(display)
+    snapshot = _snapshot(_local(), TRUST_UNSYNCED)
+
+    from src.ui.touch_state import SURFACE_BAR, SURFACE_SETTINGS
+
+    compositor.render(
+        clock,
+        snapshot,
+        active_surface=SURFACE_BAR,
+        bar_elapsed_ms=config.BAR_SLIDE_DURATION_MS,
+    )
+    assert config.BADGE_TEXT in [op[1] for op in display.ops if op[0] == "draw_text"]
+
+    display.clear_ops()
+    compositor.render(settings, None, active_surface=SURFACE_SETTINGS)
+
+    texts = [op[1] for op in display.ops if op[0] == "draw_text"]
+    assert config.BADGE_TEXT not in texts
+    bx, by, bw, bh = bar_rect(display)
+    assert ("fill_rect", bx, by, bw, bh, config.COLOR_BAR_PANEL) not in display.ops
+    assert (
+        "fill_rect",
+        0,
+        0,
+        display.width,
+        display.height,
+        config.COLOR_BACKGROUND,
+    ) in display.ops
+    for rect in (
+        settings_status_rect(display),
+        settings_guideline_rect(display),
+        settings_reboot_rect(display),
+    ):
+        x, y, w, h = rect
+        assert ("fill_rect", x, y, w, h, config.COLOR_BAR_PANEL) in display.ops
 
 
 def test_bar_is_a_bounded_draw_last_overlay_and_visibility_restores_base():
