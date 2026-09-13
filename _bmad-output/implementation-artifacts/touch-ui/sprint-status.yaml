@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-13-2026 16:48
-last_updated: 09-13-2026 17:35
+last_updated: 09-13-2026 18:30
 project: pi-calendar
 project_key: NOKEY
 tracking_system: file-system
@@ -41,14 +41,14 @@ development_status:
   epic-1-retrospective: optional
 
   epic-2: in-progress
-  2-1-pure-touch_state-transitions-for-rotation-bar: backlog
+  2-1-pure-touch_state-transitions-for-rotation-bar: done
   2-2-wire-touch-polling-into-app-step-and-render-the-bar-overlay: done
-  2-3-auto-retract-bar-on-idle-timeout-or-outside-tap: backlog
+  2-3-auto-retract-bar-on-idle-timeout-or-outside-tap: done
   epic-2-retrospective: optional
 
-  epic-3: backlog
-  3-1-open-settings-view-from-the-gear-icon-with-a-captured-status: backlog
-  3-2-render-status-and-mode-branched-guideline-copy: backlog
-  3-3-reboot-control-with-press-flash-no-confirmation: backlog
-  3-4-settings-idle-timeout-and-outside-tap-dismissal: backlog
+  epic-3: in-progress
+  3-1-open-settings-view-from-the-gear-icon-with-a-captured-status: ready-for-dev
+  3-2-render-status-and-mode-branched-guideline-copy: ready-for-dev
+  3-3-reboot-control-with-press-flash-no-confirmation: ready-for-dev
+  3-4-settings-idle-timeout-and-outside-tap-dismissal: ready-for-dev
   epic-3-retrospective: optional

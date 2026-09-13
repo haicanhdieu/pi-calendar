@@ -9,6 +9,9 @@ from pathlib import Path
 from src import ticks
 from src.config import TOUCH_IDLE_TIMEOUT_MS
 from src.ui.touch_state import (
+    BAR_TARGET_GEAR,
+    BAR_TARGET_IN_PANEL,
+    BAR_TARGET_OUTSIDE,
     SURFACE_BAR,
     SURFACE_ROTATION,
     SURFACE_SETTINGS,
@@ -80,12 +83,54 @@ def test_bar_expires_when_its_deadline_is_due():
     assert next_surface(SURFACE_BAR, now, False, now) == (SURFACE_ROTATION, None)
 
 
-def test_bar_retains_its_exact_future_deadline_even_on_an_edge():
+def test_bar_retains_its_exact_future_deadline_without_an_edge():
     now = 12_345
     deadline = ticks.ticks_add(now, TOUCH_IDLE_TIMEOUT_MS)
 
     assert next_surface(SURFACE_BAR, deadline, False, now) == (SURFACE_BAR, deadline)
-    assert next_surface(SURFACE_BAR, deadline, True, now) == (SURFACE_BAR, deadline)
+
+
+def test_bar_routes_gear_edge_to_settings_and_outside_edges_to_rotation():
+    now = 12_345
+    deadline = ticks.ticks_add(now, TOUCH_IDLE_TIMEOUT_MS)
+
+    assert next_surface(SURFACE_BAR, deadline, True, now, BAR_TARGET_GEAR) == (
+        SURFACE_SETTINGS,
+        None,
+    )
+    assert next_surface(SURFACE_BAR, deadline, True, now, BAR_TARGET_OUTSIDE) == (
+        SURFACE_ROTATION,
+        None,
+    )
+
+
+def test_bar_in_panel_edge_stays_on_bar():
+    now = 12_345
+    deadline = ticks.ticks_add(now, TOUCH_IDLE_TIMEOUT_MS)
+
+    assert next_surface(SURFACE_BAR, deadline, True, now, BAR_TARGET_IN_PANEL) == (
+        SURFACE_BAR,
+        deadline,
+    )
+
+
+def test_bar_malformed_edge_stays_on_bar():
+    now = 12_345
+    deadline = ticks.ticks_add(now, TOUCH_IDLE_TIMEOUT_MS)
+
+    assert next_surface(SURFACE_BAR, deadline, True, now, None) == (
+        SURFACE_BAR,
+        deadline,
+    )
+
+
+def test_gear_edge_wins_when_bar_deadline_is_due():
+    now = 12_345
+
+    assert next_surface(SURFACE_BAR, now, True, now, BAR_TARGET_GEAR) == (
+        SURFACE_SETTINGS,
+        None,
+    )
 
 
 def test_bar_deadline_uses_wrap_safe_tick_comparison():

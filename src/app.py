@@ -6,7 +6,14 @@ from src.calendar.gregorian import build_month_grid
 from src.time.model import TRUST_SYNCED, TRUST_UNSYNCED
 from src.time.service import make_snapshot
 from src.ui.compositor import UiCompositor
-from src.ui.touch_state import SURFACE_BAR, next_surface
+from src.ui.touch_state import (
+    BAR_TARGET_GEAR,
+    BAR_TARGET_IN_PANEL,
+    BAR_TARGET_OUTSIDE,
+    SURFACE_BAR,
+    SURFACE_ROTATION,
+    next_surface,
+)
 from src.ui.view_state import (
     VIEW_CALENDAR,
     VIEW_CLOCK,
@@ -119,6 +126,9 @@ class App:
         self._overlay_ip = None
         self._overlay_clear_deadline = None
         self._bar_reveal_started = None
+        self._bar_retract_started = None
+        self._bar_retract_start_height = None
+        self._bar_visible_height = 0
         self.state.active_surface = "rotation"
         self.state.surface_deadline = None
 
@@ -139,6 +149,9 @@ class App:
         self._overlay_ip = None
         self._overlay_clear_deadline = None
         self._bar_reveal_started = None
+        self._bar_retract_started = None
+        self._bar_retract_start_height = None
+        self._bar_visible_height = 0
         # Due immediately so the first step paints Clock.
         self.state.redraw_deadline = now
         # Sync retry due immediately so the first NTP attempt is not deferred.
@@ -200,7 +213,7 @@ class App:
 
         # 4. Handle view deadline.
         if (
-            self.state.active_surface != SURFACE_BAR
+            self.state.active_surface == SURFACE_ROTATION
             and t.ticks_diff(self.state.view_deadline, now) <= 0
         ):
             force_redraw = self._handle_view_deadline(snapshot, now) or force_redraw
@@ -213,30 +226,63 @@ class App:
     def _poll_touch(self, now):
         """Read the optional touch port once and commit its surface decision."""
         edge_down = False
+        x = y = None
         if self._touch_port is not None:
             sample = self._touch_port.read()
             if sample:
-                edge_down = bool(sample[0])
+                try:
+                    edge_down = bool(sample[0])
+                    x, y = sample[1], sample[2]
+                except (IndexError, TypeError):
+                    # A malformed sample is never a Bar target hit.
+                    pass
         previous = self.state.active_surface
-        # Story 2.2 enters Bar from Rotation.  Story 2.3 wires the existing
-        # Bar expiry decision and its fresh Rotation dwell deadline.
-        if previous == "rotation":
-            surface, deadline = next_surface(
-                previous, self.state.surface_deadline, edge_down, now
-            )
-        else:
-            surface, deadline = previous, self.state.surface_deadline
+        bar_target = None
+        if previous == SURFACE_BAR and edge_down:
+            if self._compositor.bar_gear_hit(x, y):
+                bar_target = BAR_TARGET_GEAR
+            elif self._compositor.bar_panel_hit(x, y):
+                bar_target = BAR_TARGET_IN_PANEL
+            elif self._compositor.bar_outside_edge(x, y):
+                bar_target = BAR_TARGET_OUTSIDE
+        surface, deadline = next_surface(
+            previous, self.state.surface_deadline, edge_down, now, bar_target
+        )
         self.state.active_surface = surface
         self.state.surface_deadline = deadline
         if surface != previous:
-            self._bar_reveal_started = now if surface == SURFACE_BAR else None
+            if surface == SURFACE_BAR:
+                self._bar_reveal_started = now
+                self._bar_retract_started = None
+                self._bar_retract_start_height = None
+            elif previous == SURFACE_BAR:
+                self._bar_reveal_started = None
+                self._bar_retract_started = now
+                self._bar_retract_start_height = self._bar_visible_height
+                if surface == SURFACE_ROTATION:
+                    self._rearm_active_view_dwell(now)
             return True
         return False
 
+    def _rearm_active_view_dwell(self, now):
+        duration = (
+            config.CALENDAR_DWELL_MS
+            if self.state.active_view == VIEW_CALENDAR
+            else config.CLOCK_DWELL_MS
+        )
+        self.state.view_deadline = self._ticks.ticks_add(now, duration)
+
     def _next_redraw_deadline(self, now):
         """Use the short cadence only while the Bar reveal is in progress."""
-        if self.state.active_surface == SURFACE_BAR and self._bar_reveal_started is not None:
+        if (
+            self.state.active_surface == SURFACE_BAR
+            and self._bar_reveal_started is not None
+        ):
             elapsed = self._ticks.ticks_diff(now, self._bar_reveal_started)
+            if elapsed < config.BAR_SLIDE_DURATION_MS:
+                return self._ticks.ticks_add(now, config.BAR_ANIMATION_FRAME_MS)
+        if self._bar_retract_started is not None:
+            elapsed = self._ticks.ticks_diff(now, self._bar_retract_started)
             if elapsed < config.BAR_SLIDE_DURATION_MS:
                 return self._ticks.ticks_add(now, config.BAR_ANIMATION_FRAME_MS)
         return self._ticks.ticks_add(now, config.CLOCK_REDRAW_MS)
@@ -450,6 +496,28 @@ class App:
             bar_elapsed = 0
         else:
             bar_elapsed = self._ticks.ticks_diff(now, reveal_started)
+        retract_started = self._bar_retract_started
+        if retract_started is None:
+            retract_elapsed = None
+            retract_start_height = None
+        else:
+            retract_elapsed = self._ticks.ticks_diff(now, retract_started)
+            retract_start_height = self._bar_retract_start_height
+        if retract_elapsed is not None:
+            bar_visible_height = max(
+                0,
+                retract_start_height
+                - (retract_start_height * max(0, retract_elapsed))
+                // config.BAR_SLIDE_DURATION_MS,
+            )
+        elif self.state.active_surface == SURFACE_BAR:
+            bar_visible_height = min(
+                config.BAR_HEIGHT_PX,
+                (config.BAR_HEIGHT_PX * max(0, bar_elapsed))
+                // config.BAR_SLIDE_DURATION_MS,
+            )
+        else:
+            bar_visible_height = 0
         if self.state.active_view == VIEW_CALENDAR:
             grid = self._month_grid
             if grid is None and snapshot.local is not None:
@@ -461,6 +529,8 @@ class App:
                 grid,
                 active_surface=self.state.active_surface,
                 bar_elapsed_ms=bar_elapsed,
+                bar_retract_elapsed_ms=retract_elapsed,
+                bar_retract_start_height=retract_start_height,
             )
         else:
             self._compositor.render(
@@ -468,7 +538,17 @@ class App:
                 snapshot,
                 active_surface=self.state.active_surface,
                 bar_elapsed_ms=bar_elapsed,
+                bar_retract_elapsed_ms=retract_elapsed,
+                bar_retract_start_height=retract_start_height,
             )
+        self._bar_visible_height = bar_visible_height
+        if (
+            retract_elapsed is not None
+            and retract_elapsed >= config.BAR_SLIDE_DURATION_MS
+        ):
+            self._bar_retract_started = None
+            self._bar_retract_start_height = None
+            self._bar_visible_height = 0
 
     def run_forever(self, sleep_ms_fn=None):
         """Device loop: step + short sleep. Not used by host tests."""

@@ -13,7 +13,7 @@ from src.time.model import TRUST_SYNCED, TRUST_UNSYNCED, DateTime
 from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
 from src.ui.display_port import FakeDisplayPort
-from src.ui.touch_state import SURFACE_BAR, SURFACE_ROTATION
+from src.ui.touch_state import SURFACE_BAR, SURFACE_ROTATION, SURFACE_SETTINGS
 
 ROOT = Path(__file__).resolve().parents[1]
 FORBIDDEN_IMPORT_ROOTS = frozenset(
@@ -207,7 +207,7 @@ def test_bar_freezes_view_dwell_and_reveals_on_frame_cadence():
     ) in display.ops
 
 
-def test_bar_does_not_retract_until_story_2_3_wires_expiry_policy():
+def test_bar_idle_timeout_retracts_and_rearms_retained_clock_dwell():
     ft = FakeTicks(0)
     touch = FakeTouchPort([(True, 0, 0)])
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
@@ -217,7 +217,165 @@ def test_bar_does_not_retract_until_story_2_3_wires_expiry_policy():
     app.step(now_ticks=ft.now)
     ft.advance(config.TOUCH_IDLE_TIMEOUT_MS)
     app.step(now_ticks=ft.now)
+    assert app.state.active_surface == SURFACE_ROTATION
+    assert app.state.surface_deadline is None
+    assert app.state.view_deadline == ft.ticks_add(ft.now, config.CLOCK_DWELL_MS)
+    assert app._bar_retract_started == ft.now
+
+
+def test_bar_outside_edge_retracts_and_rearms_retained_calendar_dwell():
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0), (True, 0, 0)])
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    app.boot()
+    app.state.active_view = VIEW_CALENDAR
+    app.step(now_ticks=ft.now)
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+
+    assert app.state.active_surface == SURFACE_ROTATION
+    assert app.state.surface_deadline is None
+    assert app.state.view_deadline == ft.ticks_add(ft.now, config.CALENDAR_DWELL_MS)
+
+
+def test_partial_bar_retracts_from_its_current_visible_height():
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0), (True, 0, 0)])
+    app, _clock, _view, display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    app.boot()
+    app.step(now_ticks=ft.now)
+    revealed_height = app._bar_visible_height
+    assert 0 < revealed_height < config.BAR_HEIGHT_PX
+
+    display.clear_ops()
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+    assert app._bar_retract_start_height == revealed_height
+    assert (
+        "fill_rect",
+        0,
+        display.height - revealed_height,
+        display.width,
+        revealed_height,
+        config.COLOR_BAR_PANEL,
+    ) in display.ops
+
+
+def test_bar_gear_edge_enters_settings_without_rotation_dwell_rearm():
+    ft = FakeTicks(0)
+    # The named 48px gear target is centered at (160, 222) on FakeDisplayPort.
+    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    app.boot()
+    app.step(now_ticks=ft.now)
+    old_deadline = app.state.view_deadline
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+
+    assert app.state.active_surface == SURFACE_SETTINGS
+    assert app.state.surface_deadline is None
+    assert app.state.view_deadline == old_deadline
+    assert app._bar_retract_started == ft.now
+
+
+def test_settings_retains_the_interrupted_view_after_its_dwell_is_due():
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    app.boot()
+    app.step(now_ticks=ft.now)
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+    assert app.state.active_surface == SURFACE_SETTINGS
+
+    app.state.view_deadline = ft.now
+    app.step(now_ticks=ft.now)
+    assert app.state.active_surface == SURFACE_SETTINGS
+    assert app.state.active_view == VIEW_CLOCK
+
+
+def test_reverse_frames_shrink_across_tick_wrap_and_finish_cleanly():
+    ft = FakeTicks(ticks.PERIOD - 100)
+    touch = FakeTouchPort([(True, 0, 0), (False, None, None), (True, 0, 0)])
+    app, _clock, _view, display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    app.boot()
+    app.step(now_ticks=ft.now)
+    ft.advance(config.BAR_SLIDE_DURATION_MS)
+    app.step(now_ticks=ft.now)
+    assert app._bar_visible_height == config.BAR_HEIGHT_PX
+
+    # Begin reverse just before wrap, then prove the next animation frame is
+    # tick-safe and strictly shorter than the fully revealed Bar.
+    ft.now = ticks.PERIOD - 10
+    app.state.surface_deadline = ft.ticks_add(ft.now, config.TOUCH_IDLE_TIMEOUT_MS)
+    app.step(now_ticks=ft.now)
+    assert app._bar_retract_started == ft.now
+    assert app.state.redraw_deadline == ft.ticks_add(ft.now, config.BAR_ANIMATION_FRAME_MS)
+
+    display.clear_ops()
+    ft.advance(config.BAR_ANIMATION_FRAME_MS)
+    app.step(now_ticks=ft.now)
+    expected_height = config.BAR_HEIGHT_PX - (
+        config.BAR_HEIGHT_PX * config.BAR_ANIMATION_FRAME_MS
+    ) // config.BAR_SLIDE_DURATION_MS
+    assert (
+        "fill_rect",
+        0,
+        display.height - expected_height,
+        display.width,
+        expected_height,
+        config.COLOR_BAR_PANEL,
+    ) in display.ops
+
+    display.clear_ops()
+    ft.advance(config.BAR_SLIDE_DURATION_MS - config.BAR_ANIMATION_FRAME_MS)
+    app.step(now_ticks=ft.now)
+    assert app._bar_retract_started is None
+    assert app._bar_visible_height == 0
+    assert not any(op[-1] == config.COLOR_BAR_PANEL for op in display.ops)
+
+
+def test_bar_malformed_edge_stays_on_bar_without_error():
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0), (True,)])
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    app.boot()
+    app.step(now_ticks=ft.now)
+    deadline = app.state.surface_deadline
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+
     assert app.state.active_surface == SURFACE_BAR
+    assert app.state.surface_deadline == deadline
+
+
+def test_bar_in_panel_non_gear_edge_keeps_bar_revealed():
+    ft = FakeTicks(0)
+    # Inside the 36px bottom strip, left of the centered 48px gear target.
+    touch = FakeTouchPort([(True, 0, 0), (True, 10, 220)])
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    app.boot()
+    app.step(now_ticks=ft.now)
+    deadline = app.state.surface_deadline
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+
+    assert app.state.active_surface == SURFACE_BAR
+    assert app.state.surface_deadline == deadline
 
 
 def test_missing_touch_port_preserves_rotation_and_view_dwell():

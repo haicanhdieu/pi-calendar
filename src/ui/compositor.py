@@ -2,7 +2,13 @@
 
 from src.time.model import TRUST_UNSYNCED
 from src import config
-from src.ui.components import draw_bar, draw_unsynced_badge
+from src.ui.components import (
+    bar_gear_item_rect,
+    bar_rect,
+    draw_bar,
+    draw_unsynced_badge,
+    point_in_rect,
+)
 from src.ui.touch_state import SURFACE_BAR
 
 
@@ -17,29 +23,77 @@ class UiCompositor:
     def __init__(self, display):
         self._display = display
         self._prev_badge = None
-        self._prev_bar = None
+        self._prev_bar_height = 0
 
-    def render(self, base_view, snapshot, *args, active_surface="rotation", bar_elapsed_ms=0):
+    def bar_gear_hit(self, x, y):
+        """Test a sampled point against the named Bar gear geometry."""
+        return point_in_rect(x, y, bar_gear_item_rect(self._display))
+
+    def bar_panel_hit(self, x, y):
+        """Test a sampled point against the named Bar panel geometry."""
+        return point_in_rect(x, y, bar_rect(self._display))
+
+    def bar_outside_edge(self, x, y):
+        """True when coords are valid integers outside the named Bar panel."""
+        if self.bar_panel_hit(x, y):
+            return False
+        try:
+            int(x)
+            int(y)
+        except (TypeError, ValueError, OverflowError):
+            return False
+        return True
+
+    def render(
+        self,
+        base_view,
+        snapshot,
+        *args,
+        active_surface="rotation",
+        bar_elapsed_ms=0,
+        bar_retract_elapsed_ms=None,
+        bar_retract_start_height=None,
+    ):
         show_badge = snapshot.trust == TRUST_UNSYNCED
-        show_bar = active_surface == SURFACE_BAR
-        if (
-            self._prev_badge is not None
-            and self._prev_badge != show_badge
-            or self._prev_bar is not None
-            and self._prev_bar != show_bar
-        ):
+        if bar_retract_elapsed_ms is not None:
+            elapsed = max(0, int(bar_retract_elapsed_ms))
+            if bar_retract_start_height is None:
+                bar_retract_start_height = config.BAR_HEIGHT_PX
+            bar_retract_start_height = max(
+                0, min(int(bar_retract_start_height), config.BAR_HEIGHT_PX)
+            )
+            bar_height = max(
+                0,
+                bar_retract_start_height
+                - (bar_retract_start_height * elapsed) // config.BAR_SLIDE_DURATION_MS,
+            )
+        elif active_surface == SURFACE_BAR:
+            if bar_elapsed_ms < 0:
+                bar_elapsed_ms = 0
+            if bar_elapsed_ms >= config.BAR_SLIDE_DURATION_MS:
+                bar_height = config.BAR_HEIGHT_PX
+            else:
+                bar_height = (
+                    config.BAR_HEIGHT_PX * int(bar_elapsed_ms)
+                ) // config.BAR_SLIDE_DURATION_MS
+        else:
+            bar_height = 0
+        if self._prev_badge is not None and self._prev_badge != show_badge:
             if hasattr(base_view, "invalidate"):
                 base_view.invalidate()
+        # The base render cannot know a former overlay existed. Restore only
+        # newly uncovered Bar pixels, before it and before the draw-last Bar.
+        if bar_height < self._prev_bar_height:
+            if hasattr(base_view, "invalidate"):
+                base_view.invalidate()
+            restore_y = self._display.height - self._prev_bar_height
+            restore_w = self._display.width
+            restore_h = self._prev_bar_height - bar_height
+            self._display.fill_rect(
+                0, restore_y, restore_w, restore_h, config.COLOR_BACKGROUND
+            )
         base_view.render(snapshot, *args)
         draw_unsynced_badge(self._display, show_badge)
-        if bar_elapsed_ms < 0:
-            bar_elapsed_ms = 0
-        if bar_elapsed_ms >= config.BAR_SLIDE_DURATION_MS:
-            bar_height = config.BAR_HEIGHT_PX
-        else:
-            bar_height = (
-                config.BAR_HEIGHT_PX * int(bar_elapsed_ms)
-            ) // config.BAR_SLIDE_DURATION_MS
-        draw_bar(self._display, show_bar, bar_height)
+        draw_bar(self._display, bar_height > 0, bar_height)
         self._prev_badge = show_badge
-        self._prev_bar = show_bar
+        self._prev_bar_height = bar_height

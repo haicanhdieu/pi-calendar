@@ -56,6 +56,21 @@ def bar_gear_item_rect(display):
     )
 
 
+def point_in_rect(x, y, rect):
+    """Return whether an integer point lies in the rect's half-open bounds.
+
+    Invalid or absent samples are deliberately not hits: touch adapters are
+    allowed to report an edge before they have a stable coordinate pair.
+    """
+    try:
+        x = int(x)
+        y = int(y)
+        rx, ry, rw, rh = rect
+    except (TypeError, ValueError, OverflowError):
+        return False
+    return rx <= x < rx + rw and ry <= y < ry + rh
+
+
 def draw_bar(display, visible, height=None):
     """Draw the bounded Bar panel and its centered amber gear, draw-last only."""
     if not visible:

@@ -7,10 +7,18 @@ import sys
 from pathlib import Path
 
 from src import config
+from src.calendar.gregorian import build_month_grid
 from src.device.display.font import FONT_5X7
 from src.time.model import TRUST_SYNCED, TRUST_UNSYNCED, DateTime, TimeSnapshot
+from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
-from src.ui.components import bar_gear_item_rect, bar_rect, badge_rect, draw_unsynced_badge
+from src.ui.components import (
+    bar_gear_item_rect,
+    bar_rect,
+    badge_rect,
+    draw_unsynced_badge,
+    point_in_rect,
+)
 from src.ui.compositor import UiCompositor
 from src.ui.display_port import FakeDisplayPort
 
@@ -403,8 +411,158 @@ def test_bar_is_a_bounded_draw_last_overlay_and_visibility_restores_base():
     display.clear_ops()
     compositor.render(view, snapshot, active_surface="rotation")
     assert (
-        "fill_rect", 0, 0, display.width, display.height, config.COLOR_BACKGROUND
+        "fill_rect",
+        0,
+        display.height - config.BAR_HEIGHT_PX,
+        display.width,
+        config.BAR_HEIGHT_PX,
+        config.COLOR_BACKGROUND,
     ) in display.ops
+
+
+def test_bar_reverse_restores_only_uncovered_bottom_pixels():
+    display = FakeDisplayPort()
+
+    class BottomStripView:
+        def __init__(self):
+            self.valid = False
+            self.invalidations = 0
+
+        def invalidate(self):
+            self.valid = False
+            self.invalidations += 1
+
+        def render(self, _snapshot):
+            if not self.valid:
+                display.fill_rect(
+                    5,
+                    display.height - config.BAR_HEIGHT_PX + 2,
+                    10,
+                    5,
+                    config.COLOR_PRIMARY,
+                )
+                self.valid = True
+
+    view = BottomStripView()
+    compositor = UiCompositor(display)
+    snapshot = _snapshot(_local(), TRUST_SYNCED)
+    compositor.render(
+        view,
+        snapshot,
+        active_surface="bar",
+        bar_elapsed_ms=config.BAR_SLIDE_DURATION_MS,
+    )
+
+    display.clear_ops()
+    compositor.render(
+        view,
+        snapshot,
+        active_surface="rotation",
+        bar_retract_elapsed_ms=config.BAR_SLIDE_DURATION_MS // 2,
+    )
+    reverse_height = config.BAR_HEIGHT_PX // 2
+    restores = [op for op in _fills(display.ops) if op[5] == config.COLOR_BACKGROUND]
+    assert restores == [
+        (
+            "fill_rect",
+            0,
+            display.height - config.BAR_HEIGHT_PX,
+            display.width,
+            config.BAR_HEIGHT_PX - reverse_height,
+            config.COLOR_BACKGROUND,
+        )
+    ]
+    assert view.invalidations == 1
+    assert (
+        "fill_rect",
+        5,
+        display.height - config.BAR_HEIGHT_PX + 2,
+        10,
+        5,
+        config.COLOR_PRIMARY,
+    ) in display.ops
+    assert (
+        "fill_rect",
+        0,
+        display.height - reverse_height,
+        display.width,
+        reverse_height,
+        config.COLOR_BAR_PANEL,
+    ) in display.ops
+    assert not any(op[3] == display.width and op[4] == display.height for op in restores)
+
+
+def test_bar_reverse_restores_cached_calendar_bottom_cells():
+    display = FakeDisplayPort()
+    view = CalendarView(display)
+    compositor = UiCompositor(display)
+    local = _local()
+    grid = build_month_grid(
+        local.year,
+        local.month,
+        local.year,
+        local.month,
+        local.day,
+    )
+    snapshot = _snapshot(local, TRUST_SYNCED)
+    compositor.render(
+        view,
+        snapshot,
+        grid,
+        active_surface="bar",
+        bar_elapsed_ms=config.BAR_SLIDE_DURATION_MS,
+    )
+
+    display.clear_ops()
+    compositor.render(
+        view,
+        snapshot,
+        grid,
+        active_surface="rotation",
+        bar_retract_elapsed_ms=config.BAR_SLIDE_DURATION_MS // 2,
+        bar_retract_start_height=config.BAR_HEIGHT_PX,
+    )
+    reverse_height = config.BAR_HEIGHT_PX // 2
+    strip_restores = [
+        op
+        for op in _fills(display.ops)
+        if op[5] == config.COLOR_BACKGROUND
+        and not (
+            op[1] == 0
+            and op[2] == 0
+            and op[3] == display.width
+            and op[4] == display.height
+        )
+    ]
+    assert strip_restores == [
+        (
+            "fill_rect",
+            0,
+            display.height - config.BAR_HEIGHT_PX,
+            display.width,
+            config.BAR_HEIGHT_PX - reverse_height,
+            config.COLOR_BACKGROUND,
+        )
+    ]
+    labels = [t[1] for t in _texts(display.ops)]
+    assert "30" in labels
+    assert (
+        "fill_rect",
+        0,
+        display.height - reverse_height,
+        display.width,
+        reverse_height,
+        config.COLOR_BAR_PANEL,
+    ) in display.ops
+
+
+def test_bar_point_hit_testing_is_half_open_and_tolerates_bad_coordinates():
+    display = FakeDisplayPort()
+    rect = bar_gear_item_rect(display)
+    assert point_in_rect(rect[0], rect[1], rect)
+    assert not point_in_rect(rect[0] + rect[2], rect[1], rect)
+    assert not point_in_rect(None, "bad", rect)
+    assert not point_in_rect(float("inf"), 0, rect)
 
 
 def test_palette_rgb565_matches_independent_packing():

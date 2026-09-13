@@ -7,14 +7,18 @@ SURFACE_ROTATION = "rotation"
 SURFACE_BAR = "bar"
 SURFACE_SETTINGS = "settings"
 
+BAR_TARGET_GEAR = "gear"
+BAR_TARGET_IN_PANEL = "in_panel"
+BAR_TARGET_OUTSIDE = "outside"
 
-def next_surface(active_surface, surface_deadline, edge_down, now):
+
+def next_surface(active_surface, surface_deadline, edge_down, now, bar_target=None):
     """
     Return ``(next_surface, next_deadline)`` for a touch-surface evaluation.
 
     A fresh touch reveals the Bar only from Rotation.  The Bar's deadline is
-    armed on that entry alone; later evaluations never renew it.  Settings is
-    retained unchanged until its interaction is implemented by a later story.
+    armed on that entry alone; later evaluations never renew it.  Gear routing
+    enters Settings; Settings dismissal is implemented by a later story.
     """
     if active_surface == SURFACE_ROTATION:
         if edge_down:
@@ -22,8 +26,16 @@ def next_surface(active_surface, surface_deadline, edge_down, now):
         return SURFACE_ROTATION, surface_deadline
 
     if active_surface == SURFACE_BAR:
+        if edge_down and bar_target == BAR_TARGET_GEAR:
+            return SURFACE_SETTINGS, None
+        if edge_down and bar_target == BAR_TARGET_IN_PANEL:
+            return SURFACE_BAR, surface_deadline
         if surface_deadline is not None and ticks_diff(surface_deadline, now) <= 0:
             return SURFACE_ROTATION, None
+        if edge_down and bar_target == BAR_TARGET_OUTSIDE:
+            return SURFACE_ROTATION, None
+        if edge_down:
+            return SURFACE_BAR, surface_deadline
         return SURFACE_BAR, surface_deadline
 
     if active_surface == SURFACE_SETTINGS:
