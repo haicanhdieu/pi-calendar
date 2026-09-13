@@ -21,6 +21,22 @@ SPI_POLARITY = 0
 SPI_PHASE = 0
 MADCTL = 0xA8
 
+# Shared SPI0 touch polling.  These are deliberately separate from the TFT
+# settings: TouchPort switches them only while the touch controller is selected.
+TOUCH_SPI_BAUDRATE = 2_000_000
+TOUCH_SAMPLE_COUNT = 5
+TOUCH_SAMPLE_MAX_SPREAD = 80
+TOUCH_PRESSURE_MIN = 1
+
+# Touch UI timing and geometry (consumed by later UI stories).
+# The Bar and Settings share this one timeout; neither surface owns a variant.
+TOUCH_IDLE_TIMEOUT_MS = 15_000
+BAR_SLIDE_DURATION_MS = 240
+BAR_ANIMATION_FRAME_MS = 33
+BAR_HEIGHT_PX = 36
+TAP_TARGET_SIZE_PX = 48
+PRESS_FLASH_MS = 120
+
 # Instrument-panel palette seeds (RGB888); convert at the display boundary.
 COLOR_BACKGROUND_RGB = (0x0A, 0x0A, 0x0A)
 COLOR_PRIMARY_RGB = (0x3D, 0xFF, 0x7A)

@@ -47,6 +47,9 @@ class AppState:
         "freshness_deadline",
         "view_deadline",
         "sync_age_ms",
+        "active_surface",
+        "surface_deadline",
+        "settings_status_snapshot",
     )
 
     def __init__(self):
@@ -58,6 +61,9 @@ class AppState:
         self.freshness_deadline = 0
         self.view_deadline = 0
         self.sync_age_ms = None
+        self.active_surface = "rotation"
+        self.surface_deadline = None
+        self.settings_status_snapshot = None
 
 
 class App:

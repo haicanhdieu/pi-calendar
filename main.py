@@ -1,10 +1,11 @@
-from machine import Pin, SPI
+from machine import Pin, SPI, reset
 from time import sleep_ms
 
 from src import config
 from src.app import App
 from src.credentials import credentials_valid
 from src.device.clock_port import RtcClockPort
+from src.device.reboot_port import RebootPort
 from src.device.display.bootstrap import initialize_display
 from src.device.display.adapter import Ili9341DisplayPort
 from src.device.display.ili9341 import ILI9341
@@ -17,6 +18,7 @@ from src.device.network.models import (
     ntp_sync_enabled,
 )
 from src.device.settings_store import SettingsStore
+from src.device.touch_port import TouchPort
 from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
 from src.ui.compositor import UiCompositor
@@ -54,6 +56,11 @@ def main():
     )
 
     display = initialize_display(spi, ILI9341, splash_screen, sleep_ms, print)
+
+    # These boundaries are deliberately composed but not polled by Story 1.2.
+    # Reuse the display-owned TFT CS; a second Pin would compete for SPI0.
+    touch_port = TouchPort(spi, touch_cs, display.cs)
+    reboot_port = RebootPort(reset)
 
     # Splash rendering creates temporary command and pixel buffers. Release
     # them before constructing the App, its views, and network coordinator;

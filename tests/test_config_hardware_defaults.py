@@ -17,6 +17,21 @@ def test_tft_spi_and_madctl_match_hardware_docs():
     assert config.SPI_POLARITY == 0
     assert config.SPI_PHASE == 0
     assert config.MADCTL == 0xA8
+    assert config.TOUCH_CS == 22
+    assert config.TOUCH_IRQ == 26
+    assert config.TOUCH_SPI_BAUDRATE <= 2_000_000
+
+
+def test_touch_ui_defaults_are_named_and_bounded():
+    assert config.TOUCH_SAMPLE_COUNT > 0
+    assert config.TOUCH_SAMPLE_MAX_SPREAD >= 0
+    assert config.TOUCH_PRESSURE_MIN > 0
+    assert config.TOUCH_IDLE_TIMEOUT_MS == 15_000
+    assert 200 <= config.BAR_SLIDE_DURATION_MS <= 300
+    assert config.BAR_ANIMATION_FRAME_MS > 0
+    assert config.BAR_HEIGHT_PX == 36
+    assert config.TAP_TARGET_SIZE_PX > 0
+    assert config.PRESS_FLASH_MS > 0
 
 
 def test_network_proof_mode_defaults_off():

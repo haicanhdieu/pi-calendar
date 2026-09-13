@@ -71,7 +71,19 @@ def test_display_boot_checkpoint_precedes_app_dependencies():
     calls = [node for node in ast.walk(main_tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)]
     boot_call = next(call for call in calls if call.func.id == "initialize_display")
     adapter_call = next(call for call in calls if call.func.id == "Ili9341DisplayPort")
+    touch_call = next(call for call in calls if call.func.id == "TouchPort")
+    reboot_call = next(call for call in calls if call.func.id == "RebootPort")
     assert boot_call.lineno < adapter_call.lineno
+    assert boot_call.lineno < touch_call.lineno
+    assert reboot_call.args[0].id == "reset"
+    assert touch_call.args[2].attr == "cs"
+
+
+def test_display_adapter_remains_touch_unaware():
+    adapter_source = (ROOT / "src" / "device" / "display" / "adapter.py").read_text(
+        encoding="utf-8"
+    )
+    assert "TOUCH_CS" not in adapter_source
 
 
 def test_splash_renders_high_contrast_tft_ready_checkpoint(monkeypatch):

@@ -157,6 +157,9 @@ def test_app_boot_active_view_is_clock_and_owns_state():
     assert app.state.active_view == VIEW_CLOCK
     assert isinstance(app.state, AppState)
     assert app.state.trust == TRUST_UNSYNCED
+    assert app.state.active_surface == "rotation"
+    assert app.state.surface_deadline is None
+    assert app.state.settings_status_snapshot is None
     assert not hasattr(view, "state")
     assert not hasattr(view, "trust")
 
