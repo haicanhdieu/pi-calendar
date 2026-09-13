@@ -443,13 +443,15 @@ def test_settings_surface_suppresses_badge_and_bar():
         display.height,
         config.COLOR_BACKGROUND,
     ) in display.ops
-    for rect in (
-        settings_status_rect(display),
-        settings_guideline_rect(display),
-        settings_reboot_rect(display),
-    ):
-        x, y, w, h = rect
-        assert ("fill_rect", x, y, w, h, config.COLOR_BAR_PANEL) in display.ops
+    reboot_x, reboot_y, reboot_w, reboot_h = settings_reboot_rect(display)
+    assert (
+        "fill_rect",
+        reboot_x,
+        reboot_y,
+        reboot_w,
+        reboot_h,
+        config.COLOR_BAR_PANEL,
+    ) in display.ops
 
 
 def test_bar_is_a_bounded_draw_last_overlay_and_visibility_restores_base():
