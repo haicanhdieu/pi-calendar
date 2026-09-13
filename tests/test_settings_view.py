@@ -56,7 +56,7 @@ def test_station_branch_draws_ip_only_and_http_guideline():
     SettingsView(display).render(_station_snapshot())
 
     texts = _texts(display.ops)
-    labels = [t[1] for t in texts]
+    labels = [t[1] for t in texts if len(t[1]) > 1]
     assert labels == ["192.168.1.42", "Browse to http://192.168.1.42"]
 
     ip = texts[0]
@@ -73,10 +73,73 @@ def test_station_branch_draws_ip_only_and_http_guideline():
 def test_none_snapshot_draws_no_status_or_guideline_text():
     display = FakeDisplayPort()
     SettingsView(display).render(None)
-    assert _texts(display.ops) == []
+    texts = _texts(display.ops)
+    assert not any(op[4] == config.FONT_SETTINGS_STATUS for op in texts)
+    assert not any(op[4] == config.FONT_SETTINGS_GUIDELINE for op in texts)
+    assert any(op[1] == "R" and op[4] == config.FONT_SETTINGS_REBOOT for op in texts)
 
 
 def test_unrecognized_kind_draws_no_status_or_guideline_text():
     display = FakeDisplayPort()
     SettingsView(display).render({"kind": "other"})
-    assert _texts(display.ops) == []
+    texts = _texts(display.ops)
+    assert not any(op[4] == config.FONT_SETTINGS_STATUS for op in texts)
+    assert not any(op[4] == config.FONT_SETTINGS_GUIDELINE for op in texts)
+    assert any(op[1] == "R" and op[4] == config.FONT_SETTINGS_REBOOT for op in texts)
+
+
+def test_reboot_label_uses_specified_typography_and_tap_target():
+    from src.ui.components import settings_reboot_item_rect
+
+    display = FakeDisplayPort()
+    SettingsView(display).render(None)
+
+    reboot_chars = [
+        op
+        for op in display.ops
+        if op[0] == "draw_text" and op[1] in config.SETTINGS_REBOOT_LABEL
+    ]
+    assert len(reboot_chars) == len(config.SETTINGS_REBOOT_LABEL)
+    for op in reboot_chars:
+        assert op[4] == config.FONT_SETTINGS_REBOOT
+        assert op[5] == config.COLOR_SECONDARY
+
+    item_x, item_y, item_w, item_h = settings_reboot_item_rect(display)
+    label_ops = [op for op in reboot_chars]
+    min_x = min(op[2] for op in label_ops)
+    max_x = max(op[2] for op in label_ops)
+    min_y = min(op[3] for op in label_ops)
+    max_y = max(op[3] for op in label_ops)
+    assert item_x <= min_x
+    assert max_x < item_x + item_w
+    assert item_y <= min_y
+    assert max_y < item_y + item_h
+    assert item_w * item_h > (max_x - min_x + 1) * (max_y - min_y + 1)
+    assert item_h == config.TAP_TARGET_SIZE_PX
+    reboot_chars.sort(key=lambda op: op[2])
+    step = (
+        config.FONT_CELL_WIDTH * config.FONT_SCALE_SETTINGS_REBOOT
+        + config.SETTINGS_REBOOT_LETTER_SPACING_PX
+    )
+    for left, right in zip(reboot_chars, reboot_chars[1:]):
+        assert right[2] - left[2] == step
+
+
+def test_draw_reboot_press_flash_uses_press_flash_color():
+    from src.ui.components import settings_reboot_item_rect
+
+    display = FakeDisplayPort()
+    view = SettingsView(display)
+    view.render(None)
+    display.clear_ops()
+    view.draw_reboot_press_flash()
+
+    item_x, item_y, item_w, item_h = settings_reboot_item_rect(display)
+    assert (
+        "fill_rect",
+        item_x,
+        item_y,
+        item_w,
+        item_h,
+        config.COLOR_PRESS_FLASH,
+    ) in display.ops

@@ -73,10 +73,22 @@ def test_display_boot_checkpoint_precedes_app_dependencies():
     adapter_call = next(call for call in calls if call.func.id == "Ili9341DisplayPort")
     touch_call = next(call for call in calls if call.func.id == "TouchPort")
     reboot_call = next(call for call in calls if call.func.id == "RebootPort")
+    app_call = next(
+        call
+        for call in calls
+        if call.func.id == "App"
+        and any(
+            kw.arg == "reboot_port"
+            and isinstance(kw.value, ast.Name)
+            and kw.value.id == "reboot_port"
+            for kw in call.keywords
+        )
+    )
     assert boot_call.lineno < adapter_call.lineno
     assert boot_call.lineno < touch_call.lineno
     assert reboot_call.args[0].id == "reset"
     assert touch_call.args[2].attr == "cs"
+    assert app_call is not None
 
 
 def test_display_adapter_remains_touch_unaware():

@@ -8,6 +8,7 @@ from src.ui.components import (
     draw_bar,
     draw_unsynced_badge,
     point_in_rect,
+    settings_reboot_item_rect,
 )
 from src.ui.touch_state import SURFACE_BAR, SURFACE_SETTINGS
 
@@ -43,6 +44,10 @@ class UiCompositor:
         except (TypeError, ValueError, OverflowError):
             return False
         return True
+
+    def settings_reboot_hit(self, x, y):
+        """Test a sampled point against the Settings reboot tap geometry."""
+        return point_in_rect(x, y, settings_reboot_item_rect(self._display))
 
     def render(
         self,

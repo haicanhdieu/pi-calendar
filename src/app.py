@@ -99,6 +99,8 @@ class App:
         sync_enabled=True,
         network_events=None,
         touch_port=None,
+        reboot_port=None,
+        sleep_ms_fn=None,
     ):
         self._clock = clock_port
         self._view = clock_view
@@ -116,6 +118,14 @@ class App:
         self._sync_enabled = bool(sync_enabled)
         self._network_events = network_events
         self._touch_port = touch_port
+        self._reboot_port = reboot_port
+        if sleep_ms_fn is None:
+            def sleep_ms_fn(ms):
+                from time import sleep_ms as _sleep_ms
+
+                _sleep_ms(ms)
+
+        self._sleep_ms_fn = sleep_ms_fn
         self.state = AppState()
         self._booted = False
         self._last_snapshot = None
@@ -240,6 +250,10 @@ class App:
                     # A malformed sample is never a Bar target hit.
                     pass
         previous = self.state.active_surface
+        if previous == SURFACE_SETTINGS and edge_down:
+            if self._compositor.settings_reboot_hit(x, y):
+                self._handle_settings_reboot_tap()
+                return True
         bar_target = None
         if previous == SURFACE_BAR and edge_down:
             if self._compositor.bar_gear_hit(x, y):
@@ -268,6 +282,14 @@ class App:
                     self._rearm_active_view_dwell(now)
             return True
         return False
+
+    def _handle_settings_reboot_tap(self):
+        """Draw Press Flash, dwell, then invoke the injected reboot port once."""
+        self._settings_view.draw_reboot_press_flash()
+        self._sleep_ms_fn(config.PRESS_FLASH_MS)
+        reboot_port = self._reboot_port
+        if reboot_port is not None:
+            reboot_port.reset()
 
     def _rearm_active_view_dwell(self, now):
         duration = (

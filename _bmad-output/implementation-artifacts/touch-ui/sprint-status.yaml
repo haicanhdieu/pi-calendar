@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-13-2026 16:48
-last_updated: 09-13-2026 18:55
+last_updated: 09-13-2026 19:30
 project: pi-calendar
 project_key: NOKEY
 tracking_system: file-system
@@ -49,6 +49,6 @@ development_status:
   epic-3: in-progress
   3-1-open-settings-view-from-the-gear-icon-with-a-captured-status: done
   3-2-render-status-and-mode-branched-guideline-copy: done
-  3-3-reboot-control-with-press-flash-no-confirmation: ready-for-dev
+  3-3-reboot-control-with-press-flash-no-confirmation: done
   3-4-settings-idle-timeout-and-outside-tap-dismissal: ready-for-dev
   epic-3-retrospective: optional

@@ -1,7 +1,8 @@
-"""Full-screen Settings view (Stories 3.1–3.2)."""
+"""Full-screen Settings view (Stories 3.1–3.3)."""
 
 from src import config
-from src.ui.components import settings_reboot_rect
+from src.gfx import draw_spaced_text, measure_spaced_font_text
+from src.ui.components import point_in_rect, settings_reboot_item_rect, settings_reboot_rect
 
 _KIND_SETUP = "setup"
 _KIND_STATION_IP = "station_ip"
@@ -42,8 +43,30 @@ def _draw_guideline(display, text, after_y):
     )
 
 
+def _draw_reboot_label(display, fill_color=None):
+    """Draw the reboot control label centered in its tap-target block."""
+    region_x, region_y, region_w, region_h = settings_reboot_item_rect(display)
+    if fill_color is not None:
+        display.fill_rect(region_x, region_y, region_w, region_h, fill_color)
+    font = config.FONT_SETTINGS_REBOOT
+    label = config.SETTINGS_REBOOT_LABEL
+    spacing = config.SETTINGS_REBOOT_LETTER_SPACING_PX
+    text_w, text_h = measure_spaced_font_text(label, font, spacing)
+    text_x = region_x + (region_w - text_w) // 2
+    text_y = region_y + (region_h - text_h) // 2
+    draw_spaced_text(
+        display,
+        label,
+        text_x,
+        text_y,
+        font,
+        config.COLOR_SECONDARY,
+        spacing,
+    )
+
+
 class SettingsView:
-    """Settings surface: status/guideline copy plus reboot placeholder region."""
+    """Settings surface: status/guideline copy plus reboot control."""
 
     def __init__(self, display):
         self._display = display
@@ -51,6 +74,18 @@ class SettingsView:
 
     def invalidate(self):
         self._valid = False
+
+    def reboot_item_rect(self):
+        """Return the reboot button tap-target rect (x, y, w, h)."""
+        return settings_reboot_item_rect(self._display)
+
+    def reboot_hit(self, x, y):
+        """Return whether a point lies inside the reboot tap target."""
+        return point_in_rect(x, y, self.reboot_item_rect())
+
+    def draw_reboot_press_flash(self):
+        """Render the mandatory Press Flash on the reboot control."""
+        _draw_reboot_label(self._display, fill_color=config.COLOR_PRESS_FLASH)
 
     def render(self, status_snapshot):
         """Paint Settings; branch status/guideline copy on snapshot kind."""
@@ -74,6 +109,7 @@ class SettingsView:
                 if ip:
                     after_y = _draw_status_lines(display, [str(ip)])
                     _draw_guideline(display, f"Browse to http://{ip}", after_y)
-        x, y, w, h = settings_reboot_rect(display)
-        display.fill_rect(x, y, w, h, config.COLOR_BAR_PANEL)
+        _x, y, _w, h = settings_reboot_rect(display)
+        display.fill_rect(_x, y, _w, h, config.COLOR_BAR_PANEL)
+        _draw_reboot_label(display)
         self._valid = True

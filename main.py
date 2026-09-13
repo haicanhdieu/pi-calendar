@@ -99,6 +99,8 @@ def main():
         sync_enabled=sync_enabled,
         network_events=network_events,
         touch_port=touch_port,
+        reboot_port=reboot_port,
+        sleep_ms_fn=sleep_ms,
     )
 
     if not creds_ok and coordinator.mode != MODE_SETUP_AP:

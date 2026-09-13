@@ -452,6 +452,12 @@ def test_settings_surface_suppresses_badge_and_bar():
         reboot_h,
         config.COLOR_BAR_PANEL,
     ) in display.ops
+    reboot_labels = [
+        op[1]
+        for op in display.ops
+        if op[0] == "draw_text" and op[1] in config.SETTINGS_REBOOT_LABEL
+    ]
+    assert len(reboot_labels) == len(config.SETTINGS_REBOOT_LABEL)
 
 
 def test_bar_is_a_bounded_draw_last_overlay_and_visibility_restores_base():

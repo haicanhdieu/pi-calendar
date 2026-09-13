@@ -130,7 +130,50 @@ def _utc(hour=7, minute=0, second=0):
     return DateTime(2026, 9, 6, 6, hour, minute, second)
 
 
-def _make_app(utc=_utc(), ticks_mod=None, touch_port=None, mailbox=None):
+class FakeRebootPort:
+    """Records reset invocations for host App wiring tests."""
+
+    def __init__(self, events=None, sleep=None):
+        self.reset_count = 0
+        self._events = events
+        self._sleep = sleep
+
+    def reset(self):
+        if self._sleep is not None:
+            assert self._sleep.calls, "reset invoked before press-flash dwell"
+        if self._events is not None:
+            self._events.append("reset")
+        self.reset_count += 1
+
+
+class RecordingSleepMs:
+    """Records sleep durations for flash-before-reset ordering tests."""
+
+    def __init__(self, events=None):
+        self.calls = []
+        self._events = events
+
+    def __call__(self, ms):
+        if self._events is not None:
+            self._events.append("sleep")
+        self.calls.append(ms)
+
+
+def _settings_reboot_center(display):
+    from src.ui.components import settings_reboot_item_rect
+
+    x, y, w, h = settings_reboot_item_rect(display)
+    return x + w // 2, y + h // 2
+
+
+def _make_app(
+    utc=_utc(),
+    ticks_mod=None,
+    touch_port=None,
+    mailbox=None,
+    reboot_port=None,
+    sleep_ms_fn=None,
+):
     display = FakeDisplayPort()
     view = ClockView(display)
     calendar = CalendarView(display)
@@ -145,6 +188,8 @@ def _make_app(utc=_utc(), ticks_mod=None, touch_port=None, mailbox=None):
         log=logs.append,
         touch_port=touch_port,
         mailbox=mailbox,
+        reboot_port=reboot_port,
+        sleep_ms_fn=sleep_ms_fn,
     )
     return app, clock, view, display, ft, logs, calendar
 
@@ -426,6 +471,98 @@ def test_settings_render_suspends_clock_and_hides_bar():
         display.height,
         config.COLOR_BACKGROUND,
     ) in display.ops
+
+
+def test_settings_reboot_tap_flashes_then_resets_once():
+    from src.ui.components import settings_reboot_item_rect
+
+    ft = FakeTicks(0)
+    display = FakeDisplayPort()
+    reboot_x, reboot_y = _settings_reboot_center(display)
+    touch = FakeTouchPort(
+        [(True, 0, 0), (True, 160, 222), (True, reboot_x, reboot_y)]
+    )
+    events = []
+    sleep = RecordingSleepMs(events)
+    reboot = FakeRebootPort(events, sleep=sleep)
+    app, _clock, _view, display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft,
+        touch_port=touch,
+        reboot_port=reboot,
+        sleep_ms_fn=sleep,
+    )
+    _enter_settings_via_gear(app, ft)
+    item_x, item_y, item_w, item_h = settings_reboot_item_rect(display)
+    display.clear_ops()
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+
+    flash = (
+        "fill_rect",
+        item_x,
+        item_y,
+        item_w,
+        item_h,
+        config.COLOR_PRESS_FLASH,
+    )
+    assert flash in display.ops
+    assert sleep.calls == [config.PRESS_FLASH_MS]
+    assert reboot.reset_count == 1
+    assert events == ["sleep", "reset"]
+
+
+def test_settings_reboot_miss_does_not_reset():
+    ft = FakeTicks(0)
+    display = FakeDisplayPort()
+    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222), (True, 10, 10)])
+    reboot = FakeRebootPort()
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch, reboot_port=reboot
+    )
+    _enter_settings_via_gear(app, ft)
+    display.clear_ops()
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+
+    assert reboot.reset_count == 0
+    assert app.state.active_surface == SURFACE_SETTINGS
+    assert not any(
+        op[0] == "fill_rect" and op[5] == config.COLOR_PRESS_FLASH
+        for op in display.ops
+    )
+
+
+def test_settings_reboot_none_port_still_flashes_without_exception():
+    from src.ui.components import settings_reboot_item_rect
+
+    ft = FakeTicks(0)
+    display = FakeDisplayPort()
+    reboot_x, reboot_y = _settings_reboot_center(display)
+    touch = FakeTouchPort(
+        [(True, 0, 0), (True, 160, 222), (True, reboot_x, reboot_y)]
+    )
+    sleep = RecordingSleepMs()
+    app, _clock, _view, display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft,
+        touch_port=touch,
+        reboot_port=None,
+        sleep_ms_fn=sleep,
+    )
+    _enter_settings_via_gear(app, ft)
+    item_x, item_y, item_w, item_h = settings_reboot_item_rect(display)
+    display.clear_ops()
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+
+    assert (
+        "fill_rect",
+        item_x,
+        item_y,
+        item_w,
+        item_h,
+        config.COLOR_PRESS_FLASH,
+    ) in display.ops
+    assert sleep.calls == [config.PRESS_FLASH_MS]
 
 
 def test_settings_retains_the_interrupted_view_after_its_dwell_is_due():
