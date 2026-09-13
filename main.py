@@ -39,6 +39,10 @@ def main():
     import gc
 
     gc.threshold(gc.mem_free() // 4 + gc.mem_alloc())
+    # The XPT2046 shares SPI0 with the TFT.  Hold it deselected before any
+    # display traffic so its MISO output cannot be active during TFT bring-up.
+    touch_cs = Pin(config.TOUCH_CS, Pin.OUT)
+    touch_cs.value(1)
     spi = SPI(
         0,
         baudrate=config.SPI_BAUDRATE,
@@ -50,6 +54,12 @@ def main():
     )
 
     display = initialize_display(spi, ILI9341, splash_screen, sleep_ms, print)
+
+    # Splash rendering creates temporary command and pixel buffers. Release
+    # them before constructing the App, its views, and network coordinator;
+    # otherwise the Pico can fail a later contiguous allocation on first boot.
+    gc.collect()
+    print("TFT checkpoint complete; app construction")
 
     display_port = Ili9341DisplayPort(display)
     clock_view = ClockView(display_port)
@@ -91,8 +101,22 @@ def main():
     print("App loop starting (Clock view)")
     app.boot()
     while True:
-        coordinator.tick()
-        app.step()
+        try:
+            coordinator.tick()
+            app.step()
+        except MemoryError:
+            gc.collect()
+            print("App loop: MemoryError, recovered")
+            if hasattr(clock_view, "invalidate"):
+                clock_view.invalidate()
+            if hasattr(calendar_view, "invalidate"):
+                calendar_view.invalidate()
+        except Exception as exc:
+            print("App loop: transient error, recovered:", exc)
+            if hasattr(clock_view, "invalidate"):
+                clock_view.invalidate()
+            if hasattr(calendar_view, "invalidate"):
+                calendar_view.invalidate()
         sleep_ms(10)
 
 

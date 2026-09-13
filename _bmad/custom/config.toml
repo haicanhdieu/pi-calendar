@@ -10,14 +10,14 @@
 # stay put; group by PRD slug then subtype inside each bucket:
 # _bmad-output/<bucket>/<prd-slug>/<subtype>/. Multiple slugs exist
 # (see AGENTS.md); this file's paths point at whichever slug is the
-# currently active one being worked — currently "wifi-config".
+# currently active one being worked — currently "touch-ui".
 # prds/ux-designs/architecture/briefs subtypes are overridden per-skill in
 # _bmad/custom/bmad-{prd,ux,architecture,product-brief}.toml.
 [modules.bmm]
-implementation_artifacts = "{project-root}/_bmad-output/implementation-artifacts/wifi-config"
+implementation_artifacts = "{project-root}/_bmad-output/implementation-artifacts/touch-ui"
 
 [modules.tea]
-test_artifacts = "{project-root}/_bmad-output/test-artifacts/wifi-config"
-test_design_output = "_bmad-output/test-artifacts/wifi-config/test-design"
-test_review_output = "_bmad-output/test-artifacts/wifi-config/test-reviews"
-trace_output = "_bmad-output/test-artifacts/wifi-config/traceability"
+test_artifacts = "{project-root}/_bmad-output/test-artifacts/touch-ui"
+test_design_output = "_bmad-output/test-artifacts/touch-ui/test-design"
+test_review_output = "_bmad-output/test-artifacts/touch-ui/test-reviews"
+trace_output = "_bmad-output/test-artifacts/touch-ui/traceability"

@@ -8,6 +8,11 @@ TFT_MOSI = 19
 TFT_DC = 20
 TFT_RST = 21
 
+# 2.8-inch TFT touch overlay — XPT2046-compatible controller on SPI0.
+# It shares TFT_SCK/MOSI/MISO; only its select and interrupt lines are unique.
+TOUCH_CS = 22
+TOUCH_IRQ = 26
+
 # Display geometry and SPI
 SCREEN_WIDTH = 320
 SCREEN_HEIGHT = 240

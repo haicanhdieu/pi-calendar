@@ -1,7 +1,7 @@
 # Team override for bmad-architecture. See .claude/skills/bmad-architecture/customize.toml for full surface.
 #
 # Group artifacts slug-then-subtype under the shared planning-artifacts bucket,
-# flattened (no dated run folder). Path points at the currently active slug (wifi-config); see AGENTS.md.
+# flattened (no dated run folder). Path points at the currently active slug (touch-ui); see AGENTS.md.
 [workflow]
-spine_output_path = "{planning_artifacts}/wifi-config/architecture"
+spine_output_path = "{planning_artifacts}/touch-ui/architecture"
 run_folder_pattern = ""

@@ -7,7 +7,7 @@ paradigm: functional-core-imperative-shell
 scope: Wi-Fi provisioning, persistent device settings, local HTTP setup/config surfaces, and TFT network status for the existing Raspberry Pi Pico W clock
 status: final
 created: 2026-09-06
-updated: 2026-09-06
+updated: 2026-09-13
 binds: [wifi-config:UJ-1, wifi-config:UJ-2, wifi-config:UJ-3, wifi-config:FR-1, wifi-config:FR-2, wifi-config:FR-3, wifi-config:FR-4]
 sources:
   - ../prds/prd.md
@@ -19,6 +19,7 @@ sources:
   - https://docs.micropython.org/en/v1.29.0/rp2/quickref.html
 companions:
   - ../../pico-w-calendar-clock/architecture/project-structure.md
+  - ../../touch-ui/architecture/ARCHITECTURE-SPINE.md
 ---
 
 # Architecture Spine — Wi-Fi Provisioning & Admin Config
@@ -95,8 +96,8 @@ flowchart LR
 ### AD-6 — App owns on-screen network status
 
 - **Binds:** FR-2, UJ-1, UJ-2, existing clock/calendar rendering
-- **Prevents:** network code competing with renderers or status disappearing before it is usable
-- **Rule:** `App` reduces `NetworkEvent` values into network-status state and supplies it to `UiCompositor`, the parent AD-12 sole overlay owner. In `SETUP_AP`, that overlay continuously shows `PiCalendar-Setup` and `192.168.4.1`; on every successful station connection or reconnection it shows the assigned IPv4 address for at least 10 seconds. Web request outcomes can produce serial diagnostics and events only, never display calls.
+- **Prevents:** network code competing with renderers, or a second path reading/displaying network status outside App's reduced state
+- **Rule:** `App` reduces `NetworkEvent` values into network-status state (`kind`/`ssid`/`ip`) and retains it as the single source of truth for on-screen network status. Web request outcomes can produce serial diagnostics and events only, never display calls. **Display of this state is not decided here** — see the [touch-ui architecture spine](../../touch-ui/architecture/ARCHITECTURE-SPINE.md) AD-1, which is authoritative: the always-on continuous overlay this AD originally specified is superseded, and the state is instead shown only on demand in the touch-ui Settings view.
 
 ### AD-7 — Host proof first; hardware proof is explicit
 

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Key screen: Settings view</title>
+<style>
+/* Governs: DESIGN.md Layout & Spacing (Settings view), Typography (settings-status/guideline/reboot),
+   Components (Settings view, Reboot button); EXPERIENCE.md State Patterns (Settings row),
+   Key Flows ("Minh checks the Device's IP", "Minh reboots a stuck Device") */
+body { background:#333; display:flex; gap:40px; align-items:flex-start; justify-content:center; padding:40px; font-family:-apple-system,"Helvetica Neue",Arial,sans-serif; }
+.frame { width:320px; height:240px; background:#0a0a0a; position:relative; overflow:hidden; border:2px solid #222; }
+.label { color:#ccc; font-size:12px; margin-bottom:8px; font-family:monospace; }
+.col { text-align:center; }
+
+.status { position:absolute; top:28px; left:0; right:0; text-align:center; font-size:16px; font-weight:700; letter-spacing:1px; color:#3dff7a; }
+.guideline { position:absolute; top:64px; left:16px; right:16px; text-align:center; font-size:13px; letter-spacing:0.5px; color:#ffb238; }
+.reboot { position:absolute; top:170px; left:0; right:0; text-align:center; font-size:14px; font-weight:700; letter-spacing:2px; color:#ffb238; }
+.reboot-pressed { color:#ffe9b8; }
+</style>
+</head>
+<body>
+<div class="col">
+  <div class="label">Settings — station mode, rest</div>
+  <div class="frame">
+    <div class="status">192.168.1.42</div>
+    <div class="guideline">Browse to http://192.168.1.42</div>
+    <div class="reboot">REBOOT</div>
+  </div>
+</div>
+<div class="col">
+  <div class="label">Settings — Setup AP mode</div>
+  <div class="frame">
+    <div class="status">PiCalendar-AP42</div>
+    <div class="guideline">Connect to Wi-Fi PiCalendar-AP42 then browse to 192.168.4.1</div>
+    <div class="reboot">REBOOT</div>
+  </div>
+</div>
+<div class="col">
+  <div class="label">Settings — Reboot pressed (Press Flash)</div>
+  <div class="frame">
+    <div class="status">192.168.1.42</div>
+    <div class="guideline">Browse to http://192.168.1.42</div>
+    <div class="reboot reboot-pressed">REBOOT</div>
+  </div>
+</div>
+</body>
+</html>
