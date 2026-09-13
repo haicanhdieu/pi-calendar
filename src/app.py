@@ -6,6 +6,7 @@ from src.calendar.gregorian import build_month_grid
 from src.time.model import TRUST_SYNCED, TRUST_UNSYNCED
 from src.time.service import make_snapshot
 from src.ui.compositor import UiCompositor
+from src.ui.touch_state import SURFACE_BAR, next_surface
 from src.ui.view_state import (
     VIEW_CALENDAR,
     VIEW_CLOCK,
@@ -72,8 +73,8 @@ class App:
 
     Reads advancing UTC only through an injected ClockPort, derives immutable
     TimeSnapshots via pure time logic, and schedules work with ticks helpers.
-    Loop order (AD-12): adapter results → network events → snapshot → rollover
-    → view deadline → base render → UNSYNCED badge.
+    Loop order (AD-12): touch → adapter results → network events → snapshot →
+    rollover → view deadline → base render → status overlays.
     """
 
     def __init__(
@@ -88,6 +89,7 @@ class App:
         lock=None,
         sync_enabled=True,
         network_events=None,
+        touch_port=None,
     ):
         self._clock = clock_port
         self._view = clock_view
@@ -103,6 +105,7 @@ class App:
         del lock
         self._sync_enabled = bool(sync_enabled)
         self._network_events = network_events
+        self._touch_port = touch_port
         self.state = AppState()
         self._booted = False
         self._last_snapshot = None
@@ -115,6 +118,9 @@ class App:
         self._overlay_ssid = None
         self._overlay_ip = None
         self._overlay_clear_deadline = None
+        self._bar_reveal_started = None
+        self.state.active_surface = "rotation"
+        self.state.surface_deadline = None
 
     def boot(self):
         """Enter Clock as the active view and arm tick deadlines."""
@@ -132,6 +138,7 @@ class App:
         self._overlay_ssid = None
         self._overlay_ip = None
         self._overlay_clear_deadline = None
+        self._bar_reveal_started = None
         # Due immediately so the first step paints Clock.
         self.state.redraw_deadline = now
         # Sync retry due immediately so the first NTP attempt is not deferred.
@@ -168,6 +175,10 @@ class App:
         else:
             now = int(now_ticks) & (default_ticks.PERIOD - 1)
 
+        # 0. Poll touch once, then commit its pure surface transition before
+        # later same-tick work (including synchronization).
+        force_redraw = self._poll_touch(now)
+
         # 1. Consume adapter results (AD-8 mailbox), then maybe enqueue.
         self._consume_sync_result(now)
         self._maybe_enqueue_sync(now)
@@ -175,7 +186,6 @@ class App:
         # 1b. Drain coordinator NetworkEvents into retained network state.
         self._drain_network_events(now)
         self._expire_station_ip_overlay(now)
-        force_redraw = False
 
         # 2. Derive snapshot.
         utc = self._clock.read_utc()
@@ -189,13 +199,47 @@ class App:
             self.state.freshness_deadline = t.ticks_add(now, config.NTP_RETRY_MS)
 
         # 4. Handle view deadline.
-        if t.ticks_diff(self.state.view_deadline, now) <= 0:
+        if (
+            self.state.active_surface != SURFACE_BAR
+            and t.ticks_diff(self.state.view_deadline, now) <= 0
+        ):
             force_redraw = self._handle_view_deadline(snapshot, now) or force_redraw
 
         # 5–6. Render base view + UNSYNCED badge via compositor.
         if force_redraw or t.ticks_diff(self.state.redraw_deadline, now) <= 0:
-            self._render(snapshot)
-            self.state.redraw_deadline = t.ticks_add(now, config.CLOCK_REDRAW_MS)
+            self._render(snapshot, now)
+            self.state.redraw_deadline = self._next_redraw_deadline(now)
+
+    def _poll_touch(self, now):
+        """Read the optional touch port once and commit its surface decision."""
+        edge_down = False
+        if self._touch_port is not None:
+            sample = self._touch_port.read()
+            if sample:
+                edge_down = bool(sample[0])
+        previous = self.state.active_surface
+        # Story 2.2 enters Bar from Rotation.  Story 2.3 wires the existing
+        # Bar expiry decision and its fresh Rotation dwell deadline.
+        if previous == "rotation":
+            surface, deadline = next_surface(
+                previous, self.state.surface_deadline, edge_down, now
+            )
+        else:
+            surface, deadline = previous, self.state.surface_deadline
+        self.state.active_surface = surface
+        self.state.surface_deadline = deadline
+        if surface != previous:
+            self._bar_reveal_started = now if surface == SURFACE_BAR else None
+            return True
+        return False
+
+    def _next_redraw_deadline(self, now):
+        """Use the short cadence only while the Bar reveal is in progress."""
+        if self.state.active_surface == SURFACE_BAR and self._bar_reveal_started is not None:
+            elapsed = self._ticks.ticks_diff(now, self._bar_reveal_started)
+            if elapsed < config.BAR_SLIDE_DURATION_MS:
+                return self._ticks.ticks_add(now, config.BAR_ANIMATION_FRAME_MS)
+        return self._ticks.ticks_add(now, config.CLOCK_REDRAW_MS)
 
     def _drain_network_events(self, now):
         events = self._network_events
@@ -398,15 +442,33 @@ class App:
         if hasattr(self._calendar_view, "invalidate"):
             self._calendar_view.invalidate()
 
-    def _render(self, snapshot):
+    def _render(self, snapshot, now):
+        reveal_started = self._bar_reveal_started
+        if self.state.active_surface == SURFACE_BAR and reveal_started == now:
+            bar_elapsed = config.BAR_ANIMATION_FRAME_MS
+        elif reveal_started is None:
+            bar_elapsed = 0
+        else:
+            bar_elapsed = self._ticks.ticks_diff(now, reveal_started)
         if self.state.active_view == VIEW_CALENDAR:
             grid = self._month_grid
             if grid is None and snapshot.local is not None:
                 self._rebuild_month_grid(snapshot.local)
                 grid = self._month_grid
-            self._compositor.render(self._calendar_view, snapshot, grid)
+            self._compositor.render(
+                self._calendar_view,
+                snapshot,
+                grid,
+                active_surface=self.state.active_surface,
+                bar_elapsed_ms=bar_elapsed,
+            )
         else:
-            self._compositor.render(self._view, snapshot)
+            self._compositor.render(
+                self._view,
+                snapshot,
+                active_surface=self.state.active_surface,
+                bar_elapsed_ms=bar_elapsed,
+            )
 
     def run_forever(self, sleep_ms_fn=None):
         """Device loop: step + short sleep. Not used by host tests."""

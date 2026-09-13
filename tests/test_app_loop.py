@@ -13,6 +13,7 @@ from src.time.model import TRUST_SYNCED, TRUST_UNSYNCED, DateTime
 from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
 from src.ui.display_port import FakeDisplayPort
+from src.ui.touch_state import SURFACE_BAR, SURFACE_ROTATION
 
 ROOT = Path(__file__).resolve().parents[1]
 FORBIDDEN_IMPORT_ROOTS = frozenset(
@@ -110,12 +111,26 @@ class FakeClockPort:
         )
 
 
+class FakeTouchPort:
+    """One-sample-per-step fake for the device-agnostic App seam."""
+
+    def __init__(self, samples):
+        self.samples = list(samples)
+        self.read_count = 0
+
+    def read(self):
+        self.read_count += 1
+        if self.samples:
+            return self.samples.pop(0)
+        return (False, None, None)
+
+
 def _utc(hour=7, minute=0, second=0):
     # 2026-09-06 Sunday(=6) 07:00 UTC → 14:00 local
     return DateTime(2026, 9, 6, 6, hour, minute, second)
 
 
-def _make_app(utc=_utc(), ticks_mod=None):
+def _make_app(utc=_utc(), ticks_mod=None, touch_port=None, mailbox=None):
     display = FakeDisplayPort()
     view = ClockView(display)
     calendar = CalendarView(display)
@@ -128,8 +143,91 @@ def _make_app(utc=_utc(), ticks_mod=None):
         calendar_view=calendar,
         ticks_module=ft,
         log=logs.append,
+        touch_port=touch_port,
+        mailbox=mailbox,
     )
     return app, clock, view, display, ft, logs, calendar
+
+
+def test_touch_edge_is_polled_once_and_committed_before_sync_work():
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 123, 45)])
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+
+    class OrderingMailbox:
+        def try_take_result(self):
+            assert app.state.active_surface == SURFACE_BAR
+            assert app.state.surface_deadline == ft.ticks_add(
+                ft.now, config.TOUCH_IDLE_TIMEOUT_MS
+            )
+            return None
+
+        def enqueue(self, _command):
+            return False
+
+    app._mailbox = OrderingMailbox()
+    app.boot()
+    app.step(now_ticks=ft.now)
+
+    assert touch.read_count == 1
+    assert app.state.active_surface == SURFACE_BAR
+    assert app.state.surface_deadline == config.TOUCH_IDLE_TIMEOUT_MS
+    assert app.state.redraw_deadline == config.BAR_ANIMATION_FRAME_MS
+
+
+def test_bar_freezes_view_dwell_and_reveals_on_frame_cadence():
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0)])
+    app, _clock, _view, display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    app.boot()
+    app.state.view_deadline = 0
+    app.step(now_ticks=ft.now)
+    deadline = app.state.view_deadline
+    assert app.state.active_view == VIEW_CLOCK
+    assert deadline == 0
+
+    display.clear_ops()
+    ft.advance(config.BAR_SLIDE_DURATION_MS)
+    app.step(now_ticks=ft.now)
+    assert touch.read_count == 2
+    assert app.state.active_surface == SURFACE_BAR
+    assert app.state.active_view == VIEW_CLOCK
+    assert app.state.view_deadline == deadline
+    assert (
+        "fill_rect",
+        0,
+        display.height - config.BAR_HEIGHT_PX,
+        display.width,
+        config.BAR_HEIGHT_PX,
+        config.COLOR_BAR_PANEL,
+    ) in display.ops
+
+
+def test_bar_does_not_retract_until_story_2_3_wires_expiry_policy():
+    ft = FakeTicks(0)
+    touch = FakeTouchPort([(True, 0, 0)])
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft, touch_port=touch
+    )
+    app.boot()
+    app.step(now_ticks=ft.now)
+    ft.advance(config.TOUCH_IDLE_TIMEOUT_MS)
+    app.step(now_ticks=ft.now)
+    assert app.state.active_surface == SURFACE_BAR
+
+
+def test_missing_touch_port_preserves_rotation_and_view_dwell():
+    ft = FakeTicks(0)
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(ticks_mod=ft)
+    app.boot()
+    app.state.view_deadline = 0
+    app.step(now_ticks=ft.now)
+    assert app.state.active_surface == SURFACE_ROTATION
+    assert app.state.active_view == VIEW_CALENDAR
 
 
 def test_app_and_ticks_import_under_cpython():

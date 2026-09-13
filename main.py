@@ -57,7 +57,6 @@ def main():
 
     display = initialize_display(spi, ILI9341, splash_screen, sleep_ms, print)
 
-    # These boundaries are deliberately composed but not polled by Story 1.2.
     # Reuse the display-owned TFT CS; a second Pin would compete for SPI0.
     touch_port = TouchPort(spi, touch_cs, display.cs)
     reboot_port = RebootPort(reset)
@@ -99,6 +98,7 @@ def main():
         mailbox=mailbox,
         sync_enabled=sync_enabled,
         network_events=network_events,
+        touch_port=touch_port,
     )
 
     if not creds_ok and coordinator.mode != MODE_SETUP_AP:

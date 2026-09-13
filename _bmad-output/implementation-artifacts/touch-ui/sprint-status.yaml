@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-13-2026 16:48
-last_updated: 09-13-2026 17:16
+last_updated: 09-13-2026 17:35
 project: pi-calendar
 project_key: NOKEY
 tracking_system: file-system
@@ -40,9 +40,9 @@ development_status:
   1-2-add-touchport-and-rebootport-hardware-adapters: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
+  epic-2: in-progress
   2-1-pure-touch_state-transitions-for-rotation-bar: backlog
-  2-2-wire-touch-polling-into-app-step-and-render-the-bar-overlay: backlog
+  2-2-wire-touch-polling-into-app-step-and-render-the-bar-overlay: done
   2-3-auto-retract-bar-on-idle-timeout-or-outside-tap: backlog
   epic-2-retrospective: optional
 

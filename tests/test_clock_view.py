@@ -10,7 +10,7 @@ from src import config
 from src.device.display.font import FONT_5X7
 from src.time.model import TRUST_SYNCED, TRUST_UNSYNCED, DateTime, TimeSnapshot
 from src.ui.clock_view import ClockView
-from src.ui.components import badge_rect, draw_unsynced_badge
+from src.ui.components import bar_gear_item_rect, bar_rect, badge_rect, draw_unsynced_badge
 from src.ui.compositor import UiCompositor
 from src.ui.display_port import FakeDisplayPort
 
@@ -372,6 +372,39 @@ def test_draw_unsynced_badge_hidden_draws_nothing():
     display = FakeDisplayPort()
     draw_unsynced_badge(display, False)
     assert display.ops == []
+
+
+def test_bar_is_a_bounded_draw_last_overlay_and_visibility_restores_base():
+    display = FakeDisplayPort()
+    view = ClockView(display)
+    compositor = UiCompositor(display)
+    snapshot = _snapshot(_local(), TRUST_SYNCED)
+
+    compositor.render(
+        view,
+        snapshot,
+        active_surface="bar",
+        bar_elapsed_ms=config.BAR_SLIDE_DURATION_MS,
+    )
+    bx, by, bw, bh = bar_rect(display)
+    panel = ("fill_rect", bx, by, bw, bh, config.COLOR_BAR_PANEL)
+    assert panel in display.ops
+    panel_index = display.ops.index(panel)
+    assert all(op[0] == "fill_rect" for op in display.ops[panel_index + 1 :])
+    assert all(
+        not (op[0] == "fill_rect" and op[3] == display.width and op[4] == display.height and op[5] == config.COLOR_BAR_PANEL)
+        for op in display.ops
+    )
+    ix, iy, iw, ih = bar_gear_item_rect(display)
+    assert ix == (display.width - config.TAP_TARGET_SIZE_PX) // 2
+    assert iy + ih // 2 == by + bh // 2
+    assert iw == ih == config.TAP_TARGET_SIZE_PX
+
+    display.clear_ops()
+    compositor.render(view, snapshot, active_surface="rotation")
+    assert (
+        "fill_rect", 0, 0, display.width, display.height, config.COLOR_BACKGROUND
+    ) in display.ops
 
 
 def test_palette_rgb565_matches_independent_packing():

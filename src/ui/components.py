@@ -33,3 +33,49 @@ def draw_unsynced_badge(display, visible):
         config.FONT_BADGE,
         config.COLOR_BACKGROUND,
     )
+
+
+def bar_rect(display, height=None):
+    """Return the bottom-docked Bar rectangle (x, y, w, h)."""
+    if height is None:
+        height = config.BAR_HEIGHT_PX
+    height = max(0, min(int(height), config.BAR_HEIGHT_PX, display.height))
+    return (0, display.height - height, display.width, height)
+
+
+def bar_gear_item_rect(display):
+    """Return the centered generous hit geometry for the future gear item."""
+    size = config.TAP_TARGET_SIZE_PX
+    _x, bar_y, _w, bar_h = bar_rect(display)
+    center_y = bar_y + bar_h // 2
+    return (
+        (display.width - size) // 2,
+        center_y - size // 2,
+        size,
+        size,
+    )
+
+
+def draw_bar(display, visible, height=None):
+    """Draw the bounded Bar panel and its centered amber gear, draw-last only."""
+    if not visible:
+        return
+
+    x, y, w, h = bar_rect(display, height)
+    if h <= 0:
+        return
+    display.fill_rect(x, y, w, h, config.COLOR_BAR_PANEL)
+
+    # Keep every gear pixel inside the revealed panel.  The icon appears once
+    # the panel is fully revealed; the hit geometry remains available earlier.
+    if h != config.BAR_HEIGHT_PX:
+        return
+    item_x, item_y, item_w, item_h = bar_gear_item_rect(display)
+    cx = item_x + item_w // 2
+    cy = item_y + item_h // 2
+    color = config.COLOR_SECONDARY
+    # Compact gear built exclusively from DisplayPort rectangles.
+    display.fill_rect(cx - 6, cy - 2, 13, 5, color)
+    display.fill_rect(cx - 2, cy - 6, 5, 13, color)
+    display.fill_rect(cx - 4, cy - 4, 9, 9, color)
+    display.fill_rect(cx - 1, cy - 1, 3, 3, config.COLOR_BAR_PANEL)
