@@ -133,6 +133,13 @@ CLOCK_CORNER_CLOCK_GAP_PX = 12
 # this band until the feature ships).
 CLOCK_EVENTS_BAND_H_PX = 56
 
+# Upcoming-events band row geometry: pad from the band's top edge to the
+# first row's baseline-origin, gap between successive rows, and the x past
+# which a row's text must be truncated.
+CLOCK_EVENTS_ROW_TOP_PAD_PX = 4
+CLOCK_EVENTS_ROW_GAP_PX = 2
+CLOCK_EVENTS_ROW_RIGHT_PX = 310
+
 # Calendar layout metrics (320×240 landscape) — pad Y/X, cell gap, label gaps
 CALENDAR_PAD_Y = 10
 CALENDAR_PAD_X = 12

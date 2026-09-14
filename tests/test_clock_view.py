@@ -317,6 +317,172 @@ def test_day_change_full_redraws_lunar_line():
     assert "Sun · Sep 7 2026" in labels
 
 
+def test_no_events_draws_nothing_in_band():
+    display = FakeDisplayPort()
+    view = ClockView(display)
+    view.render(_snapshot(_local()), events=None)
+    band_top = display.height - config.CLOCK_EVENTS_BAND_H_PX
+    for op in display.ops:
+        if op[0] == "draw_text":
+            _, _text, x, y, font, _color = op
+            assert not (
+                y >= band_top and font == config.FONT_SETTINGS_STATUS
+            )
+
+    display.clear_ops()
+    view2 = ClockView(display)
+    view2.render(_snapshot(_local()), events=[])
+    band_top = display.height - config.CLOCK_EVENTS_BAND_H_PX
+    for op in display.ops:
+        if op[0] == "draw_text":
+            _, _text, x, y, font, _color = op
+            assert not (
+                y >= band_top and font == config.FONT_SETTINGS_STATUS
+            )
+
+
+def test_one_event_draws_one_row_in_band():
+    display = FakeDisplayPort()
+    view = ClockView(display)
+    view.render(_snapshot(_local()), events=[("09:00", "Standup")])
+
+    band_top = display.height - config.CLOCK_EVENTS_BAND_H_PX
+    rows = [
+        op
+        for op in _texts(display.ops)
+        if op[4] == config.FONT_SETTINGS_STATUS
+    ]
+    assert len(rows) == 1
+    text, x, y, font, color = rows[0][1], rows[0][2], rows[0][3], rows[0][4], rows[0][5]
+    assert text == "09:00  Standup"
+    assert x == config.CLOCK_CORNER_PAD_X_PX
+    assert y == band_top + config.CLOCK_EVENTS_ROW_TOP_PAD_PX
+    assert color == config.COLOR_SECONDARY
+
+
+def test_three_events_draw_three_rows_in_order():
+    display = FakeDisplayPort()
+    view = ClockView(display)
+    events = [
+        ("09:00", "Standup"),
+        ("11:30", "Design review"),
+        ("15:00", "1:1"),
+    ]
+    view.render(_snapshot(_local()), events=events)
+
+    rows = [
+        op
+        for op in _texts(display.ops)
+        if op[4] == config.FONT_SETTINGS_STATUS
+    ]
+    assert len(rows) == 3
+    assert [r[1] for r in rows] == [
+        "09:00  Standup",
+        "11:30  Design review",
+        "15:00  1:1",
+    ]
+    row_h = display.measure_text("Ag", config.FONT_SETTINGS_STATUS)[1]
+    band_top = display.height - config.CLOCK_EVENTS_BAND_H_PX
+    expected_y = band_top + config.CLOCK_EVENTS_ROW_TOP_PAD_PX
+    for row in rows:
+        assert row[3] == expected_y
+        assert row[2] == config.CLOCK_CORNER_PAD_X_PX
+        assert row[3] + row_h <= display.height
+        expected_y += row_h + config.CLOCK_EVENTS_ROW_GAP_PX
+
+
+def test_more_than_three_events_only_draws_first_three():
+    display = FakeDisplayPort()
+    view = ClockView(display)
+    events = [
+        ("09:00", "Standup"),
+        ("11:30", "Design review"),
+        ("15:00", "1:1"),
+        ("18:00", "Dinner"),
+    ]
+    view.render(_snapshot(_local()), events=events)
+
+    rows = [
+        op
+        for op in _texts(display.ops)
+        if op[4] == config.FONT_SETTINGS_STATUS
+    ]
+    assert len(rows) == 3
+    assert [r[1] for r in rows] == [
+        "09:00  Standup",
+        "11:30  Design review",
+        "15:00  1:1",
+    ]
+    assert "18:00  Dinner" not in [r[1] for r in rows]
+
+
+def test_long_title_is_truncated_within_band_right_edge():
+    display = FakeDisplayPort()
+    view = ClockView(display)
+    long_title = "Quarterly Planning Offsite With Extended Leadership Team"
+    view.render(_snapshot(_local()), events=[("09:00", long_title)])
+
+    rows = [
+        op
+        for op in _texts(display.ops)
+        if op[4] == config.FONT_SETTINGS_STATUS
+    ]
+    assert len(rows) == 1
+    text = rows[0][1]
+    x = rows[0][2]
+    assert text.endswith("...")
+    assert text != "09:00  " + long_title
+    width, _height = display.measure_text(text, config.FONT_SETTINGS_STATUS)
+    assert x + width <= config.CLOCK_EVENTS_ROW_RIGHT_PX
+
+
+def test_events_unchanged_seconds_tick_keeps_ss_only_fast_path():
+    display = FakeDisplayPort()
+    view = ClockView(display)
+    events = [("09:00", "Standup")]
+    view.render(_snapshot(_local(second=32)), events=events)
+
+    display.clear_ops()
+    view.render(_snapshot(_local(second=33)), events=events)
+
+    ops = display.ops
+    texts = _texts(ops)
+    assert len(texts) == 1
+    assert texts[0][1] == "33"
+    assert not any(op[4] == config.FONT_SETTINGS_STATUS for op in texts)
+    fills = _fills(ops)
+    assert len(fills) == 1
+    assert not any(
+        f[1] == 0 and f[2] == 0 and f[3] == display.width and f[4] == display.height
+        for f in fills
+    )
+
+
+def test_events_changed_time_unchanged_triggers_full_redraw():
+    display = FakeDisplayPort()
+    view = ClockView(display)
+    view.render(_snapshot(_local()), events=None)
+
+    display.clear_ops()
+    view.render(_snapshot(_local()), events=[])
+
+    fills = _fills(display.ops)
+    assert any(
+        f[1] == 0 and f[2] == 0 and f[3] == display.width and f[4] == display.height
+        for f in fills
+    )
+
+    display.clear_ops()
+    view.render(_snapshot(_local()), events=[("09:00", "Standup")])
+    fills = _fills(display.ops)
+    assert any(
+        f[1] == 0 and f[2] == 0 and f[3] == display.width and f[4] == display.height
+        for f in fills
+    )
+    labels = [t[1] for t in _texts(display.ops)]
+    assert "09:00  Standup" in labels
+
+
 def test_font_5x7_has_slash_and_plus_glyphs():
     assert "/" in _CHARS
     assert "+" in _CHARS

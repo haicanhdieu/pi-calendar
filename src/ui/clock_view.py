@@ -107,6 +107,7 @@ class ClockView:
             "lunar_y": 0,
             "lunar_w": 0,
             "lunar_h": 0,
+            "events": None,
             "valid": False,
         }
 
@@ -114,7 +115,7 @@ class ClockView:
         """Force full redraw on next render (view entry / badge base restore)."""
         self._cache["valid"] = False
 
-    def render(self, snapshot):
+    def render(self, snapshot, events=None):
         cache = self._cache
         local = snapshot.local
 
@@ -124,13 +125,14 @@ class ClockView:
                 _format_ss(local),
                 _format_date(local),
                 _format_lunar(local),
+                events,
             )
             self._remember_local(local)
             return
 
         # Identical content: no-op (avoids full redraw fallthrough).
         if local is None:
-            if not cache["has_local"]:
+            if not cache["has_local"] and cache["events"] == events:
                 return
         elif (
             cache["has_local"]
@@ -141,6 +143,7 @@ class ClockView:
             and cache["month"] == local.month
             and cache["day"] == local.day
             and cache["weekday"] == local.weekday
+            and cache["events"] == events
         ):
             return
 
@@ -155,6 +158,7 @@ class ClockView:
             and cache["day"] == local.day
             and cache["weekday"] == local.weekday
             and cache["second"] != local.second
+            and cache["events"] == events
         ):
             ss = _two_digit(local.second)
             self._redraw_ss(ss)
@@ -167,6 +171,7 @@ class ClockView:
             _format_ss(local),
             _format_date(local),
             _format_lunar(local),
+            events,
         )
         self._remember_local(local)
 
@@ -264,7 +269,7 @@ class ClockView:
             lunar_h,
         )
 
-    def _full_redraw(self, hhmm, ss, date, lunar):
+    def _full_redraw(self, hhmm, ss, date, lunar, events=None):
         display = self._display
         cache = self._cache
         display.fill_rect(
@@ -311,6 +316,8 @@ class ClockView:
                 lunar, lunar_x, lunar_y, config.FONT_DATE, config.COLOR_SECONDARY
             )
 
+        self._draw_events(events)
+
         cache["hhmm"] = hhmm
         cache["ss"] = ss
         cache["date"] = date
@@ -329,7 +336,43 @@ class ClockView:
         cache["lunar_y"] = lunar_y
         cache["lunar_w"] = lunar_w
         cache["lunar_h"] = lunar_h
+        cache["events"] = list(events) if events else events
         cache["valid"] = True
+
+    def _events_row_text(self, hhmm, title):
+        """hhmm + "  " + title, char-truncated with a "..." suffix so the
+        row's text never crosses CLOCK_EVENTS_ROW_RIGHT_PX."""
+        display = self._display
+        x = config.CLOCK_CORNER_PAD_X_PX
+        if len(title) > 60:
+            title = title[:60]
+        text = hhmm + "  " + title
+        width, _height = display.measure_text(text, config.FONT_SETTINGS_STATUS)
+        if x + width <= config.CLOCK_EVENTS_ROW_RIGHT_PX:
+            return text
+        while title:
+            title = title[:-1]
+            text = hhmm + "  " + title + "..."
+            width, _height = display.measure_text(text, config.FONT_SETTINGS_STATUS)
+            if x + width <= config.CLOCK_EVENTS_ROW_RIGHT_PX:
+                return text
+        return hhmm + "  " + "..."
+
+    def _draw_events(self, events):
+        """Draw up to 3 pre-sorted (hhmm, title) rows in the reserved band."""
+        if not events:
+            return
+        display = self._display
+        x = config.CLOCK_CORNER_PAD_X_PX
+        row_h = display.measure_text("Ag", config.FONT_SETTINGS_STATUS)[1]
+        band_top = display.height - config.CLOCK_EVENTS_BAND_H_PX
+        y = band_top + config.CLOCK_EVENTS_ROW_TOP_PAD_PX
+        for hhmm, title in events[:3]:
+            text = self._events_row_text(hhmm, title)
+            display.draw_text(
+                text, x, y, config.FONT_SETTINGS_STATUS, config.COLOR_SECONDARY
+            )
+            y += row_h + config.CLOCK_EVENTS_ROW_GAP_PX
 
     def _redraw_ss(self, ss):
         display = self._display
