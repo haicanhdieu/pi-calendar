@@ -149,6 +149,67 @@ def test_synced_calendar_draws_month_header_and_grid_without_badge():
     assert not hasattr(display, "pixels")
 
 
+def test_calendar_draws_small_unsynced_clock_at_top_left():
+    display = FakeDisplayPort()
+    view = CalendarView(display)
+    local = _local()
+
+    view.render(_snapshot(local), _grid_for(local))
+
+    assert (
+        "draw_text",
+        "14:07",
+        0,
+        0,
+        config.FONT_BADGE,
+        config.COLOR_UNSYNCED,
+    ) in display.ops
+
+
+def test_calendar_redraws_small_clock_when_local_minute_changes():
+    display = FakeDisplayPort()
+    view = CalendarView(display)
+    first = _local()
+    grid = _grid_for(first)
+
+    view.render(_snapshot(first), grid)
+    display.clear_ops()
+    second = DateTime(2026, 9, 6, 5, 14, 8, 32)
+    view.render(_snapshot(second), grid)
+
+    assert (
+        "draw_text",
+        "14:08",
+        0,
+        0,
+        config.FONT_BADGE,
+        config.COLOR_UNSYNCED,
+    ) in display.ops
+    assert any(
+        op[0] == "fill_rect"
+        and op[1:] == (0, 0, display.width, display.height, config.COLOR_BACKGROUND)
+        for op in display.ops
+    )
+
+
+def test_calendar_draws_placeholder_clock_without_local_time():
+    display = FakeDisplayPort()
+    view = CalendarView(display)
+    grid = build_month_grid(2026, 9, 2026, 9, 6)
+    snapshot = TimeSnapshot(utc=None, local=None, trust=TRUST_UNSYNCED, sync_age_ms=None)
+
+    view.render(snapshot, grid)
+
+    assert (
+        "draw_text",
+        config.CLOCK_PLACEHOLDER_HHMM,
+        0,
+        0,
+        config.FONT_BADGE,
+        config.COLOR_UNSYNCED,
+    ) in display.ops
+
+
 def test_weekday_header_is_monday_first_single_letters():
     display = FakeDisplayPort()
     view = CalendarView(display)

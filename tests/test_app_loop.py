@@ -985,6 +985,32 @@ def test_clock_calendar_rotation_with_valid_local():
     assert "14:00" in texts
 
 
+def test_app_calendar_redraws_corner_clock_when_local_minute_changes():
+    ft = FakeTicks(0)
+    app, clock, _view, display, ft, _logs, _cal = _make_app(
+        utc=_utc(7, 7, 0), ticks_mod=ft
+    )
+    app.boot()
+    app.step(now_ticks=ft.now)
+    app.state.view_deadline = ft.now
+    app.step(now_ticks=ft.now)
+    assert app.state.active_view == VIEW_CALENDAR
+
+    display.clear_ops()
+    clock.set_utc(_utc(7, 8, 0))
+    ft.advance(config.CLOCK_REDRAW_MS)
+    app.step(now_ticks=ft.now)
+
+    assert (
+        "draw_text",
+        "14:08",
+        0,
+        0,
+        config.FONT_BADGE,
+        config.COLOR_UNSYNCED,
+    ) in display.ops
+
+
 def test_invalid_local_does_not_enter_calendar():
     ft = FakeTicks(0)
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(utc=None, ticks_mod=ft)

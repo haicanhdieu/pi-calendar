@@ -22,6 +22,19 @@ def _month_name(month):
 # Monday-first single-letter weekday header (UX mockup).
 _WEEKDAYS = "MTWTFSS"
 
+_2DIGIT = (
+    "000102030405060708091011121314151617181920212223242526272829"
+    "303132333435363738394041424344454647484950515253545556575859"
+)
+
+
+def _format_hhmm(local):
+    if local is None:
+        return config.CLOCK_PLACEHOLDER_HHMM
+    hour = local.hour * 2
+    minute = local.minute * 2
+    return _2DIGIT[hour:hour + 2] + ":" + _2DIGIT[minute:minute + 2]
+
 
 def _format_month_label(year, month):
     return _month_name(month) + " " + str(year)
@@ -37,6 +50,9 @@ class CalendarView:
             "year": None,
             "month": None,
             "weeks": None,
+            "local_hour": None,
+            "local_minute": None,
+            "has_local": None,
         }
 
     def invalidate(self):
@@ -51,21 +67,31 @@ class CalendarView:
         placement and today flags. Does not draw the unsynced badge.
         """
         cache = self._cache
+        local = snapshot.local
+        has_local = local is not None
+        local_hour = local.hour if has_local else None
+        local_minute = local.minute if has_local else None
         if (
             cache["valid"]
             and cache["year"] == grid.year
             and cache["month"] == grid.month
             and cache["weeks"] is grid.weeks
+            and cache["has_local"] == has_local
+            and cache["local_hour"] == local_hour
+            and cache["local_minute"] == local_minute
         ):
             return
 
-        self._full_redraw(grid)
+        self._full_redraw(grid, _format_hhmm(local))
         cache["valid"] = True
         cache["year"] = grid.year
         cache["month"] = grid.month
         cache["weeks"] = grid.weeks
+        cache["has_local"] = has_local
+        cache["local_hour"] = local_hour
+        cache["local_minute"] = local_minute
 
-    def _full_redraw(self, grid):
+    def _full_redraw(self, grid, clock_label):
         display = self._display
         display.fill_rect(
             0,
@@ -73,6 +99,13 @@ class CalendarView:
             display.width,
             display.height,
             config.COLOR_BACKGROUND,
+        )
+        display.draw_text(
+            clock_label,
+            0,
+            0,
+            config.FONT_BADGE,
+            config.COLOR_UNSYNCED,
         )
 
         content_x = config.CALENDAR_PAD_X
