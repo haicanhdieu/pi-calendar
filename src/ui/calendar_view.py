@@ -100,12 +100,21 @@ class CalendarView:
             display.height,
             config.COLOR_BACKGROUND,
         )
+        clock_w, clock_h = display.measure_text(clock_label, config.FONT_BADGE)
+        padding = config.CALENDAR_CLOCK_BOX_PADDING_PX
+        display.fill_rect(
+            0,
+            0,
+            clock_w + (2 * padding),
+            clock_h + (2 * padding),
+            config.COLOR_UNSYNCED,
+        )
         display.draw_text(
             clock_label,
-            0,
-            0,
+            padding,
+            padding,
             config.FONT_BADGE,
-            config.COLOR_UNSYNCED,
+            config.COLOR_WHITE,
         )
 
         content_x = config.CALENDAR_PAD_X

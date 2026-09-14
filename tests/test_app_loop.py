@@ -1004,10 +1004,10 @@ def test_app_calendar_redraws_corner_clock_when_local_minute_changes():
     assert (
         "draw_text",
         "14:08",
-        0,
-        0,
+        1,
+        1,
         config.FONT_BADGE,
-        config.COLOR_UNSYNCED,
+        config.COLOR_WHITE,
     ) in display.ops
 
 
