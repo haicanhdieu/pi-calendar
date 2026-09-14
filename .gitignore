@@ -53,3 +53,6 @@ htmlcov/
 .bmad-loop/cache/
 .bmad-loop/policy.toml
 _bmad/render/
+
+# Graphify generated cache
+graphify-out/cache/
