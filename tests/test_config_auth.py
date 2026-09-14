@@ -401,6 +401,118 @@ def test_station_listener_and_asset_failures_emit_named_events_and_close():
     assert coordinator._sessions is None
 
 
+def test_station_asset_import_failure_closes_clients_and_stays_recoverable():
+    """Regression: a MemoryError/Exception while lazily importing the
+
+    station web/page modules must close any already-accepted browser
+    connection (the ``http.close_clients()`` call these two branches were
+    previously missing, unlike every other identical failure branch in the
+    file -- see spec-cannot-access-settings-page-after-boot-pi.md), must
+    emit the existing secret-free ``web_asset`` event, and must leave the
+    cooperative loop able to retry and eventually succeed once the import
+    stops failing.
+    """
+    import builtins
+
+    coordinator, _http, _sockets, ticks, _store = _online_coordinator(ticks=FakeTicks(0))
+    events = []
+    coordinator._event_sink = events
+
+    class TrackingHttp:
+        def __init__(self):
+            self.clients_closed = 0
+            self.ticked = 0
+
+        def ensure_listening(self):
+            return True
+
+        def close_clients(self):
+            self.clients_closed += 1
+
+        def tick(self, *_args, **_kwargs):
+            self.ticked += 1
+            return None
+
+    tracking = TrackingHttp()
+    coordinator._http = tracking
+    assert coordinator._station_assets_ready is False
+
+    real_import = builtins.__import__
+
+    def failing_import(name, *args, **kwargs):
+        if name == "src.device.web.page_login_content":
+            raise MemoryError()
+        return real_import(name, *args, **kwargs)
+
+    builtins.__import__ = failing_import
+    try:
+        coordinator.tick()
+    finally:
+        builtins.__import__ = real_import
+
+    # The already-accepted connection must be closed, not left hanging.
+    assert tracking.clients_closed == 1
+    # http.tick() (which would dispatch a response) is never reached while
+    # assets are not ready -- the loop returns cleanly instead of crashing.
+    assert tracking.ticked == 0
+    assert events[-1].kind == EVENT_STATION_ERROR
+    assert events[-1].error_code == "web_asset"
+    assert coordinator.mode == MODE_STATION_ONLINE
+
+    # Bounded retry: once the import stops failing, station assets become
+    # ready and normal request dispatch resumes.
+    ticks.now = config.HTTP_RETRY_MS + 1
+    coordinator.tick()
+    assert coordinator._station_assets_ready is True
+    assert tracking.ticked == 1
+
+
+def test_station_asset_import_generic_exception_closes_clients():
+    """Sibling of the MemoryError case above: a plain (non-MemoryError)
+
+    exception during the same lazy station-asset import must take the
+    ``except Exception`` branch, which must also close the already-accepted
+    browser connection and emit the same named ``web_asset`` failure.
+    """
+    import builtins
+
+    coordinator, _http, _sockets, ticks, _store = _online_coordinator(ticks=FakeTicks(0))
+    events = []
+    coordinator._event_sink = events
+
+    class TrackingHttp:
+        def __init__(self):
+            self.clients_closed = 0
+
+        def ensure_listening(self):
+            return True
+
+        def close_clients(self):
+            self.clients_closed += 1
+
+    tracking = TrackingHttp()
+    coordinator._http = tracking
+    assert coordinator._station_assets_ready is False
+
+    real_import = builtins.__import__
+
+    def failing_import(name, *args, **kwargs):
+        if name == "src.device.web.page_login_content":
+            raise RuntimeError("boom")
+        return real_import(name, *args, **kwargs)
+
+    builtins.__import__ = failing_import
+    try:
+        coordinator.tick()
+    finally:
+        builtins.__import__ = real_import
+
+    assert tracking.clients_closed == 1
+    assert events[-1].kind == EVENT_STATION_ERROR
+    assert events[-1].error_code == "web_asset"
+    assert coordinator.mode == MODE_STATION_ONLINE
+
+
 def test_coordinator_concurrent_kdf_busy():
     coordinator, http, sockets, ticks, _store = _online_coordinator()
     first = FakeStreamSocket()

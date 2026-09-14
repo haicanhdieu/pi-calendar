@@ -37,6 +37,7 @@ PRECOMPILE = [
     "src/provisioning/scan.py",
     "src/provisioning/validation.py",
     "src/provisioning/verifier.py",
+    "src/provisioning/session.py",
     "src/ui/clock_view.py",
     "src/ui/calendar_view.py",
     "src/ui/compositor.py",

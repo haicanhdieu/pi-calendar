@@ -538,17 +538,23 @@ class NetworkCoordinator:
                 import gc
 
                 gc.collect()
+                self._heap_checkpoint("station_asset_before")
                 import src.device.web.page_login_content  # noqa: F401
                 import src.device.web.page_settings_content  # noqa: F401
                 import src.device.web.pages  # noqa: F401
                 import src.device.web.router  # noqa: F401
+                self._heap_checkpoint("station_asset_after")
                 self._station_assets_ready = True
                 self._log("station_assets_ready")
             except MemoryError:
+                self._heap_checkpoint("station_asset_fail")
+                http.close_clients()
                 self._web_failure("asset", station=True, now=now)
                 return kdf_active
             except Exception as exc:
+                self._heap_checkpoint("station_asset_fail")
                 self._log("web_asset " + type(exc).__name__)
+                http.close_clients()
                 self._web_failure("asset", station=True, now=now)
                 return kdf_active
 
@@ -556,6 +562,9 @@ class NetworkCoordinator:
         # The server calls this factory only when it dispatches that request.
         sessions = self._get_sessions
         try:
+            import gc
+
+            gc.collect()
             action = http.tick(
                 MODE_STATION_ONLINE, candidate_active=False, scan_fn=None,
                 session_table=sessions, now_ticks=now,
