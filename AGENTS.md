@@ -55,6 +55,11 @@ Firmware and planning repository for a Raspberry Pi Pico W clock and calendar de
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
 
+Graphify output policy:
+- Keep exactly one generated graphify output directory at the repository root: `graphify-out/`.
+- For a scoped graph covering multiple directories (for example `src` and `tests`), run one root-scoped extraction with `graphify extract . --out .` and use root-level `.graphifyignore` negation rules or `--exclude` rules to select the scope. Do not run `graphify extract src` and `graphify extract tests` separately; those commands create nested `src/graphify-out/` and `tests/graphify-out/` directories.
+- Treat any nested `*/graphify-out/` as generated intermediate output, not as a second project graph. Remove it after a mistaken scoped run and keep it out of Git; `.gitignore` covers nested Graphify caches.
+
 When the user types `/graphify`, use the installed graphify skill or instructions before doing anything else.
 
 Rules:

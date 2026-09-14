@@ -54,5 +54,5 @@ htmlcov/
 .bmad-loop/policy.toml
 _bmad/render/
 
-# Graphify generated cache
-graphify-out/cache/
+# Graphify generated caches, including caches under scoped/intermediate paths
+**/graphify-out/cache/
