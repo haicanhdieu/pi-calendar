@@ -1,6 +1,8 @@
 """Deploy main.py/src/secrets.py to a flashed Pico W, precompiling the
 largest first-boot import chains to .mpy so MicroPython loads bytecode
-instead of compiling source on-device (see docs/heap_constraints.md).
+instead of compiling source on-device (see docs/heap_budget.md).
+
+A memory-budget gate runs first; see docs/heap_budget.md.
 
 Usage:
     uv run tools/deploy.py --port /dev/cu.usbmodem1101
@@ -131,6 +133,21 @@ def deploy(port, staging):
     mpremote("reset")
 
 
+def run_memory_gate():
+    """Check the memory budgets before touching the device.
+
+    A build that exceeds them boots but cannot serve the settings page, and
+    the only symptom on hardware is ``Empty reply from server`` -- expensive
+    to diagnose and, before this gate existed, repeatedly shipped by accident.
+    Catching it here costs about a second.
+    """
+    sys.path.insert(0, str(ROOT))
+    from tools.hostsim.__main__ import main as gate_main
+
+    print("Checking memory budgets (see docs/heap_budget.md)...")
+    return gate_main([])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", required=True, help="mpremote serial port")
@@ -139,7 +156,25 @@ def main():
         action="store_true",
         help="Do not delete the staged tree (for inspection)",
     )
+    parser.add_argument(
+        "--skip-memory-gate",
+        action="store_true",
+        help=(
+            "Deploy even if the memory budgets are exceeded. Only for "
+            "deliberately flashing a diagnostic build."
+        ),
+    )
     args = parser.parse_args()
+
+    if args.skip_memory_gate:
+        print("WARNING: memory gate skipped; this build may not serve the "
+              "settings page.")
+    elif run_memory_gate() != 0:
+        raise SystemExit(
+            "\nRefusing to deploy: the build exceeds its memory budget.\n"
+            "Fix the breaches above, or pass --skip-memory-gate to flash it "
+            "anyway for diagnosis."
+        )
 
     mpy_cross = find_mpy_cross()
     staging = stage_tree(mpy_cross)

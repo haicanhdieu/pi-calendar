@@ -34,6 +34,20 @@ class ILI9341:
         self.cs.value(1)
         self.dc.value(1)
         self.rst.value(1)
+
+        # Reused scratch buffers: the render loop calls fill_rect (and, via
+        # it, _command/set_window) many times per second for the lifetime of
+        # the device (each glyph pixel is its own fill_rect call). Allocating
+        # a fresh bytes object per call fragments a mark-sweep, non-compacting
+        # heap over hours of uptime -- confirmed on-device via
+        # micropython.mem_info(1) (see spec-cannot-access-settings-page-
+        # after-boot-pi.md). These buffers are written in place and sliced
+        # via memoryview, so steady-state rendering allocates nothing.
+        self._cmd_buf = bytearray(1)
+        self._caset_buf = bytearray(4)
+        self._paset_buf = bytearray(4)
+        self._row_buf = bytearray(width * 2)
+
         self._init_display()
 
     def _select(self):
@@ -45,7 +59,8 @@ class ILI9341:
     def _command(self, command, data=None):
         self._select()
         self.dc.value(0)
-        self.spi.write(bytes((command,)))
+        self._cmd_buf[0] = command
+        self.spi.write(self._cmd_buf)
         if data:
             self.dc.value(1)
             self.spi.write(data)
@@ -85,11 +100,22 @@ class ILI9341:
         sleep_ms(120)
 
     def set_window(self, x0, y0, x1, y1):
-        self._command(self.CMD_CASET, bytes((x0 >> 8, x0 & 0xFF, x1 >> 8, x1 & 0xFF)))
-        self._command(self.CMD_PASET, bytes((y0 >> 8, y0 & 0xFF, y1 >> 8, y1 & 0xFF)))
+        caset = self._caset_buf
+        caset[0] = x0 >> 8
+        caset[1] = x0 & 0xFF
+        caset[2] = x1 >> 8
+        caset[3] = x1 & 0xFF
+        self._command(self.CMD_CASET, caset)
+        paset = self._paset_buf
+        paset[0] = y0 >> 8
+        paset[1] = y0 & 0xFF
+        paset[2] = y1 >> 8
+        paset[3] = y1 & 0xFF
+        self._command(self.CMD_PASET, paset)
         self._select()
         self.dc.value(0)
-        self.spi.write(bytes((self.CMD_RAMWR,)))
+        self._cmd_buf[0] = self.CMD_RAMWR
+        self.spi.write(self._cmd_buf)
         self.dc.value(1)
 
     def fill_rect(self, x, y, w, h, color):
@@ -107,7 +133,13 @@ class ILI9341:
         self.set_window(x0, y0, x1, y1)
         hi = (color >> 8) & 0xFF
         lo = color & 0xFF
-        row = bytes((hi, lo)) * (x1 - x0 + 1)
+        row_len = x1 - x0 + 1
+        buf = self._row_buf
+        for i in range(row_len):
+            j = i * 2
+            buf[j] = hi
+            buf[j + 1] = lo
+        row = memoryview(buf)[:row_len * 2]
         for _ in range(y1 - y0 + 1):
             self.spi.write(row)
         self._deselect()

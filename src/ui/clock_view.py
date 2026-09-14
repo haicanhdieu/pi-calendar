@@ -3,124 +3,42 @@
 from src import config
 from src.calendar.lunar import gregorian_to_lunar
 
-# Precomputed digit strings — steady-state SS path never formats new strs.
-_SS_STRINGS = (
-    "00",
-    "01",
-    "02",
-    "03",
-    "04",
-    "05",
-    "06",
-    "07",
-    "08",
-    "09",
-    "10",
-    "11",
-    "12",
-    "13",
-    "14",
-    "15",
-    "16",
-    "17",
-    "18",
-    "19",
-    "20",
-    "21",
-    "22",
-    "23",
-    "24",
-    "25",
-    "26",
-    "27",
-    "28",
-    "29",
-    "30",
-    "31",
-    "32",
-    "33",
-    "34",
-    "35",
-    "36",
-    "37",
-    "38",
-    "39",
-    "40",
-    "41",
-    "42",
-    "43",
-    "44",
-    "45",
-    "46",
-    "47",
-    "48",
-    "49",
-    "50",
-    "51",
-    "52",
-    "53",
-    "54",
-    "55",
-    "56",
-    "57",
-    "58",
-    "59",
+# Two-digit and label tables packed into one string each.  As tuples of
+# individual strs these were ~100 separate objects pinned on the Pico heap for
+# the device's whole uptime (see the settings-page heap work); packed, each
+# table is a single object.  Slicing allocates one short-lived str per redraw,
+# which the collector reclaims immediately, instead of holding every possible
+# value resident forever.
+#
+# _2DIGIT covers 00..59, so the hour path (00..23) reads from the same table.
+_2DIGIT = (
+    "000102030405060708091011121314151617181920212223242526272829"
+    "303132333435363738394041424344454647484950515253545556575859"
 )
+_DOW = "MonTueWedThuFriSatSun"
+_MON = "JanFebMarAprMayJunJulAugSepOctNovDec"
 
-_HH_STRINGS = (
-    "00",
-    "01",
-    "02",
-    "03",
-    "04",
-    "05",
-    "06",
-    "07",
-    "08",
-    "09",
-    "10",
-    "11",
-    "12",
-    "13",
-    "14",
-    "15",
-    "16",
-    "17",
-    "18",
-    "19",
-    "20",
-    "21",
-    "22",
-    "23",
-)
 
-_DOW = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-_MON = (
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-)
+def _two_digit(value):
+    index = value * 2
+    return _2DIGIT[index:index + 2]
+
+
+def _label(table, index):
+    start = index * 3
+    return table[start:start + 3]
 
 
 def _format_hhmm(local):
     if local is None:
         return config.CLOCK_PLACEHOLDER_HHMM
-    return _HH_STRINGS[local.hour] + ":" + _SS_STRINGS[local.minute]
+    return _two_digit(local.hour) + ":" + _two_digit(local.minute)
 
 
 def _format_ss(local):
     if local is None:
         return None
-    return _SS_STRINGS[local.second]
+    return _two_digit(local.second)
 
 
 def _format_date(local):
@@ -128,9 +46,9 @@ def _format_date(local):
         return None
     # DOW · MON D YYYY — weekday Monday=0 (calendar epic convention)
     return (
-        _DOW[local.weekday]
+        _label(_DOW, local.weekday)
         + " · "
-        + _MON[local.month - 1]
+        + _label(_MON, local.month - 1)
         + " "
         + str(local.day)
         + " "
@@ -236,7 +154,7 @@ class ClockView:
             and cache["weekday"] == local.weekday
             and cache["second"] != local.second
         ):
-            ss = _SS_STRINGS[local.second]
+            ss = _two_digit(local.second)
             self._redraw_ss(ss)
             cache["ss"] = ss
             cache["second"] = local.second

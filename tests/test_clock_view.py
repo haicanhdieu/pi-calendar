@@ -8,7 +8,7 @@ from pathlib import Path
 
 from src import config
 from src.calendar.gregorian import build_month_grid
-from src.device.display.font import FONT_5X7
+from src.device.display.font import _CHARS
 from src.time.model import TRUST_SYNCED, TRUST_UNSYNCED, DateTime, TimeSnapshot
 from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
@@ -315,8 +315,8 @@ def test_day_change_full_redraws_lunar_line():
 
 
 def test_font_5x7_has_slash_and_plus_glyphs():
-    assert "/" in FONT_5X7
-    assert "+" in FONT_5X7
+    assert "/" in _CHARS
+    assert "+" in _CHARS
 
 
 def test_unsynced_with_local_keeps_layout_and_draws_badge():

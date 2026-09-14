@@ -3,27 +3,28 @@
 from src import config
 
 # Full English uppercase month names — UI strings live only in the renderer.
+# Month names and weekday initials packed into single strings.  As tuples of
+# individual strs they were ~19 objects pinned on the Pico heap for the whole
+# uptime; packed, each table is one object and a lookup allocates one
+# short-lived str the collector reclaims immediately.
 _MONTHS = (
-    "JANUARY",
-    "FEBRUARY",
-    "MARCH",
-    "APRIL",
-    "MAY",
-    "JUNE",
-    "JULY",
-    "AUGUST",
-    "SEPTEMBER",
-    "OCTOBER",
-    "NOVEMBER",
-    "DECEMBER",
+    "JANUARY FEBRUARY MARCH APRIL MAY JUNE "
+    "JULY AUGUST SEPTEMBER OCTOBER NOVEMBER DECEMBER "
 )
 
+
+def _month_name(month):
+    start = 0
+    for _ in range(month - 1):
+        start = _MONTHS.index(" ", start) + 1
+    return _MONTHS[start:_MONTHS.index(" ", start)]
+
 # Monday-first single-letter weekday header (UX mockup).
-_WEEKDAYS = ("M", "T", "W", "T", "F", "S", "S")
+_WEEKDAYS = "MTWTFSS"
 
 
 def _format_month_label(year, month):
-    return _MONTHS[month - 1] + " " + str(year)
+    return _month_name(month) + " " + str(year)
 
 
 class CalendarView:
