@@ -141,12 +141,14 @@ def test_synced_valid_local_draws_time_date_no_badge():
     assert ss[2] == hhmm[2] + display.measure_text("14:07", config.FONT_TIME)[0] + (
         config.CLOCK_SS_GAP_PX
     )
-    # Lunar line sits under Gregorian date with named gap; both centered.
-    assert lunar[3] == date[3] + display.measure_text(
-        "Sat · Sep 6 2026", config.FONT_DATE
-    )[1] + config.CLOCK_LUNAR_GAP_PX
-    lunar_w, _ = display.measure_text("AL · 25/7", config.FONT_DATE)
-    assert lunar[2] == (config.SCREEN_WIDTH - lunar_w) // 2
+    # Today sits top-left, luna-today top-right, both flush at the same y.
+    assert date[2] == config.CLOCK_CORNER_PAD_X_PX
+    assert date[3] == config.CLOCK_CORNER_PAD_Y_PX
+    assert lunar[3] == config.CLOCK_CORNER_PAD_Y_PX
+    lunar_w, lunar_h = display.measure_text("AL · 25/7", config.FONT_DATE)
+    assert lunar[2] == (
+        config.SCREEN_WIDTH - lunar_w - config.CLOCK_CORNER_PAD_X_PX
+    )
 
     hhmm_w, hhmm_h = display.measure_text("14:07", config.FONT_TIME)
     ss_w, ss_h = display.measure_text("00", config.FONT_SECONDS)
@@ -155,20 +157,21 @@ def test_synced_valid_local_draws_time_date_no_badge():
     assert hhmm[2] == (config.SCREEN_WIDTH - row_w) // 2
     assert hhmm[2] >= 0
     assert hhmm[2] + row_w <= config.SCREEN_WIDTH
-    # Vertical centering of time + date + lunar; HH:MM scale unchanged.
+    # Clock centers between the corner band and the reserved events band.
     assert config.FONT_SCALE_TIME == 9
     date_h = display.measure_text("Sat · Sep 6 2026", config.FONT_DATE)[1]
-    lunar_h = display.measure_text("AL · 25/7", config.FONT_DATE)[1]
     time_h = hhmm_h if hhmm_h >= ss_h else ss_h
-    block_h = (
-        time_h
-        + config.CLOCK_DATE_GAP_PX
-        + date_h
-        + config.CLOCK_LUNAR_GAP_PX
-        + lunar_h
+    corner_row_h = date_h if date_h >= lunar_h else lunar_h
+    band_bottom = (
+        config.CLOCK_CORNER_PAD_Y_PX
+        + corner_row_h
+        + config.CLOCK_CORNER_CLOCK_GAP_PX
     )
-    assert hhmm[3] == (config.SCREEN_HEIGHT - block_h) // 2
-    assert block_h <= config.SCREEN_HEIGHT
+    available_bottom = config.SCREEN_HEIGHT - config.CLOCK_EVENTS_BAND_H_PX
+    assert hhmm[3] == band_bottom + (
+        (available_bottom - band_bottom - time_h) // 2
+    )
+    assert hhmm[3] + time_h <= available_bottom
 
 
 def test_seconds_only_tick_dirties_ss_without_shifting_hhmm():

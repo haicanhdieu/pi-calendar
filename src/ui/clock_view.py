@@ -74,7 +74,9 @@ def _format_lunar(local):
 
 
 class ClockView:
-    """Centered 24-hour Clock renderer over DisplayPort only."""
+    """24-hour Clock renderer: today top-left, luna-today top-right, clock
+    centered below, with a reserved (undrawn) band at bottom for upcoming
+    events. DisplayPort only."""
 
     def __init__(self, display):
         self._display = display
@@ -205,22 +207,36 @@ class ClockView:
 
         if date is not None:
             date_w, date_h = display.measure_text(date, config.FONT_DATE)
-            block_h = time_h + config.CLOCK_DATE_GAP_PX + date_h
-            if lunar is not None:
-                lunar_w, lunar_h = display.measure_text(lunar, config.FONT_DATE)
-                block_h = block_h + config.CLOCK_LUNAR_GAP_PX + lunar_h
-            else:
-                lunar_w = 0
-                lunar_h = 0
         else:
             date_w = 0
             date_h = 0
+        if lunar is not None:
+            lunar_w, lunar_h = display.measure_text(lunar, config.FONT_DATE)
+        else:
             lunar_w = 0
             lunar_h = 0
-            block_h = time_h
 
+        # Today (top-left) / luna-today (top-right) corner row.
+        corner_row_h = date_h if date_h >= lunar_h else lunar_h
+        date_x = config.CLOCK_CORNER_PAD_X_PX
+        date_y = config.CLOCK_CORNER_PAD_Y_PX
+        lunar_x = display.width - lunar_w - config.CLOCK_CORNER_PAD_X_PX
+        lunar_y = config.CLOCK_CORNER_PAD_Y_PX
+        if corner_row_h:
+            band_bottom = (
+                config.CLOCK_CORNER_PAD_Y_PX
+                + corner_row_h
+                + config.CLOCK_CORNER_CLOCK_GAP_PX
+            )
+        else:
+            band_bottom = 0
+
+        # Clock centers in the space between the corner band and the
+        # reserved (design-only, undrawn) upcoming-events band at bottom.
+        available_top = band_bottom
+        available_bottom = display.height - config.CLOCK_EVENTS_BAND_H_PX
         origin_x = (display.width - row_w) // 2
-        origin_y = (display.height - block_h) // 2
+        origin_y = available_top + ((available_bottom - available_top - time_h) // 2)
         hhmm_x = origin_x
         hhmm_y = origin_y
         if ss is None:
@@ -229,10 +245,6 @@ class ClockView:
         else:
             ss_x = origin_x + hhmm_w + config.CLOCK_SS_GAP_PX
             ss_y = origin_y + (hhmm_h - ss_h)
-        date_x = (display.width - date_w) // 2
-        date_y = origin_y + time_h + config.CLOCK_DATE_GAP_PX
-        lunar_x = (display.width - lunar_w) // 2
-        lunar_y = date_y + date_h + config.CLOCK_LUNAR_GAP_PX
         return (
             hhmm_x,
             hhmm_y,

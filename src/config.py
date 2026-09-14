@@ -118,9 +118,20 @@ SETTINGS_STATUS_LINE_GAP_PX = 2
 
 # Clock layout metrics (320×240 landscape)
 CLOCK_SS_GAP_PX = 8
-CLOCK_DATE_GAP_PX = 14
-CLOCK_LUNAR_GAP_PX = 6
 CLOCK_PLACEHOLDER_HHMM = "--:--"
+
+# Today (top-left) / luna-today (top-right) corner rows — mirrors the
+# calendar screen's corner-badge padding, but plain text (no fill_rect box:
+# that styling is reserved for the unsynced alert badge).
+CLOCK_CORNER_PAD_X_PX = 10
+CLOCK_CORNER_PAD_Y_PX = 8
+# Gap between the corner row band and the centered clock below it.
+CLOCK_CORNER_CLOCK_GAP_PX = 12
+
+# Reserved band at the bottom for the upcoming-events feature (design-only:
+# geometry reserved so the clock centers correctly now; nothing draws into
+# this band until the feature ships).
+CLOCK_EVENTS_BAND_H_PX = 56
 
 # Calendar layout metrics (320×240 landscape) — pad Y/X, cell gap, label gaps
 CALENDAR_PAD_Y = 10
