@@ -159,12 +159,12 @@ def test_calendar_draws_small_unsynced_clock_at_top_left():
     assert (
         "draw_text",
         "14:07",
-        1,
-        1,
+        2,
+        2,
         config.FONT_BADGE,
         config.COLOR_WHITE,
     ) in display.ops
-    assert ("fill_rect", 0, 0, 31, 10, config.COLOR_UNSYNCED) in display.ops
+    assert ("fill_rect", 0, 0, 33, 12, config.COLOR_UNSYNCED) in display.ops
 
 
 def test_calendar_redraws_small_clock_when_local_minute_changes():
@@ -181,8 +181,8 @@ def test_calendar_redraws_small_clock_when_local_minute_changes():
     assert (
         "draw_text",
         "14:08",
-        1,
-        1,
+        2,
+        2,
         config.FONT_BADGE,
         config.COLOR_WHITE,
     ) in display.ops
@@ -204,12 +204,12 @@ def test_calendar_draws_placeholder_clock_without_local_time():
     assert (
         "draw_text",
         config.CLOCK_PLACEHOLDER_HHMM,
-        1,
-        1,
+        2,
+        2,
         config.FONT_BADGE,
         config.COLOR_WHITE,
     ) in display.ops
-    assert ("fill_rect", 0, 0, 31, 10, config.COLOR_UNSYNCED) in display.ops
+    assert ("fill_rect", 0, 0, 33, 12, config.COLOR_UNSYNCED) in display.ops
 
 
 def test_weekday_header_is_monday_first_single_letters():
