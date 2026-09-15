@@ -141,6 +141,49 @@ def test_centered_text_centres_on_display_width():
     assert min(x for x, _y, _w, _h, _c in display.ops) == expected_x
 
 
+def test_glyph_pixels_at_fractional_scale_mix_1px_and_2px_cells():
+    # scale=1.5 (FONT_SCALE_LUNAR): boundary rounding must spread the .5px
+    # across the glyph as a mix of 1px/2px cells, not collapse every pixel
+    # to the same size (which round(scale)==2 or floor(scale)==1 would do).
+    display = RecordingDisplay()
+    font.draw_glyph(display, 0, 0, ":", 1.5, 0xFFFF)
+    assert display.ops == [
+        (2, 2, 1, 1, 0xFFFF),
+        (3, 2, 1, 1, 0xFFFF),
+        (2, 3, 1, 1, 0xFFFF),
+        (3, 3, 1, 1, 0xFFFF),
+        (2, 6, 1, 2, 0xFFFF),
+        (3, 6, 1, 2, 0xFFFF),
+        (2, 8, 1, 1, 0xFFFF),
+        (3, 8, 1, 1, 0xFFFF),
+    ]
+    # Every rect is a plain int, never a float -- framebuf.fill_rect requires it.
+    for x, y, w, h, _color in display.ops:
+        assert all(isinstance(v, int) for v in (x, y, w, h))
+    widths = {w for _x, _y, w, _h, _c in display.ops}
+    heights = {h for _x, _y, _w, h, _c in display.ops}
+    assert heights == {1, 2}  # even mix, not all-1px or all-2px
+    assert widths == {1}
+
+
+def test_fractional_scale_matches_integer_scale_for_whole_values():
+    # scale=2 (int) and scale=2.0 (float) must render identically -- the
+    # fractional path is a strict superset of the integer path.
+    int_display = RecordingDisplay()
+    float_display = RecordingDisplay()
+    font.draw_glyph(int_display, 5, 5, "A", 2, 0x1234)
+    font.draw_glyph(float_display, 5, 5, "A", 2.0, 0x1234)
+    assert int_display.ops == float_display.ops
+
+
+@pytest.mark.parametrize(
+    "text, scale, expected",
+    [("", 1.5, 0), ("A", 1.5, 8), (":", 1.5, 8), ("AB", 1.5, 16)],
+)
+def test_text_width_fractional_scale(text, scale, expected):
+    assert font.text_width(text, scale) == expected
+
+
 def test_glyph_blob_is_a_single_allocation_of_the_expected_size():
     # Guards the memory fix itself: one bytes object, seven bytes per glyph.
     assert isinstance(font._GLYPHS, bytes)

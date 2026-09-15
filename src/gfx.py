@@ -1,22 +1,29 @@
 """Neutral geometry helpers shared by UI and device display layers."""
 
 from src import config
+from src.device.display.font import text_width as _glyph_text_width
 
 
 def measure_font_text(text, font_id):
-    """Return (width, height) for a stable font_id using config cell metrics."""
+    """Return (width, height) for a stable font_id using config cell metrics.
+
+    ``scale`` may be a fractional value (e.g. 1.5); width delegates to
+    ``font.text_width`` so layout math always matches what draw_text
+    actually renders, and height is rounded the same way draw_text rounds
+    a line's pixel height.
+    """
     scale = config.FONT_SCALES[font_id]
-    height = config.FONT_CELL_HEIGHT * scale
+    height = round(config.FONT_CELL_HEIGHT * scale)
     if not text:
         return (0, height)
-    width = (len(text) * config.FONT_CELL_WIDTH - 1) * scale
+    width = _glyph_text_width(text, scale)
     return (width, height)
 
 
 def measure_spaced_font_text(text, font_id, letter_spacing_px):
     """Return (width, height) with extra pixel spacing between glyph cells."""
     scale = config.FONT_SCALES[font_id]
-    height = config.FONT_CELL_HEIGHT * scale
+    height = round(config.FONT_CELL_HEIGHT * scale)
     if not text:
         return (0, height)
     width, _ = measure_font_text(text, font_id)

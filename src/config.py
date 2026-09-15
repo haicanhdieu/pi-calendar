@@ -56,6 +56,9 @@ COLOR_PRIMARY_RGB = (0x3D, 0xFF, 0x7A)
 COLOR_SECONDARY_RGB = (0xFF, 0xB2, 0x38)
 COLOR_UNSYNCED_RGB = (0xFF, 0x4D, 0x4D)
 COLOR_WHITE_RGB = (0xFF, 0xFF, 0xFF)
+# Lunar corner string: a blue distinct from the amber Gregorian date/secondary
+# text, so the two corner strings read as separate fields even if they touch.
+COLOR_LUNAR_RGB = (0x4D, 0xB2, 0xFF)
 
 
 def rgb888_to_rgb565(red, green, blue):
@@ -68,6 +71,7 @@ COLOR_PRIMARY = rgb888_to_rgb565(*COLOR_PRIMARY_RGB)
 COLOR_SECONDARY = rgb888_to_rgb565(*COLOR_SECONDARY_RGB)
 COLOR_UNSYNCED = rgb888_to_rgb565(*COLOR_UNSYNCED_RGB)
 COLOR_WHITE = rgb888_to_rgb565(*COLOR_WHITE_RGB)
+COLOR_LUNAR = rgb888_to_rgb565(*COLOR_LUNAR_RGB)
 COLOR_BAR_PANEL = rgb888_to_rgb565(0x14, 0x14, 0x14)
 COLOR_PRESS_FLASH = rgb888_to_rgb565(0xFF, 0xE9, 0xB8)
 
@@ -75,6 +79,7 @@ COLOR_PRESS_FLASH = rgb888_to_rgb565(0xFF, 0xE9, 0xB8)
 FONT_TIME = "time"
 FONT_SECONDS = "seconds"
 FONT_DATE = "date"
+FONT_LUNAR = "lunar"
 FONT_BADGE = "badge"
 FONT_MONTH = "month"
 FONT_WEEKDAY = "weekday"
@@ -92,6 +97,12 @@ FONT_CELL_HEIGHT = 8
 FONT_SCALE_TIME = 9  # 72 px (~88; scale 11 overflows 320 with SS)
 FONT_SCALE_SECONDS = 4  # 32 px (~30)
 FONT_SCALE_DATE = 2  # 16 px (~14)
+# Smaller than FONT_SCALE_DATE so the corner lunar string never competes with
+# the Gregorian date string for horizontal space (collision fix). Fractional
+# scale (font renderer supports non-integer scale via rounded per-pixel
+# rects): 8px read as too small on-device, so this targets 75% of the date
+# text's 16px rather than the 50% integer scale=1 would give.
+FONT_SCALE_LUNAR = 1.5  # 12 px (75% of FONT_SCALE_DATE's 16 px)
 FONT_SCALE_BADGE = 1  # 8 px (~10)
 FONT_SCALE_MONTH = 2  # 16 px
 FONT_SCALE_WEEKDAY = 1  # 8 px (~11)
@@ -104,6 +115,7 @@ FONT_SCALES = {
     FONT_TIME: FONT_SCALE_TIME,
     FONT_SECONDS: FONT_SCALE_SECONDS,
     FONT_DATE: FONT_SCALE_DATE,
+    FONT_LUNAR: FONT_SCALE_LUNAR,
     FONT_BADGE: FONT_SCALE_BADGE,
     FONT_MONTH: FONT_SCALE_MONTH,
     FONT_WEEKDAY: FONT_SCALE_WEEKDAY,

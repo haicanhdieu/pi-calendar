@@ -40,45 +40,77 @@ _FALLBACK = _CHARS.index("?") * GLYPH_ROWS
 
 
 def draw_glyph(display, x, y, char, scale, color):
+    """Draw one glyph cell at ``scale`` (int or float, e.g. 1.5).
+
+    Each pixel's rect is the gap between two rounded boundary positions
+    (``round(i * scale)``) rather than a fixed ``scale``x``scale`` square.
+    For integer ``scale`` this collapses to the original exact grid (every
+    boundary gap equals ``scale``). For a fractional ``scale`` it spreads
+    the fractional pixel across the glyph as an even mix of smaller/larger
+    pixels instead of rounding every pixel the same way -- e.g. scale=1.5
+    renders as a mix of 1px and 2px pixels that average out to 1.5px.
+    fill_rect is always called with plain ints (framebuf requires it).
+    """
     base = _CHARS.find(char)
     base = _FALLBACK if base < 0 else base * GLYPH_ROWS
+    # Column boundaries (6 of them, bounding GLYPH_COLS=5 pixels), computed
+    # once per glyph and reused across rows.
+    col_bounds = [round(c * scale) for c in range(GLYPH_COLS + 1)]
     for row_index in range(GLYPH_ROWS):
         row_bits = _GLYPHS[base + row_index]
         if not row_bits:
             continue
-        py = y + (row_index * scale)
+        row_y0 = round(row_index * scale)
+        row_h = round((row_index + 1) * scale) - row_y0
+        py = y + row_y0
         for col_index in range(GLYPH_COLS):
             if row_bits & (0x10 >> col_index):
+                col_x0 = col_bounds[col_index]
+                col_w = col_bounds[col_index + 1] - col_x0
                 display.fill_rect(
-                    x + (col_index * scale),
+                    x + col_x0,
                     py,
-                    scale,
-                    scale,
+                    col_w,
+                    row_h,
                     color,
                 )
 
 
 def draw_text(display, text, x, y, scale, color):
-    cursor_x = x
+    """Draw ``text`` at ``scale`` (int or float).
+
+    Per-character/per-line offsets are recomputed from the character/line
+    index (``round(index * step)``) rather than accumulated by repeated
+    float addition, so cursor position never drifts and always lands on an
+    int -- draw_glyph (and fill_rect beneath it) never sees a float x/y.
+    """
     step = 6 * scale
+    line_step = 8 * scale
+    cursor_x = x
+    line_y = y
+    col = 0
+    line = 0
     for char in text:
         if char == "\n":
-            y += 8 * scale
+            line += 1
+            line_y = y + round(line * line_step)
             cursor_x = x
+            col = 0
             continue
         # Preserve middot; uppercase ASCII letters/digits for glyph lookup.
         if char == "·":
             glyph = char
         else:
             glyph = char.upper()
-        draw_glyph(display, cursor_x, y, glyph, scale, color)
-        cursor_x += step
+        draw_glyph(display, cursor_x, line_y, glyph, scale, color)
+        col += 1
+        cursor_x = x + round(col * step)
 
 
 def text_width(text, scale):
     if not text:
         return 0
-    return (len(text) * 6 - 1) * scale
+    return round((len(text) * 6 - 1) * scale)
 
 
 def centered_text(display, text, y, scale, color):

@@ -57,7 +57,13 @@ def _format_date(local):
 
 
 def _format_lunar(local):
-    """AL · D/M or AL · D/M+ (leap); None when local is absent."""
+    """AL · D/M or AL · D/M+ (leap); None when local is absent.
+
+    The "AL · " prefix identifies the string as the lunar (Am Lich) date.
+    It no longer collides with the Gregorian date string because the lunar
+    corner is rendered in its own smaller font (FONT_LUNAR) and distinct
+    color (COLOR_LUNAR).
+    """
     if local is None:
         return None
     try:
@@ -216,7 +222,7 @@ class ClockView:
             date_w = 0
             date_h = 0
         if lunar is not None:
-            lunar_w, lunar_h = display.measure_text(lunar, config.FONT_DATE)
+            lunar_w, lunar_h = display.measure_text(lunar, config.FONT_LUNAR)
         else:
             lunar_w = 0
             lunar_h = 0
@@ -313,7 +319,7 @@ class ClockView:
 
         if lunar is not None:
             display.draw_text(
-                lunar, lunar_x, lunar_y, config.FONT_DATE, config.COLOR_SECONDARY
+                lunar, lunar_x, lunar_y, config.FONT_LUNAR, config.COLOR_LUNAR
             )
 
         self._draw_events(events)

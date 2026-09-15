@@ -134,8 +134,8 @@ def test_synced_valid_local_draws_time_date_no_badge():
     assert ss[5] == config.COLOR_SECONDARY
     assert date[4] == config.FONT_DATE
     assert date[5] == config.COLOR_SECONDARY
-    assert lunar[4] == config.FONT_DATE
-    assert lunar[5] == config.COLOR_SECONDARY
+    assert lunar[4] == config.FONT_LUNAR
+    assert lunar[5] == config.COLOR_LUNAR
     # SS sits to the right of HH:MM with fixed gap; HH:MM origin is left of SS.
     assert hhmm[2] < ss[2]
     assert ss[2] == hhmm[2] + display.measure_text("14:07", config.FONT_TIME)[0] + (
@@ -145,7 +145,7 @@ def test_synced_valid_local_draws_time_date_no_badge():
     assert date[2] == config.CLOCK_CORNER_PAD_X_PX
     assert date[3] == config.CLOCK_CORNER_PAD_Y_PX
     assert lunar[3] == config.CLOCK_CORNER_PAD_Y_PX
-    lunar_w, lunar_h = display.measure_text("AL · 25/7", config.FONT_DATE)
+    lunar_w, lunar_h = display.measure_text("AL · 25/7", config.FONT_LUNAR)
     assert lunar[2] == (
         config.SCREEN_WIDTH - lunar_w - config.CLOCK_CORNER_PAD_X_PX
     )
@@ -174,13 +174,30 @@ def test_synced_valid_local_draws_time_date_no_badge():
     assert hhmm[3] + time_h <= available_bottom
 
 
+def test_lunar_corner_font_is_75_percent_of_date_corner_font():
+    # Regression guard for the collision fix's follow-up: on-device the old
+    # scale=1 (8px, 50% of date) read as too small; FONT_SCALE_LUNAR is now
+    # the fractional 1.5 (12px) -- bigger than before, still smaller than
+    # the date's 16px so the two corner strings stay visually distinct.
+    display = FakeDisplayPort()
+    assert config.FONT_SCALE_DATE == 2
+    assert config.FONT_SCALE_LUNAR == 1.5
+    date_h = display.measure_text("X", config.FONT_DATE)[1]
+    lunar_h = display.measure_text("X", config.FONT_LUNAR)[1]
+    assert date_h == 16
+    assert lunar_h == 12
+    assert lunar_h == round(date_h * 0.75)
+    assert lunar_h > 8  # strictly bigger than the old scale=1 (8px)
+    assert lunar_h < date_h  # still strictly smaller than the date text
+
+
 def test_seconds_only_tick_dirties_ss_without_shifting_hhmm():
     display = FakeDisplayPort()
     view = ClockView(display)
     view.render(_snapshot(_local(second=32), TRUST_SYNCED))
     hhmm_first = next(t for t in _texts(display.ops) if t[1] == "14:07")
     hhmm_origin = (hhmm_first[2], hhmm_first[3])
-    lunar_first = next(t for t in _texts(display.ops) if t[1].startswith("AL · "))
+    lunar_first = next(t for t in _texts(display.ops) if t[4] == config.FONT_LUNAR)
 
     display.clear_ops()
     view.render(_snapshot(_local(second=33), TRUST_SYNCED))
@@ -205,7 +222,7 @@ def test_seconds_only_tick_dirties_ss_without_shifting_hhmm():
         config.COLOR_PRIMARY,
     ) not in ops
     # Seconds-only path must not redraw or reformat lunar/date lines.
-    assert not any(t[1].startswith("AL · ") for t in texts)
+    assert not any(t[4] == config.FONT_LUNAR for t in texts)
     assert not any("Sep" in t[1] for t in texts)
     assert view._cache["lunar"] == lunar_first[1]
 
@@ -219,7 +236,7 @@ def test_cold_no_local_omits_gregorian_and_lunar_date_lines():
     labels = [t[1] for t in _texts(display.ops)]
     assert config.CLOCK_PLACEHOLDER_HHMM in labels
     assert not any(" · " in label and label.startswith(("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")) for label in labels)
-    assert not any(label.startswith("AL · ") for label in labels)
+    assert not any(t[4] == config.FONT_LUNAR for t in _texts(display.ops))
 
 
 def test_minute_rollover_full_redraws_hhmm():
@@ -264,7 +281,7 @@ def test_cold_no_local_shows_placeholder_and_badge():
     assert config.BADGE_TEXT in labels
     # No usable date line content required.
     assert not any("2026" in label for label in labels)
-    assert not any(label.startswith("AL · ") for label in labels)
+    assert not any(t[4] == config.FONT_LUNAR for t in _texts(display.ops))
 
     badge = next(t for t in _texts(display.ops) if t[1] == config.BADGE_TEXT)
     assert badge[4] == config.FONT_BADGE
@@ -292,8 +309,8 @@ def test_leap_lunar_month_draws_plus_suffix():
     labels = [t[1] for t in _texts(display.ops)]
     assert "AL · 1/6+" in labels
     lunar = next(t for t in _texts(display.ops) if t[1] == "AL · 1/6+")
-    assert lunar[4] == config.FONT_DATE
-    assert lunar[5] == config.COLOR_SECONDARY
+    assert lunar[4] == config.FONT_LUNAR
+    assert lunar[5] == config.COLOR_LUNAR
 
 
 def test_day_change_full_redraws_lunar_line():
