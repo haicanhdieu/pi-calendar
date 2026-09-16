@@ -55,4 +55,5 @@ htmlcov/
 _bmad/render/
 
 # Graphify generated caches, including caches under scoped/intermediate paths
+/graphify-out/
 **/graphify-out/cache/
