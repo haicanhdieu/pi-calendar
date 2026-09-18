@@ -35,6 +35,13 @@ Firmware and planning repository for a Raspberry Pi Pico W clock and calendar de
 
 - Pure logic — calendar math, date arithmetic, view-state decisions, lunar conversion — must not import `machine`, `network`, or `ntptime`; those imports fail under CPython and take the whole host test suite down. Keep hardware access in the display and device layers and pass values in.
 
+## GitHub issue links (bmad artifacts only)
+
+Scope: applies ONLY to artifacts bmad skills generate under `_bmad-output/` (PRD, architecture, epics, spec, story files from `bmad-prd`, `bmad-architecture`, `bmad-spec`, `bmad-create-epics-and-stories`, `bmad-build`, `bmad-build-auto`, `bmad-create-story`). Does NOT apply to output from non-bmad skills/plugins, or any file outside `_bmad-output/`.
+
+- Invocation supplies GH issue URL/ID (e.g. `/bmad-build <gh-issue-url>`) → record it in that bmad artifact's frontmatter as `github_issue: <url-or-id>`. No GH issue supplied → skip, no field added.
+- Opening implementation PR for a bmad artifact that has `github_issue` set → PR description must include `Closes #<issue-number>` (or full issue URL) to close related issue on merge.
+
 <!-- /bmad:context -->
 
 ## Critical Pico W runtime rules
