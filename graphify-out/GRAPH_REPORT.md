@@ -1,16 +1,17 @@
-# Graph Report - pi-calendar  (2026-09-14)
+# Graph Report - pi-calendar  (2026-09-15)
 
 ## Corpus Check
-- 1989 files · ~3,093,971 words
+- 1992 files · ~3,098,918 words
 - Verdict: corpus is large enough that graph structure adds value.
+- Unclassified: 120 file(s) not represented in the graph (top: .toml 81, .csv 31, (none) 4)
 
 ## Summary
-- 29752 nodes · 31945 edges · 2045 communities (1913 shown, 103 thin omitted)
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 127 edges (avg confidence: 0.89)
+- 29940 nodes · 32211 edges · 2045 communities (1913 shown, 103 thin omitted)
+- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 144 edges (avg confidence: 0.88)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `3c2c9b9a`
+- Built from commit: `648f853f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -35,7 +36,7 @@
 - .agents/skills/bmad-brainstorming/scripts/tests/test_brain.py
 - .claude/skills/bmad-brainstorming/scripts/tests/test_brain.py
 - config.py
-- test_app_sync.py
+- NtpOps
 - IncrementalHttpParser
 - NFR Evidence Audit - {FEATURE_NAME}
 - .agents/skills/bmad-testarch-framework/resources/hooks/tea-enforce.cjs
@@ -48,16 +49,16 @@
 - SettingsView
 - NetworkCoordinator
 - test_setup_http.py
-- proof.py
-- SetupHttpServer
+- .agents/skills/bmad-retrospective/scripts/sprint_status.py
+- FakeTicks
 - NFR Evidence Audit: Bulk Invoice Export
 - .agents/skills/bmad-architecture/scripts/tests/test_lint_spine.py
 - .agents/skills/bmad-party-mode/scripts/tests/test_resolve_party.py
 - .claude/skills/bmad-architecture/scripts/tests/test_lint_spine.py
 - .claude/skills/bmad-party-mode/scripts/tests/test_resolve_party.py
 - ticks_add
-- test_station_recover.py
-- FakeTicks
+- FakeFS
+- .claude/skills/bmad-retrospective/scripts/sprint_status.py
 - NFR Evidence Audit: Bulk Invoice Export
 - Test Design and Risk Assessment - Validation Checklist
 - Test Design and Risk Assessment - Validation Checklist
@@ -69,7 +70,7 @@
 - KdfJob
 - Test Design: Epic {epic_num} - {epic_title}
 - Test Design: Epic {epic_num} - {epic_title}
-- test_provisioning_validation.py
+- machine.py
 - Detailed Mapping
 - Detailed Mapping
 - TouchPort
@@ -78,7 +79,7 @@
 - test_memory_budget.py
 - .agents/skills/bmad-forge-idea/scripts/resolve_personas.py
 - .claude/skills/bmad-forge-idea/scripts/resolve_personas.py
-- test_font.py
+- spec-clock-upcoming-events.md
 - Process Steps
 - Process Steps
 - .agents/skills/bmad-party-mode/scripts/resolve_party.py
@@ -101,9 +102,9 @@
 - Pico SDK and Toolchain Reference
 - Test Design for QA: {Feature Name}
 - Test Design for QA: {Feature Name}
-- boot_resident_modules
-- main
 - runner.py
+- deploy.py
+- run
 - Step 3: Generate Epics and Stories
 - sizes.py
 - .agents/skills/bmad-customize/scripts/list_customizable_skills.py
@@ -113,9 +114,9 @@
 - Pact MCP Server (SmartBear)
 - .agents/skills/bmad-retrospective/scripts/git_evidence.py
 - .claude/skills/bmad-retrospective/scripts/git_evidence.py
-- NetworkWorker
-- WLAN
-- Pbkdf2Job
+- test_clock_port.py
+- Clock Screen Upcoming Events
+- main
 - bmad_loop_hook.py
 - Pattern Examples
 - Pact MCP Server (SmartBear)
@@ -136,6 +137,7 @@
 - ui/__init__.py
 - build_micropython.sh
 - pi-calendar
+- .open
 - Pact MCP Server (SmartBear)
 - Pattern Examples
 - Pact MCP Server (SmartBear)
@@ -2027,17 +2029,16 @@
 - .claude/skills/bmad-ux/assets/color-themes.md
 - .claude/skills/bmad-ux/assets/design-directions.md
 - .claude/skills/graphify/references/extraction-spec.md
-- _OpsError
-- credentials_valid
+- _ModuleScopeImports
+- main
 - clock_view.py
-- _IdleHttp
 
 ## God Nodes (most connected - your core abstractions)
 1. `NetworkCoordinator` - 96 edges
-2. `Mailbox` - 67 edges
-3. `_run()` - 66 edges
+2. `FakeDisplayPort` - 74 edges
+3. `Mailbox` - 67 edges
 4. `_run()` - 66 edges
-5. `FakeDisplayPort` - 66 edges
+5. `_run()` - 66 edges
 6. `DateTime` - 58 edges
 7. `SyncCommand` - 54 edges
 8. `_json()` - 53 edges
@@ -2047,14 +2048,14 @@
 ## Surprising Connections (you probably didn't know these)
 - `main()` --uses--> `ILI9341`  [INFERRED]
   main.py → src/device/display/ili9341.py
+- `main()` --indirect_call--> `splash_screen()`  [INFERRED]
+  main.py → src/device/display/splash.py
 - `main()` --uses--> `Pin`  [INFERRED]
   main.py → tools/hostsim/stubs/machine.py
-- `test_app_boot_active_view_is_clock_and_owns_state()` --uses--> `AppState`  [INFERRED]
-  tests/test_app_loop.py → src/app.py
+- `main()` --uses--> `SPI`  [INFERRED]
+  main.py → tools/hostsim/stubs/machine.py
 - `test_app_and_ticks_import_under_cpython()` --uses--> `App`  [INFERRED]
   tests/test_app_loop.py → src/app.py
-- `test_saturation_preserves_prior_result()` --uses--> `MailboxSaturationError`  [INFERRED]
-  tests/test_app_sync.py → src/device/network/mailbox.py
 
 ## Import Cycles
 - None detected.
@@ -2062,60 +2063,60 @@
 ## Communities (2045 total, 103 thin omitted)
 
 ### Community 0 - ".agents/skills/bmad-retrospective/scripts/tests/test_sprint_status.py"
-Cohesion: 0.08
-Nodes (80): _json(), _load(), _module(), parametrize, skipif, Import the script as a module, for the few properties that cannot be triggered…, Parse the JSON-only stdout contract, surfacing a crash instead of hiding it…, _run() (+72 more)
+Cohesion: 0.07
+Nodes (82): _json(), _load(), _module(), parametrize, skipif, Import the script as a module, for the few properties that cannot be triggered…, Parse the JSON-only stdout contract, surfacing a crash instead of hiding it…, Corruption-critical tests for sprint-status.py. Each test runs the script as a… (+74 more)
 
 ### Community 1 - ".claude/skills/bmad-retrospective/scripts/tests/test_sprint_status.py"
-Cohesion: 0.08
-Nodes (80): _json(), _load(), _module(), parametrize, skipif, Import the script as a module, for the few properties that cannot be triggered…, Parse the JSON-only stdout contract, surfacing a crash instead of hiding it…, _run() (+72 more)
+Cohesion: 0.07
+Nodes (82): _json(), _load(), _module(), parametrize, skipif, Import the script as a module, for the few properties that cannot be triggered…, Parse the JSON-only stdout contract, surfacing a crash instead of hiding it…, Corruption-critical tests for sprint-status.py. Each test runs the script as a… (+74 more)
 
 ### Community 2 - "test_app_loop.py"
-Cohesion: 0.08
-Nodes (59): _enter_settings_via_gear(), FakeRebootPort, FakeTicks, FakeTouchPort, _imported_roots(), _make_app(), Path, Host tests for App loop, ClockPort fakes, and pure-module boundaries. (+51 more)
+Cohesion: 0.07
+Nodes (61): AppState, Mutable product state owned exclusively by App., _enter_settings_via_gear(), FakeRebootPort, FakeTicks, FakeTouchPort, _imported_roots(), _make_app() (+53 more)
 
 ### Community 3 - "render_skill.py"
-Cohesion: 0.09
-Nodes (57): ConfigError, _detect_keyed_merge_field(), load_central_config(), load_customization(), load_toml(), _merge_arrays(), merge_layers(), Any (+49 more)
+Cohesion: 0.08
+Nodes (61): ConfigError, _detect_keyed_merge_field(), load_central_config(), load_customization(), load_toml(), _merge_arrays(), merge_layers(), Any (+53 more)
 
 ### Community 4 - ".agents/skills/bmad-sprint-planning/scripts/sprint_plan.py"
-Cohesion: 0.07
-Nodes (56): _atomic_write(), build_parser(), cmd_detect_epic(), cmd_update(), _comment_counts(), _dump_bytes(), _emit(), _emit_error() (+48 more)
+Cohesion: 0.12
+Nodes (31): _atomic_write(), build_parser(), build_status(), classify_key(), cmd_generate(), cmd_status(), cmd_validate(), _counts() (+23 more)
 
 ### Community 5 - ".claude/skills/bmad-sprint-planning/scripts/sprint_plan.py"
-Cohesion: 0.07
-Nodes (56): _atomic_write(), build_parser(), cmd_detect_epic(), cmd_update(), _comment_counts(), _dump_bytes(), _emit(), _emit_error() (+48 more)
+Cohesion: 0.12
+Nodes (31): _atomic_write(), build_parser(), build_status(), classify_key(), cmd_generate(), cmd_status(), cmd_validate(), _counts() (+23 more)
 
 ### Community 6 - ".agents/skills/bmad-retrospective/scripts/tests/test_git_evidence.py"
 Cohesion: 0.10
-Nodes (55): _accented_repo(), _assert_accented_path(), _binary_repo(), _fake_git(), _git(), _git_env(), _git_unchecked(), _json() (+47 more)
+Nodes (56): _accented_repo(), _assert_accented_path(), _binary_repo(), _fake_git(), _git(), _git_env(), _git_unchecked(), _json() (+48 more)
 
 ### Community 7 - ".claude/skills/bmad-retrospective/scripts/tests/test_git_evidence.py"
 Cohesion: 0.10
-Nodes (55): _accented_repo(), _assert_accented_path(), _binary_repo(), _fake_git(), _git(), _git_env(), _git_unchecked(), _json() (+47 more)
+Nodes (56): _accented_repo(), _assert_accented_path(), _binary_repo(), _fake_git(), _git(), _git_env(), _git_unchecked(), _json() (+48 more)
 
 ### Community 8 - "FakeDisplayPort"
-Cohesion: 0.06
-Nodes (69): ClockView, Force full redraw on next render (view entry / badge base restore)., Centered 24-hour Clock renderer over DisplayPort only., badge_rect(), bar_gear_item_rect(), bar_rect(), draw_bar(), draw_unsynced_badge() (+61 more)
+Cohesion: 0.05
+Nodes (79): ClockView, Force full redraw on next render (view entry / badge base restore)., hhmm + " " + title, char-truncated with a "..." suffix so the row's text never…, Draw up to 3 pre-sorted (hhmm, title) rows in the reserved band., 24-hour Clock renderer: today top-left, luna-today top-right, clock centered…, badge_rect(), bar_gear_item_rect(), bar_rect() (+71 more)
 
 ### Community 9 - "build_month_grid"
 Cohesion: 0.08
 Nodes (37): build_month_grid(), days_in_month(), _next_month(), _prev_month(), Pure Gregorian month-grid generation (Monday=0, no hardware imports)., Gregorian month length (%4 / %100 / %400 leap rule)., Civil weekday from (year, month, day). Returns Monday=0 … Sunday=6. Does not…, Build a Monday-first MonthGrid for ``local_year``/``local_month``. Adjacent-… (+29 more)
 
 ### Community 10 - "Mailbox"
-Cohesion: 0.07
-Nodes (42): Package exports for the network boundary. Host-importable surface is limited to…, Mailbox, Pure capacity-one sync mailbox protocol (AD-8). Lock-free protocol object. App…, Accept a SyncCommand only while idle, command slot empty, and result slot empty…, Worker atomically takes the pending command, or None if empty. On take, returns…, App consumes the pending result, or None if empty., Clear both slots, restore idle, and bump epoch (orphan publishes)., One bounded sync request from App to the network worker. (+34 more)
+Cohesion: 0.03
+Nodes (77): Package exports for the network boundary. Host-importable surface is limited to…, Mailbox, MailboxSaturationError, Exception, Pure capacity-one sync mailbox protocol (AD-8). Lock-free protocol object. App…, Accept a SyncCommand only while idle, command slot empty, and result slot empty…, Worker atomically takes the pending command, or None if empty. On take, returns…, Publish exactly one terminal SyncResult into an empty result slot. If… (+69 more)
 
 ### Community 11 - "test_setup_ap_coordinator.py"
-Cohesion: 0.04
-Nodes (62): make_settings_coordinator(), ntp_sync_enabled(), True only when not in SETUP_AP and credentials soft-check passed., Composition helper: NetworkCoordinator wired to SettingsStore + event sink., FakeSocketModule, FakeWlan, make_coordinator(), ntp_payload() (+54 more)
+Cohesion: 0.03
+Nodes (87): Cooperative, core-0 WLAN and NTP coordinator. Each :meth:`tick` performs at…, boot_mode_for_settings(), next_station_failure_count(), Pure boot transition: unconfigured → SETUP_AP, else STATION_CONNECTING., Increment consecutive terminal station failures (pure)., True when consecutive terminal failures reach the setup fallback limit., Failure count after a successful persist/online station path., reset_station_failure_count() (+79 more)
 
 ### Community 12 - ".agents/skills/bmad-sprint-planning/scripts/tests/test_sprint_plan.py"
 Cohesion: 0.11
-Nodes (42): load(), out_json(), The template's STATUS DEFINITIONS block and the script's HEADER_COMMENT are two…, run_generate(), run_status(), run_validate(), test_action_items_carried_verbatim(), test_argument_errors_emit_json() (+34 more)
+Nodes (43): load(), out_json(), Tests for sprint_plan.py — deterministic sprint-status generation. Run: uv run…, The template's STATUS DEFINITIONS block and the script's HEADER_COMMENT are two…, run_generate(), run_status(), run_validate(), test_action_items_carried_verbatim() (+35 more)
 
 ### Community 13 - ".claude/skills/bmad-sprint-planning/scripts/tests/test_sprint_plan.py"
 Cohesion: 0.11
-Nodes (42): load(), out_json(), The template's STATUS DEFINITIONS block and the script's HEADER_COMMENT are two…, run_generate(), run_status(), run_validate(), test_action_items_carried_verbatim(), test_argument_errors_emit_json() (+34 more)
+Nodes (43): load(), out_json(), Tests for sprint_plan.py — deterministic sprint-status generation. Run: uv run…, The template's STATUS DEFINITIONS block and the script's HEADER_COMMENT are two…, run_generate(), run_status(), run_validate(), test_action_items_carried_verbatim() (+35 more)
 
 ### Community 14 - "NFR Evidence Audit - {FEATURE_NAME}"
 Cohesion: 0.04
@@ -2126,28 +2127,28 @@ Cohesion: 0.13
 Nodes (37): CalendarView, _format_hhmm(), _format_month_label(), _month_name(), Current-month Calendar view renderer (FR5 / UX calendar chrome)., MonthGrid Calendar renderer over DisplayPort only (no badge draw)., Force full redraw on next render (view entry / compositor restore)., Draw the Calendar chrome from an already-built MonthGrid. ``snapshot`` is… (+29 more)
 
 ### Community 16 - "test_config_auth.py"
-Cohesion: 0.06
-Nodes (58): Route Config login/settings requests (``STATION_ONLINE`` only).…, route_config_request(), decode_session_id(), encode_session_id(), Drop entries whose idle deadline has passed (wrap-safe)., Create a session after expiry sweep. Returns the encoded id, or ``None`` when…, Return the matching live entry, or ``None`` if absent/expired/malformed., Renew idle deadline for a live session; return True on success. (+50 more)
+Cohesion: 0.04
+Nodes (63): Route Config login/settings requests (``STATION_ONLINE`` only).…, route_config_request(), decode_session_id(), encode_session_id(), Bounded in-memory session table (AD-5). Opaque 16-byte IDs encoded as unpadded…, Drop entries whose idle deadline has passed (wrap-safe)., Create a session after expiry sweep. Returns the encoded id, or ``None`` when…, Return the matching live entry, or ``None`` if absent/expired/malformed. (+55 more)
 
 ### Community 17 - ".agents/skills/bmad-brainstorming/scripts/tests/test_brain.py"
-Cohesion: 0.06
-Nodes (7): _cp1252_stream(), extra(), lib(), fixture, A text stream that behaves like a Windows console: cp1252, strict., test_extra_technique_prints_when_stdout_encoding_is_cp1252(), test_missing_technique_name_reports_when_stderr_encoding_is_cp1252()
+Cohesion: 0.05
+Nodes (8): _cp1252_stream(), extra(), lib(), fixture, A text stream that behaves like a Windows console: cp1252, strict., Tests for brain.py. Run: uv run -m pytest scripts/tests/test_brain.py, test_extra_technique_prints_when_stdout_encoding_is_cp1252(), test_missing_technique_name_reports_when_stderr_encoding_is_cp1252()
 
 ### Community 18 - ".claude/skills/bmad-brainstorming/scripts/tests/test_brain.py"
-Cohesion: 0.06
-Nodes (7): _cp1252_stream(), extra(), lib(), fixture, A text stream that behaves like a Windows console: cp1252, strict., test_extra_technique_prints_when_stdout_encoding_is_cp1252(), test_missing_technique_name_reports_when_stderr_encoding_is_cp1252()
+Cohesion: 0.05
+Nodes (8): _cp1252_stream(), extra(), lib(), fixture, A text stream that behaves like a Windows console: cp1252, strict., Tests for brain.py. Run: uv run -m pytest scripts/tests/test_brain.py, test_extra_technique_prints_when_stdout_encoding_is_cp1252(), test_missing_technique_name_reports_when_stderr_encoding_is_cp1252()
 
 ### Community 19 - "config.py"
-Cohesion: 0.03
-Nodes (41): main(), Non-secret hardware and product defaults (AD-9)., Pack an RGB888 triple into a high-byte-first RGB565 integer., rgb888_to_rgb565(), _days_in_month(), RTC-backed ClockPort (device layer only; AD-3)., Read/write UTC wall time through ``machine.RTC``. Only App should call this.…, Return a ``DateTime`` from the RTC, or ``None`` if cold/invalid. (+33 more)
+Cohesion: 0.05
+Nodes (46): Non-secret hardware and product defaults (AD-9)., Pack an RGB888 triple into a high-byte-first RGB565 integer., rgb888_to_rgb565(), Ili9341DisplayPort, DisplayPort adapter over the existing ILI9341 driver (device layer only)., Maps half-open DisplayPort rects/text to ILI9341 inclusive windows. Owns no…, initialize_display(), Host-testable display boot boundary for the composition root. (+38 more)
 
-### Community 20 - "test_app_sync.py"
-Cohesion: 0.10
-Nodes (37): NtpOps, Injectable worker ops: ``run(command) -> SyncResult``. Optional ``wlan`` /…, _Cmd, _connected_wlan(), _fake_socket(), FakeClockPort, FakeLock, FakeTicks (+29 more)
+### Community 20 - "NtpOps"
+Cohesion: 0.09
+Nodes (20): NtpOps, _OpsError, Exception, Clamp UDP recv timeout to remaining SyncCommand deadline., Internal soft-fail carrying a SyncResult error_code., Injectable worker ops: ``run(command) -> SyncResult``. Optional ``wlan`` /…, Execute one bounded sync attempt for ``command``., _Cmd (+12 more)
 
 ### Community 21 - "IncrementalHttpParser"
-Cohesion: 0.17
-Nodes (7): HttpRequest, IncrementalHttpParser, Completed HTTP request (method/path/headers/body)., Feed recv bytes until one request completes or a fixed error fires., Release request-owned buffers after routing transfers ownership., Consume ``data`` bytes. Returns ``(request_or_None, error_or_None, consumed)``., _Client
+Cohesion: 0.18
+Nodes (7): HttpRequest, IncrementalHttpParser, Completed HTTP request (method/path/headers/body)., Feed recv bytes until one request completes or a fixed error fires., Release request-owned buffers after routing transfers ownership., Consume ``data`` bytes. Returns ``(request_or_None, error_or_None, consumed)``., test_parser_release_drops_headers_and_body()
 
 ### Community 22 - "NFR Evidence Audit - {FEATURE_NAME}"
 Cohesion: 0.04
@@ -2163,43 +2164,43 @@ Nodes (35): activeRules(), blank(), commentIndex(), crypto, DEFAULT_CONFIG, DEFE
 
 ### Community 25 - ".agents/skills/bmad-brainstorming/scripts/brain.py"
 Cohesion: 0.10
-Nodes (34): _card(), categories(), category_style(), filter_cats(), find(), fmt_categories(), fmt_list(), fmt_show() (+26 more)
+Nodes (36): _card(), categories(), category_style(), filter_cats(), find(), fmt_categories(), fmt_list(), fmt_show() (+28 more)
 
 ### Community 26 - ".claude/skills/bmad-brainstorming/scripts/brain.py"
 Cohesion: 0.10
-Nodes (34): _card(), categories(), category_style(), filter_cats(), find(), fmt_categories(), fmt_list(), fmt_show() (+26 more)
+Nodes (36): _card(), categories(), category_style(), filter_cats(), find(), fmt_categories(), fmt_list(), fmt_show() (+28 more)
 
 ### Community 27 - "App"
-Cohesion: 0.07
-Nodes (18): App, AppState, Enter Clock as the active view and arm tick deadlines., Soft-fail path for expected sync/credential problems. Marks trust unsynced,…, One non-blocking loop iteration (AD-12 event order). When ``now_ticks`` is…, Read the optional touch port once and commit its surface decision., Draw Press Flash, dwell, then invoke the injected reboot port once., Use the short cadence only while the Bar reveal is in progress. (+10 more)
+Cohesion: 0.08
+Nodes (17): App, sleep_ms_fn(), Enter Clock as the active view and arm tick deadlines., Soft-fail path for expected sync/credential problems. Marks trust unsynced,…, One non-blocking loop iteration (AD-12 event order). When ``now_ticks`` is…, Read the optional touch port once and commit its surface decision., Draw Press Flash, dwell, then invoke the injected reboot port once., Use the short cadence only while the Bar reveal is in progress. (+9 more)
 
 ### Community 28 - ".agents/skills/bmad-deep-recon/scripts/recon_kit.py"
-Cohesion: 0.13
-Nodes (26): add_months(), appendix_rows(), cell_html(), cmd_citations(), cmd_escape_sources(), cmd_slug(), cmd_staleness(), cmd_tally() (+18 more)
+Cohesion: 0.12
+Nodes (28): add_months(), appendix_rows(), cell_html(), cmd_citations(), cmd_escape_sources(), cmd_slug(), cmd_staleness(), cmd_tally() (+20 more)
 
 ### Community 29 - ".claude/skills/bmad-deep-recon/scripts/recon_kit.py"
-Cohesion: 0.13
-Nodes (26): add_months(), appendix_rows(), cell_html(), cmd_citations(), cmd_escape_sources(), cmd_slug(), cmd_staleness(), cmd_tally() (+18 more)
+Cohesion: 0.12
+Nodes (28): add_months(), appendix_rows(), cell_html(), cmd_citations(), cmd_escape_sources(), cmd_slug(), cmd_staleness(), cmd_tally() (+20 more)
 
 ### Community 30 - "SettingsView"
 Cohesion: 0.09
-Nodes (29): draw_spaced_text(), measure_spaced_font_text(), Return (width, height) with extra pixel spacing between glyph cells., Draw text with fixed extra spacing between characters., Return generous hit geometry for the Settings reboot control., settings_reboot_item_rect(), _centered_text_x(), _draw_guideline() (+21 more)
+Nodes (28): draw_spaced_text(), measure_spaced_font_text(), Return (width, height) with extra pixel spacing between glyph cells., Draw text with fixed extra spacing between characters., DisplayPort contract and host FakeDisplayPort (AD-11)., _centered_text_x(), _draw_guideline(), _draw_reboot_label() (+20 more)
 
 ### Community 31 - "NetworkCoordinator"
-Cohesion: 0.04
-Nodes (52): NetworkCoordinator, Cooperative, core-0 WLAN and NTP coordinator. Each :meth:`tick` performs at…, Create the bounded web surface only when the active mode serves it., Validate an NTP response and convert its transmit timestamp to UTC., Record a secret-free web failure once and schedule a later retry., Re-arm reporting once a previously failed phase succeeds., Optional device-only heap evidence; never changes serving behavior., Allocate config-auth session state only after reaching station work. (+44 more)
+Cohesion: 0.05
+Nodes (24): NetworkCoordinator, Create the bounded web surface only when the active mode serves it., Validate an NTP response and convert its transmit timestamp to UTC., Record a secret-free web failure once and schedule a later retry., Re-arm reporting once a previously failed phase succeeds., Optional device-only heap evidence; never changes serving behavior., Allocate config-auth session state only after reaching station work., Compact setup scan state: ``empty``, ``ok``, or ``failed``. (+16 more)
 
 ### Community 32 - "test_setup_http.py"
+Cohesion: 0.03
+Nodes (101): cookie_header_value(), html_escape(), parse_form_urlencoded(), _percent_decode(), Bounded incremental HTTP/1.0–1.1 request parsing (pure; no sockets)., Escape text for safe inclusion in HTML text/attribute contexts., Parse ``application/x-www-form-urlencoded`` body to a string dict. Duplicate…, Return the value of ``name`` from a raw ``Cookie`` header, or ``None``. Parses… (+93 more)
+
+### Community 33 - ".agents/skills/bmad-retrospective/scripts/sprint_status.py"
+Cohesion: 0.13
+Nodes (28): _atomic_write(), build_parser(), cmd_detect_epic(), cmd_update(), _fail(), _comment_counts(), _dump_bytes(), _emit() (+20 more)
+
+### Community 34 - "FakeTicks"
 Cohesion: 0.04
-Nodes (98): cookie_header_value(), html_escape(), parse_form_urlencoded(), _percent_decode(), Bounded incremental HTTP/1.0–1.1 request parsing (pure; no sockets)., Escape text for safe inclusion in HTML text/attribute contexts., Parse ``application/x-www-form-urlencoded`` body to a string dict. Duplicate…, Return the value of ``name`` from a raw ``Cookie`` header, or ``None``. Parses… (+90 more)
-
-### Community 33 - "proof.py"
-Cohesion: 0.21
-Nodes (31): _allocate_lock(), _enqueue(), _is_clean(), _log(), _marker(), _mem_free(), Flashable AD-8 network mailbox proof harness (Story 1.4). Exercises…, Wait for idle + drain, or soft_reset, before the next scenario. (+23 more)
-
-### Community 34 - "SetupHttpServer"
-Cohesion: 0.06
-Nodes (25): Bounded local HTTP setup surface (parse/route/pages are host-pure)., _json_string(), Forward-only, bounded HTTP response sources., Return and consume at most ``max_bytes`` encoded response bytes., A response made of immutable segments with one advancing cursor., Keep byte-response inspection helpers working on host tests., _response_chunk(), ResponseSource (+17 more)
+Nodes (50): Bounded local HTTP setup surface (parse/route/pages are host-pure)., _json_string(), Forward-only, bounded HTTP response sources., Return and consume at most ``max_bytes`` encoded response bytes., A response made of immutable segments with one advancing cursor., Keep byte-response inspection helpers working on host tests., _response_chunk(), ResponseSource (+42 more)
 
 ### Community 35 - "NFR Evidence Audit: Bulk Invoice Export"
 Cohesion: 0.04
@@ -2207,31 +2208,31 @@ Nodes (47): ADR Quality Readiness Summary, Alerting Thresholds, Authentication S
 
 ### Community 36 - ".agents/skills/bmad-architecture/scripts/tests/test_lint_spine.py"
 Cohesion: 0.09
-Nodes (12): cats(), test_duplicate_ad_id_caught(), test_fenced_stack_heading_not_live(), test_fenced_stack_rows_not_parsed(), test_mermaid_braces_not_flagged(), test_no_frontmatter_body_still_scanned(), test_no_stack_section_ok(), test_placeholder_markers_caught() (+4 more)
+Nodes (13): cats(), Tests for lint_spine.py. Run: uv run --with pytest pytest…, test_duplicate_ad_id_caught(), test_fenced_stack_heading_not_live(), test_fenced_stack_rows_not_parsed(), test_mermaid_braces_not_flagged(), test_no_frontmatter_body_still_scanned(), test_no_stack_section_ok() (+5 more)
 
 ### Community 37 - ".agents/skills/bmad-party-mode/scripts/tests/test_resolve_party.py"
 Cohesion: 0.07
-Nodes (9): The default room is installed agents only; pure customs stay in the pool., The wrapper knows the project root, so it must not let the resolver infer one…, TestAlias, TestBuildCollective, TestGroupDetail, TestGroups, TestInstalledCodesIsDefaultRoom, TestResolveMembers (+1 more)
+Nodes (10): The default room is installed agents only; pure customs stay in the pool., The wrapper knows the project root, so it must not let the resolver infer one…, Unit tests for resolve_party.py — merge, alias, override, group resolution., TestAlias, TestBuildCollective, TestGroupDetail, TestGroups, TestInstalledCodesIsDefaultRoom (+2 more)
 
 ### Community 38 - ".claude/skills/bmad-architecture/scripts/tests/test_lint_spine.py"
 Cohesion: 0.09
-Nodes (12): cats(), test_duplicate_ad_id_caught(), test_fenced_stack_heading_not_live(), test_fenced_stack_rows_not_parsed(), test_mermaid_braces_not_flagged(), test_no_frontmatter_body_still_scanned(), test_no_stack_section_ok(), test_placeholder_markers_caught() (+4 more)
+Nodes (13): cats(), Tests for lint_spine.py. Run: uv run --with pytest pytest…, test_duplicate_ad_id_caught(), test_fenced_stack_heading_not_live(), test_fenced_stack_rows_not_parsed(), test_mermaid_braces_not_flagged(), test_no_frontmatter_body_still_scanned(), test_no_stack_section_ok() (+5 more)
 
 ### Community 39 - ".claude/skills/bmad-party-mode/scripts/tests/test_resolve_party.py"
 Cohesion: 0.07
-Nodes (9): The default room is installed agents only; pure customs stay in the pool., The wrapper knows the project root, so it must not let the resolver infer one…, TestAlias, TestBuildCollective, TestGroupDetail, TestGroups, TestInstalledCodesIsDefaultRoom, TestResolveMembers (+1 more)
+Nodes (10): The default room is installed agents only; pure customs stay in the pool., The wrapper knows the project root, so it must not let the resolver infer one…, Unit tests for resolve_party.py — merge, alias, override, group resolution., TestAlias, TestBuildCollective, TestGroupDetail, TestGroups, TestInstalledCodesIsDefaultRoom (+2 more)
 
 ### Community 40 - "ticks_add"
-Cohesion: 0.09
-Nodes (39): Legacy blocking WLAN / DNS / UDP NTP ops for worker-proof tests. Owns blocking…, Wrap-safe millisecond tick helpers (AD-5). Pure add/diff are host-testable…, Return ``ticks + delta_ms`` modulo PERIOD (delta may be negative)., Signed wrap-safe difference ``ticks1 - ticks2``. Result is in ``[-PERIOD/2,…, ticks_add(), ticks_diff(), next_surface(), Pure Rotation/Bar touch-surface transition decisions. (+31 more)
+Cohesion: 0.07
+Nodes (71): Legacy blocking WLAN / DNS / UDP NTP ops for worker-proof tests. Owns blocking…, _allocate_lock(), _enqueue(), _is_clean(), _log(), _marker(), _mem_free(), Flashable AD-8 network mailbox proof harness (Story 1.4). Exercises… (+63 more)
 
-### Community 41 - "test_station_recover.py"
+### Community 41 - "FakeFS"
 Cohesion: 0.07
 Nodes (47): Exception, Sole FS boundary for the ignored version-1 device settings record (AD-3)., Boot-time load with AD-3 restore/quarantine. Returns the canonical settings…, True when boot load yields a valid complete record., Atomically persist a complete version-1 record. Accepts Admin plaintext…, Named failure during atomic settings commit (no plaintext Admin)., Read/validate/commit the device-local ``.settings-v1`` record. Inject…, SettingsCommitError (+39 more)
 
-### Community 42 - "FakeTicks"
-Cohesion: 0.11
-Nodes (24): FakeTicks, _activate(), FakeListenSocket, FakeTcpSocketModule, _http_connect(), _http_get(), _make(), _pump_until() (+16 more)
+### Community 42 - ".claude/skills/bmad-retrospective/scripts/sprint_status.py"
+Cohesion: 0.13
+Nodes (28): _atomic_write(), build_parser(), cmd_detect_epic(), cmd_update(), _fail(), _comment_counts(), _dump_bytes(), _emit() (+20 more)
 
 ### Community 43 - "NFR Evidence Audit: Bulk Invoice Export"
 Cohesion: 0.04
@@ -2246,28 +2247,28 @@ Cohesion: 0.05
 Nodes (43): Accountability & Logistics, Architecture Doc Structure (Actionable-First Principle), Best Practices, BMAD Handoff Validation (System-Level Mode Only), Common Issues, Completion Criteria, Coverage Matrix, Cross-Document Consistency (+35 more)
 
 ### Community 46 - ".agents/skills/bmad-advanced-elicitation/scripts/tests/test_pick_methods.py"
-Cohesion: 0.13
-Nodes (24): lib(), fixture, rows(), run(), test_categories_counts_sorted(), test_cli_bad_extra_and_missing_file(), test_cli_categories(), test_cli_extra_inline_json() (+16 more)
+Cohesion: 0.12
+Nodes (25): lib(), fixture, Tests for pick_methods.py. Run: uv run scripts/tests/test_pick_methods.py or:…, rows(), run(), test_categories_counts_sorted(), test_cli_bad_extra_and_missing_file(), test_cli_categories() (+17 more)
 
 ### Community 47 - "TestBuildPool"
-Cohesion: 0.08
-Nodes (7): When party-mode isn't installed, user override TOMLs are read directly., The wrapper knows the project root, so it must not let the resolver infer one…, TestAlias, TestBuildPool, TestOverrideMergeFallback, TestResolveParties, TestResolverInvocation
+Cohesion: 0.07
+Nodes (8): When party-mode isn't installed, user override TOMLs are read directly., The wrapper knows the project root, so it must not let the resolver infer one…, Unit tests for resolve_personas.py — pool merge, alias, party resolution., TestAlias, TestBuildPool, TestOverrideMergeFallback, TestResolveParties, TestResolverInvocation
 
 ### Community 48 - ".claude/skills/bmad-advanced-elicitation/scripts/tests/test_pick_methods.py"
-Cohesion: 0.13
-Nodes (24): lib(), fixture, rows(), run(), test_categories_counts_sorted(), test_cli_bad_extra_and_missing_file(), test_cli_categories(), test_cli_extra_inline_json() (+16 more)
+Cohesion: 0.12
+Nodes (25): lib(), fixture, Tests for pick_methods.py. Run: uv run scripts/tests/test_pick_methods.py or:…, rows(), run(), test_categories_counts_sorted(), test_cli_bad_extra_and_missing_file(), test_cli_categories() (+17 more)
 
 ### Community 49 - "TestBuildPool"
-Cohesion: 0.08
-Nodes (7): When party-mode isn't installed, user override TOMLs are read directly., The wrapper knows the project root, so it must not let the resolver infer one…, TestAlias, TestBuildPool, TestOverrideMergeFallback, TestResolveParties, TestResolverInvocation
+Cohesion: 0.07
+Nodes (8): When party-mode isn't installed, user override TOMLs are read directly., The wrapper knows the project root, so it must not let the resolver infer one…, Unit tests for resolve_personas.py — pool merge, alias, party resolution., TestAlias, TestBuildPool, TestOverrideMergeFallback, TestResolveParties, TestResolverInvocation
 
 ### Community 50 - "DateTime"
-Cohesion: 0.06
-Nodes (52): Single-writer App loop: snapshots, view rotation, tick deadlines., calendar_entry_allowed(), DateTime, Pure time domain types and calendar-entry gate., Glanceable time state for renderers and view gating., Calendar may be entered only when a local DateTime exists., Named wall-clock fields shared by UTC and local snapshots., TimeSnapshot (+44 more)
+Cohesion: 0.05
+Nodes (69): Single-writer App loop: snapshots, view rotation, tick deadlines., NetworkEvent, Network mode constants and typed NetworkEvent values. Pure module: no…, Golden SETUP_AP status event (SSID + gateway, no display calls)., Station online/connecting status without App/TFT mutation., Immutable coordinator → App event (App wiring is a later story)., setup_ap_status_event(), station_status_event() (+61 more)
 
 ### Community 51 - "KdfJob"
 Cohesion: 0.04
-Nodes (45): Small shared provisioning constants. This module intentionally has no crypto or…, KdfJob, Cooperative PBKDF2 job stepper (≤N HMAC rounds per tick). Host-testable: no…, Fresh salt hex after a successful derive (``None`` otherwise)., Derived verifier hex after a successful derive (``None`` otherwise)., Advance at most ``max_rounds`` HMAC rounds. Returns a terminal result code when…, Abandon the job and wipe secrets., Incremental PBKDF2-HMAC-SHA256 verify or derive for one Admin password. (+37 more)
+Nodes (49): Small shared provisioning constants. This module intentionally has no crypto or…, KdfJob, Cooperative PBKDF2 job stepper (≤N HMAC rounds per tick). Host-testable: no…, Fresh salt hex after a successful derive (``None`` otherwise)., Derived verifier hex after a successful derive (``None`` otherwise)., Advance at most ``max_rounds`` HMAC rounds. Returns a terminal result code when…, Abandon the job and wipe secrets., Incremental PBKDF2-HMAC-SHA256 verify or derive for one Admin password. (+41 more)
 
 ### Community 52 - "Test Design: Epic {epic_num} - {epic_title}"
 Cohesion: 0.05
@@ -2277,9 +2278,9 @@ Nodes (42): Appendix, Approval, Assumptions, Assumptions and Dependencies, Cover
 Cohesion: 0.05
 Nodes (42): Appendix, Approval, Assumptions, Assumptions and Dependencies, Coverage Targets, Dependencies, Entry Criteria, Execution Order (+34 more)
 
-### Community 54 - "test_provisioning_validation.py"
-Cohesion: 0.16
-Nodes (20): _is_lowercase_hex(), Whole-record validation for the version-1 device settings object. Pure module:…, Parse JSON text and validate as a whole record., Outcome of validating a settings record as a whole., Validate a decoded settings object. Returns a :class:`ValidationResult`.…, _utf8_len(), validate_settings_json(), validate_settings_object() (+12 more)
+### Community 54 - "machine.py"
+Cohesion: 0.09
+Nodes (9): _days_in_month(), RTC-backed ClockPort (device layer only; AD-3)., Read/write UTC wall time through ``machine.RTC``. Only App should call this.…, Return a ``DateTime`` from the RTC, or ``None`` if cold/invalid., Write a ``DateTime`` into the RTC (UTC). Subseconds forced to 0., RtcClockPort, Host stand-in for the Pico's ``machine`` module. Only enough surface for the…, RTC (+1 more)
 
 ### Community 55 - "Detailed Mapping"
 Cohesion: 0.05
@@ -2290,8 +2291,8 @@ Cohesion: 0.05
 Nodes (41): AC-1: Administrator schedules a weekly report for their tenant, P0, AC-2: Cross-tenant schedule access is denied, P0, AC-3: Administrator pauses and resumes a schedule, P1, AC-4: Invalid or duplicate recipients receive field-level guidance, P1, AC-5: Delivery retries after provider failure and surfaces final failure, P1, AC-6: Next delivery respects the selected timezone across daylight-saving changes, P1, AC-7: Schedule changes emit a complete audit event, P1, AC-8: Administrator can set an optional safe filename prefix, P2 (+33 more)
 
 ### Community 57 - "TouchPort"
-Cohesion: 0.15
-Nodes (13): Poll once, returning ``(edge_down, x, y)`` without blocking., Return one raw touch edge per contact while safely handing off SPI0. The port…, TouchPort, FakePin, FakeSpi, _port(), Host coverage for TouchPort's bounded sampling and SPI0 ownership., _stable() (+5 more)
+Cohesion: 0.12
+Nodes (15): Bounded XPT2046-compatible touch polling over the TFT's shared SPI0 bus., Poll once, returning ``(edge_down, x, y)`` without blocking., Return one raw touch edge per contact while safely handing off SPI0. The port…, TouchPort, FakePin, FakeSpi, _port(), Host coverage for TouchPort's bounded sampling and SPI0 ownership. (+7 more)
 
 ### Community 58 - "ATDD Workflow Validation Checklist"
 Cohesion: 0.05
@@ -2302,20 +2303,20 @@ Cohesion: 0.05
 Nodes (40): API Tests (If Applicable), ATDD Checklist Document Created, ATDD Workflow Validation Checklist, Code Quality, Common Issues and Resolutions, Completion Criteria, Component Tests (If Applicable), Data Factories Created (+32 more)
 
 ### Community 60 - "test_memory_budget.py"
-Cohesion: 0.09
-Nodes (19): _module_level_tables(), fixture, parametrize, Memory budget gates for the Pico W build. The device fits a 179,328-byte GC…, Session and KDF state stay absent until an authenticated request., The web surface is host-testable only while it owns no device imports., The exact failure from the field: importing the chain a request needs., Free bytes are not enough; the first request needs a contiguous run. (+11 more)
+Cohesion: 0.10
+Nodes (17): _module_level_tables(), parametrize, Memory budget gates for the Pico W build. The device fits a 179,328-byte GC…, Session and KDF state stay absent until an authenticated request., The web surface is host-testable only while it owns no device imports., The exact failure from the field: importing the chain a request needs., Free bytes are not enough; the first request needs a contiguous run., Module-scope collection literals, as ``(name, string_literal_count)``. (+9 more)
 
 ### Community 61 - ".agents/skills/bmad-forge-idea/scripts/resolve_personas.py"
-Cohesion: 0.17
-Nodes (21): _alias(), _brief(), build_pool(), _emit(), find_party_skill(), load_agents(), load_party_overrides(), load_party_workflow() (+13 more)
+Cohesion: 0.15
+Nodes (23): _alias(), _brief(), build_pool(), register(), _emit(), find_party_skill(), load_agents(), load_party_overrides() (+15 more)
 
 ### Community 62 - ".claude/skills/bmad-forge-idea/scripts/resolve_personas.py"
-Cohesion: 0.17
-Nodes (21): _alias(), _brief(), build_pool(), _emit(), find_party_skill(), load_agents(), load_party_overrides(), load_party_workflow() (+13 more)
+Cohesion: 0.15
+Nodes (23): _alias(), _brief(), build_pool(), register(), _emit(), find_party_skill(), load_agents(), load_party_overrides() (+15 more)
 
-### Community 63 - "test_font.py"
-Cohesion: 0.19
-Nodes (17): centered_text(), draw_glyph(), draw_text(), 5x7 bitmap font, packed as a single ``bytes`` blob. The glyph table was a…, text_width(), parametrize, Glyph-level regression guard for the packed 5x7 font. The lit-pixel coordinates…, RecordingDisplay (+9 more)
+### Community 63 - "spec-clock-upcoming-events.md"
+Cohesion: 0.18
+Nodes (10): 2026-09-15 — Review pass, Auto Run Result, Boundaries & Constraints, Code Map, Design Notes, I/O & Edge-Case Matrix, Intent, Review Triage Log (+2 more)
 
 ### Community 64 - "Process Steps"
 Cohesion: 0.05
@@ -2326,16 +2327,16 @@ Cohesion: 0.05
 Nodes (38): Best Practices Compliance, Code Quality, Common Issues, Completion Criteria, Configuration Validation, Directory Structure Validation, File Integrity Validation, Framework-Specific Considerations (+30 more)
 
 ### Community 66 - ".agents/skills/bmad-party-mode/scripts/resolve_party.py"
-Cohesion: 0.15
-Nodes (20): _alias(), build_collective(), _emit(), find_group(), group_detail(), group_menu(), load_agents(), load_workflow() (+12 more)
+Cohesion: 0.14
+Nodes (22): _alias(), build_collective(), register(), _emit(), find_group(), group_detail(), group_menu(), load_agents() (+14 more)
 
 ### Community 67 - "memlog.py"
-Cohesion: 0.21
-Nodes (20): ack(), add_target(), cmd_append(), cmd_init(), cmd_set(), entry_count(), main(), now() (+12 more)
+Cohesion: 0.20
+Nodes (21): ack(), add_target(), cmd_append(), cmd_init(), cmd_set(), entry_count(), main(), now() (+13 more)
 
 ### Community 68 - ".claude/skills/bmad-party-mode/scripts/resolve_party.py"
-Cohesion: 0.15
-Nodes (20): _alias(), build_collective(), _emit(), find_group(), group_detail(), group_menu(), load_agents(), load_workflow() (+12 more)
+Cohesion: 0.14
+Nodes (22): _alias(), build_collective(), register(), _emit(), find_group(), group_detail(), group_menu(), load_agents() (+14 more)
 
 ### Community 69 - "gregorian_to_lunar"
 Cohesion: 0.19
@@ -2346,12 +2347,12 @@ Cohesion: 0.05
 Nodes (36): Appendix, Assertions Analysis, Best Practices Found, Context and Integration, Critical Issues (Must Fix), Decision, Excluded From Review Set, Executive Summary (+28 more)
 
 ### Community 71 - "ScannerTest"
-Cohesion: 0.16
-Nodes (3): _make_skill(), Path, ScannerTest
+Cohesion: 0.15
+Nodes (4): _make_skill(), Path, Unit tests for list_customizable_skills.py. Exercises the scanner against a…, ScannerTest
 
 ### Community 72 - "ScannerTest"
-Cohesion: 0.16
-Nodes (3): _make_skill(), Path, ScannerTest
+Cohesion: 0.15
+Nodes (4): _make_skill(), Path, Unit tests for list_customizable_skills.py. Exercises the scanner against a…, ScannerTest
 
 ### Community 73 - "Test Quality Review: {test_filename}"
 Cohesion: 0.05
@@ -2366,12 +2367,12 @@ Cohesion: 0.06
 Nodes (32): Best Practices Compliance, CI/CD Pipeline Setup - Validation Checklist, Common Issues, Completion Criteria, Configuration Validation, Execution Validation, Integration Points, Knowledge Base Alignment (+24 more)
 
 ### Community 76 - ".agents/skills/bmad-advanced-elicitation/scripts/pick_methods.py"
-Cohesion: 0.19
-Nodes (17): categories(), exclude(), filter_cats(), find(), fmt_categories(), fmt_rows(), load(), load_extra() (+9 more)
+Cohesion: 0.18
+Nodes (18): categories(), exclude(), filter_cats(), find(), fmt_categories(), fmt_rows(), load(), load_extra() (+10 more)
 
 ### Community 77 - ".claude/skills/bmad-advanced-elicitation/scripts/pick_methods.py"
-Cohesion: 0.19
-Nodes (17): categories(), exclude(), filter_cats(), find(), fmt_categories(), fmt_rows(), load(), load_extra() (+9 more)
+Cohesion: 0.18
+Nodes (18): categories(), exclude(), filter_cats(), find(), fmt_categories(), fmt_rows(), load(), load_extra() (+10 more)
 
 ### Community 78 - "test_touch_calibration.py"
 Cohesion: 0.18
@@ -2386,12 +2387,12 @@ Cohesion: 0.06
 Nodes (30): Acceptance Criteria, API Tests ({api_test_count} tests), ATDD Checklist - Epic {epic_num}, Story {story_num}: {story_title}, Component Tests ({component_test_count} tests), Contact, Data Factories Created, E2E Tests ({e2e_test_count} tests), {Entity} Factory (+22 more)
 
 ### Community 81 - ".agents/skills/bmad-architecture/scripts/lint_spine.py"
-Cohesion: 0.23
-Nodes (15): blank_fences(), find_ad_issues(), find_frontmatter_placeholders(), find_placeholders(), find_unpinned_stack(), line_of(), lint(), main() (+7 more)
+Cohesion: 0.21
+Nodes (16): blank_fences(), find_ad_issues(), find_frontmatter_placeholders(), find_placeholders(), find_unpinned_stack(), line_of(), lint(), main() (+8 more)
 
 ### Community 82 - ".claude/skills/bmad-architecture/scripts/lint_spine.py"
-Cohesion: 0.23
-Nodes (15): blank_fences(), find_ad_issues(), find_frontmatter_placeholders(), find_placeholders(), find_unpinned_stack(), line_of(), lint(), main() (+7 more)
+Cohesion: 0.21
+Nodes (16): blank_fences(), find_ad_issues(), find_frontmatter_placeholders(), find_placeholders(), find_unpinned_stack(), line_of(), lint(), main() (+8 more)
 
 ### Community 83 - "Pico SDK and Toolchain Reference"
 Cohesion: 0.07
@@ -2405,17 +2406,17 @@ Nodes (28): Appendix A: Code Examples & Tagging, Appendix B: Knowledge Base Refe
 Cohesion: 0.07
 Nodes (28): Appendix A: Code Examples & Tagging, Appendix B: Knowledge Base References, Backend/Architecture Dependencies (Pre-Implementation), Dependencies & Test Blockers, Entry Criteria, Every PR: Playwright Tests (~10-15 min), Execution Strategy, Executive Summary (+20 more)
 
-### Community 86 - "boot_resident_modules"
-Cohesion: 0.17
-Nodes (10): Guards the analysis itself; an empty closure would silence every gate., test_boot_import_closure_is_derivable_and_non_trivial(), boot_resident_modules(), module_path(), module_scope_imports(), _ModuleScopeImports, Static import-graph analysis of what the Pico keeps resident. The heap cost…, Source path for a dotted ``src.*`` module, or None when it has none. (+2 more)
+### Community 86 - "runner.py"
+Cohesion: 0.21
+Nodes (13): Guards the analysis itself; an empty closure would silence every gate., test_boot_import_closure_is_derivable_and_non_trivial(), boot_resident_modules(), module_scope_imports(), Static import-graph analysis of what the Pico keeps resident. The heap cost…, Modules added on top of the resident set to serve the admin site., Modules pinned on the heap from boot, as a sorted tuple., station_web_modules() (+5 more)
 
-### Community 87 - "main"
-Cohesion: 0.17
-Nodes (14): test_simulated_heap_is_within_budget(), deploy(), find_mpy_cross(), main(), Deploy main.py/src/secrets.py to a flashed Pico W, precompiling the largest…, Check the memory budgets before touching the device. A build that exceeds them…, run_memory_gate(), stage_tree() (+6 more)
+### Community 87 - "deploy.py"
+Cohesion: 0.33
+Nodes (7): deploy(), find_mpy_cross(), main(), Deploy main.py/src/secrets.py to a flashed Pico W, precompiling the largest…, Check the memory budgets before touching the device. A build that exceeds them…, run_memory_gate(), stage_tree()
 
-### Community 88 - "runner.py"
+### Community 88 - "run"
 Cohesion: 0.18
-Nodes (14): find_micropython(), _load_deploy_module(), parse(), Exception, Drive the MicroPython heap simulation over the real deploy artifacts. The…, No MicroPython interpreter is available to run the simulation., Locate a MicroPython unix binary, or raise with build instructions., Import ``tools/deploy.py`` so staging cannot drift from deployment. (+6 more)
+Nodes (12): fixture, simulation(), size_report(), find_micropython(), parse(), Exception, No MicroPython interpreter is available to run the simulation., Locate a MicroPython unix binary, or raise with build instructions. (+4 more)
 
 ### Community 89 - "Step 3: Generate Epics and Stories"
 Cohesion: 0.07
@@ -2423,47 +2424,51 @@ Nodes (27): 1. Load Approved Epic Structure, 2. Explain Story Creation Approach,
 
 ### Community 90 - "sizes.py"
 Cohesion: 0.20
-Nodes (12): Memory budgets for the Pico W build. The device has a 179,328-byte GC heap.…, Modules added on top of the resident set to serve the admin site., station_web_modules(), compiled_sizes(), find_mpy_cross(), MpyCrossMissing, Exception, Compiled-size measurement for the deployable module set. (+4 more)
+Nodes (11): module_path(), Source path for a dotted ``src.*`` module, or None when it has none., compiled_sizes(), find_mpy_cross(), MpyCrossMissing, Exception, Compiled-size measurement for the deployable module set., ``mpy-cross`` is not installed, so compiled sizes cannot be measured. (+3 more)
 
 ### Community 91 - ".agents/skills/bmad-customize/scripts/list_customizable_skills.py"
-Cohesion: 0.27
-Nodes (12): default_skills_root(), load_customize(), main(), parse_args(), Namespace, Path, Derive the skills root from this script's location. Layout assumption:…, Extract the `description:` value from a SKILL.md YAML frontmatter block.… (+4 more)
+Cohesion: 0.24
+Nodes (13): default_skills_root(), load_customize(), main(), parse_args(), Namespace, Path, Derive the skills root from this script's location. Layout assumption:…, Enumerate customizable BMad skills installed alongside this one. Scans a skills… (+5 more)
 
 ### Community 92 - "section_metrics"
-Cohesion: 0.29
-Nodes (6): WordMetricsTest, main(), metrics(), Path, section_metrics(), word_count()
+Cohesion: 0.24
+Nodes (8): Tests for word_metrics.py., WordMetricsTest, main(), metrics(), Path, Exact word counts for a document, as JSON. Emits the document's total word…, section_metrics(), word_count()
 
 ### Community 93 - ".claude/skills/bmad-customize/scripts/list_customizable_skills.py"
-Cohesion: 0.27
-Nodes (12): default_skills_root(), load_customize(), main(), parse_args(), Namespace, Path, Derive the skills root from this script's location. Layout assumption:…, Extract the `description:` value from a SKILL.md YAML frontmatter block.… (+4 more)
+Cohesion: 0.24
+Nodes (13): default_skills_root(), load_customize(), main(), parse_args(), Namespace, Path, Derive the skills root from this script's location. Layout assumption:…, Enumerate customizable BMad skills installed alongside this one. Scans a skills… (+5 more)
 
 ### Community 94 - "section_metrics"
-Cohesion: 0.29
-Nodes (6): WordMetricsTest, main(), metrics(), Path, section_metrics(), word_count()
+Cohesion: 0.24
+Nodes (8): Tests for word_metrics.py., WordMetricsTest, main(), metrics(), Path, Exact word counts for a document, as JSON. Emits the document's total word…, section_metrics(), word_count()
 
 ### Community 95 - "Pact MCP Server (SmartBear)"
 Cohesion: 0.07
 Nodes (27): Anti-Patterns, Available Tools, CLI shortcuts (Claude Code and Codex), Codex TOML config, Config file locations, Example 1: Fetching Provider States During Test Design, Example 2: Reviewing Pact Tests, Example 3: Can I Deploy Check in CI (+19 more)
 
 ### Community 96 - ".agents/skills/bmad-retrospective/scripts/git_evidence.py"
-Cohesion: 0.29
-Nodes (10): _emit(), _file_list(), _git_log(), JsonArgumentParser, main(), _parse_log(), _parse_numstat_line(), Turn one pass's log output into (commits, files_map). Shared by both. (+2 more)
+Cohesion: 0.26
+Nodes (11): _emit(), _file_list(), _git_log(), JsonArgumentParser, main(), _parse_log(), _parse_numstat_line(), Turn one pass's log output into (commits, files_map). Shared by both. (+3 more)
 
 ### Community 97 - ".claude/skills/bmad-retrospective/scripts/git_evidence.py"
-Cohesion: 0.29
-Nodes (10): _emit(), _file_list(), _git_log(), JsonArgumentParser, main(), _parse_log(), _parse_numstat_line(), Turn one pass's log output into (commits, files_map). Shared by both. (+2 more)
+Cohesion: 0.26
+Nodes (11): _emit(), _file_list(), _git_log(), JsonArgumentParser, main(), _parse_log(), _parse_numstat_line(), Turn one pass's log output into (commits, files_map). Shared by both. (+3 more)
 
-### Community 98 - "NetworkWorker"
-Cohesion: 0.10
-Nodes (11): MailboxSaturationError, Exception, Publish exactly one terminal SyncResult into an empty result slot. If…, Result slot still occupied — contract violation (never overwrite)., Occupy the result slot without changing idle (proof contention plant). Raises…, NetworkWorker, Legacy threaded worker proof shell; not used by production composition. Owns…, One background thread that consumes SyncCommands and publishes SyncResults.… (+3 more)
+### Community 98 - "test_clock_port.py"
+Cohesion: 0.40
+Nodes (7): _cleanup_device_stub(), _install_fake_machine(), _load_clock_port(), Host tests for RtcClockPort with a stubbed machine.RTC., test_cold_and_invalid_rtc_map_to_none(), test_set_utc_writes_rtc_tuple(), test_valid_rtc_tuple_maps_to_datetime()
 
-### Community 100 - "Pbkdf2Job"
-Cohesion: 0.24
-Nodes (7): _hmac_sha256(), pbkdf2_hmac_sha256(), Pbkdf2Job, Native-emitted PBKDF2-HMAC-SHA256 fast path for MicroPython. This module keeps…, Incremental native-emitted PBKDF2 job for one 32-byte block., Run at most max_rounds and return the digest only at completion., Return PBKDF2-HMAC-SHA256 output for one 32-byte block.
+### Community 99 - "Clock Screen Upcoming Events"
+Cohesion: 0.22
+Nodes (8): Assumptions, Capabilities, Clock Screen Upcoming Events, Constraints, Non-goals, Open Questions, Success signal, Why
+
+### Community 100 - "main"
+Cohesion: 0.25
+Nodes (7): test_simulated_heap_is_within_budget(), main(), CLI entry point: ``python -m tools.hostsim``. Prints the compiled-size report…, breaches(), format_report(), Budget and correctness violations in a completed simulation run., format_report()
 
 ### Community 101 - "bmad_loop_hook.py"
-Cohesion: 0.33
-Nodes (8): _first_workspace(), _is_link_like(), main(), True when `path` redirects elsewhere: a POSIX symlink, or a Windows symlink OR…, Write every byte of `data` to `fd`. `os.write()` may write FEWER bytes than…, Write one event file into `events_dir`, refusing to follow a redirect. The…, _write_all(), _write_event()
+Cohesion: 0.29
+Nodes (9): _first_workspace(), _is_link_like(), main(), Coding-CLI hook relay for bmad-loop. Stdlib only. Each CLI's hook config…, True when `path` redirects elsewhere: a POSIX symlink, or a Windows symlink OR…, Write every byte of `data` to `fd`. `os.write()` may write FEWER bytes than…, Write one event file into `events_dir`, refusing to follow a redirect. The…, _write_all() (+1 more)
 
 ### Community 102 - "Pattern Examples"
 Cohesion: 0.07
@@ -9701,37 +9706,33 @@ Nodes (3): Cortex-Debug Extension, Raspberry Pi Pico Extension, VS Code Integrat
 Cohesion: 0.67
 Nodes (3): Gate Decision Document, Gate YAML, Phase 2 Output Validation
 
-### Community 2041 - "_OpsError"
-Cohesion: 0.18
-Nodes (5): _OpsError, Exception, Clamp UDP recv timeout to remaining SyncCommand deadline., Internal soft-fail carrying a SyncResult error_code., Execute one bounded sync attempt for ``command``.
-
-### Community 2042 - "credentials_valid"
-Cohesion: 0.33
-Nodes (11): credentials_valid(), Host-safe Wi-Fi credential soft-check (no secrets in config)., Return True only when device-local secrets expose non-empty SSID and password.…, _clear_secrets(), _install_secrets(), Host tests for credentials soft-check., test_empty_ssid_is_invalid(), test_import_failure_other_than_import_error_is_invalid() (+3 more)
+### Community 2042 - "main"
+Cohesion: 0.11
+Nodes (23): main(), credentials_valid(), Host-safe Wi-Fi credential soft-check (no secrets in config)., Return True only when device-local secrets expose non-empty SSID and password.…, make_settings_coordinator(), ntp_sync_enabled(), True only when not in SETUP_AP and credentials soft-check passed., Composition helper: NetworkCoordinator wired to SettingsStore + event sink. (+15 more)
 
 ### Community 2043 - "clock_view.py"
 Cohesion: 0.27
-Nodes (8): _format_date(), _format_hhmm(), _format_lunar(), _format_ss(), _label(), Dirty-region Clock view renderer (FR3 / UX-DR1–3/9)., AL · D/M or AL · D/M+ (leap); None when local is absent., _two_digit()
+Nodes (8): _format_date(), _format_hhmm(), _format_lunar(), _format_ss(), _label(), Dirty-region Clock view renderer (FR3 / UX-DR1–3/9)., AL · D/M or AL · D/M+ (leap); None when local is absent. The "AL · " prefix…, _two_digit()
 
 ## Knowledge Gaps
-- **20373 isolated node(s):** `crypto`, `fs`, `path`, `DEFAULT_CONFIG`, `SKIP_DIRECTORIES` (+20368 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 23079 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **20389 isolated node(s):** `crypto`, `fs`, `path`, `DEFAULT_CONFIG`, `SKIP_DIRECTORIES` (+20384 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 23219 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **103 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ILI9341` connect `ILI9341` to `config.py`?**
+- **Why does `DateTime` connect `DateTime` to `test_app_loop.py`, `test_clock_port.py`, `ticks_add`, `FakeDisplayPort`, `Mailbox`, `test_setup_ap_coordinator.py`, `test_calendar_view.py`, `NtpOps`, `machine.py`, `NetworkCoordinator`?**
   _High betweenness centrality (0.001) - this node is a cross-community bridge._
-- **Why does `main()` connect `config.py` to `proof.py`, `FakeDisplayPort`, `test_station_recover.py`, `Mailbox`, `test_setup_ap_coordinator.py`, `ILI9341`, `test_touch_calibration.py`, `test_calendar_view.py`, `TouchPort`, `credentials_valid`, `App`?**
+- **Why does `_online_store_coordinator()` connect `test_setup_ap_coordinator.py` to `Mailbox`, `FakeTicks`, `NetworkCoordinator`?**
   _High betweenness centrality (0.001) - this node is a cross-community bridge._
 - **Are the 6 inferred relationships involving `NetworkCoordinator` (e.g. with `MailboxSaturationError` and `SyncResult`) actually correct?**
   _`NetworkCoordinator` has 6 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `crypto`, `fs`, `path` to the rest of the system?**
-  _20373 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _20389 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `.agents/skills/bmad-retrospective/scripts/tests/test_sprint_status.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.08209876543209876 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07441860465116279 - nodes in this community are weakly interconnected._
 - **Should `.claude/skills/bmad-retrospective/scripts/tests/test_sprint_status.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.08209876543209876 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07441860465116279 - nodes in this community are weakly interconnected._
 - **Should `test_app_loop.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.08329979879275654 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07473684210526316 - nodes in this community are weakly interconnected._

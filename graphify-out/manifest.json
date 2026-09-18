@@ -450,9 +450,9 @@
     "semantic_hash": "b3db16ad8d7a891d3eff583b7ae12b7f"
   },
   "src/config.py": {
-    "mtime": 1789401579.9842677,
-    "seen": 1789401630.659488,
-    "ast_hash": "37bdc80a55a1491f16b57f0b632f6d6b",
+    "mtime": 1789464888.8871047,
+    "seen": 1789467078.9165199,
+    "ast_hash": "3046377d6369d89e492b0835d29d3bce",
     "semantic_hash": ""
   },
   "src/credentials.py": {
@@ -498,10 +498,10 @@
     "semantic_hash": "89873df262475865bf5b074139cb92de"
   },
   "src/device/display/font.py": {
-    "mtime": 1789389955.1045666,
-    "seen": 1789399252.7873,
-    "ast_hash": "b36326d89636c4c5c923f8fcf8244f4b",
-    "semantic_hash": "b36326d89636c4c5c923f8fcf8244f4b"
+    "mtime": 1789464876.1308181,
+    "seen": 1789467078.916527,
+    "ast_hash": "3ee0765ed035b1f4446af8426bef10cc",
+    "semantic_hash": ""
   },
   "src/device/display/ili9341.py": {
     "mtime": 1789383390.7203326,
@@ -642,10 +642,10 @@
     "semantic_hash": "d1fbfe53ba46950c2d2f47ec441841f0"
   },
   "src/gfx.py": {
-    "mtime": 1789298712.6156087,
-    "seen": 1789399252.787315,
-    "ast_hash": "724673463607c57e89de19c4b030459f",
-    "semantic_hash": "724673463607c57e89de19c4b030459f"
+    "mtime": 1789464882.8389606,
+    "seen": 1789467078.916544,
+    "ast_hash": "14db4397b13ada7a17c9c184644d7084",
+    "semantic_hash": ""
   },
   "src/provisioning/__init__.py": {
     "mtime": 1788709676.0643387,
@@ -732,16 +732,16 @@
     "semantic_hash": "74fc750aca8dcf4d555204b9e99c1692"
   },
   "src/ui/calendar_view.py": {
-    "mtime": 1789401579.9854085,
-    "seen": 1789401630.659528,
-    "ast_hash": "cb83f3c0e347ab4d4ff4809cee0f0858",
+    "mtime": 1789469328.495733,
+    "seen": 1789469413.235051,
+    "ast_hash": "39fe898d40ab714d196bf0adba828648",
     "semantic_hash": ""
   },
   "src/ui/clock_view.py": {
-    "mtime": 1789388591.2206924,
-    "seen": 1789399252.787324,
-    "ast_hash": "5f54df130ce3bfefbc1725711c491633",
-    "semantic_hash": "5f54df130ce3bfefbc1725711c491633"
+    "mtime": 1789465194.4408104,
+    "seen": 1789467078.9165561,
+    "ast_hash": "090cae54e0b688487a926f6c50461b0b",
+    "semantic_hash": ""
   },
   "src/ui/components.py": {
     "mtime": 1789298742.9470289,
@@ -786,9 +786,9 @@
     "semantic_hash": "7f9146f2d875ab929e0f1bcc01de04c2"
   },
   "tests/test_app_loop.py": {
-    "mtime": 1789401579.9878323,
-    "seen": 1789401630.6595368,
-    "ast_hash": "1e4bd3ba512e19d6cb6efd4a0bf80b05",
+    "mtime": 1789469340.4237068,
+    "seen": 1789469413.235074,
+    "ast_hash": "d4decc36c2914c3a5db6a2ef80393eec",
     "semantic_hash": ""
   },
   "tests/test_app_network_overlay.py": {
@@ -804,9 +804,9 @@
     "semantic_hash": "3f57f795dba325ae4a4a53af34c92192"
   },
   "tests/test_calendar_view.py": {
-    "mtime": 1789401579.986484,
-    "seen": 1789401630.65954,
-    "ast_hash": "2068c6309edb1aa39542ee436679efcf",
+    "mtime": 1789469371.1368213,
+    "seen": 1789469413.235082,
+    "ast_hash": "80fc9d199f610ba3fa9d05fbd12c9e9d",
     "semantic_hash": ""
   },
   "tests/test_clock_port.py": {
@@ -816,10 +816,10 @@
     "semantic_hash": "ec0e207588738df66db0cd0dbcb52428"
   },
   "tests/test_clock_view.py": {
-    "mtime": 1789387762.9599905,
-    "seen": 1789399252.787332,
-    "ast_hash": "2ef03c28e16b53b1136b9d1a0081a89b",
-    "semantic_hash": "2ef03c28e16b53b1136b9d1a0081a89b"
+    "mtime": 1789465236.3798351,
+    "seen": 1789467078.916565,
+    "ast_hash": "09e7240353e6b768e3f850ab0dfb4658",
+    "semantic_hash": ""
   },
   "tests/test_config_auth.py": {
     "mtime": 1789378901.9021864,
@@ -846,10 +846,10 @@
     "semantic_hash": "85acc5aa2e5e84f0b4627aabd7c9b647"
   },
   "tests/test_font.py": {
-    "mtime": 1789387735.3118858,
-    "seen": 1789399252.787335,
-    "ast_hash": "a8590c7afbe7bf16b4bb5b500361b437",
-    "semantic_hash": "a8590c7afbe7bf16b4bb5b500361b437"
+    "mtime": 1789464959.7006743,
+    "seen": 1789467078.916569,
+    "ast_hash": "d80fbd83c338f4abb119f4c75959f34c",
+    "semantic_hash": ""
   },
   "tests/test_gregorian_month.py": {
     "mtime": 1788674199.9656534,
@@ -11802,9 +11802,9 @@
     "semantic_hash": ""
   },
   "_bmad-output/implementation-artifacts/touch-ui/spec-calendar-screen-small-clock.md": {
-    "mtime": 1789400517.035621,
-    "seen": 1789400683.531142,
-    "ast_hash": "01d8476ab411caf11b9d7e5a51442e24",
+    "mtime": 1789469371.137873,
+    "seen": 1789469413.237057,
+    "ast_hash": "7251fc925eec2dcc5e7b05b4a35450f3",
     "semantic_hash": ""
   },
   "_bmad-output/implementation-artifacts/touch-ui/spec-cannot-access-settings-page-after-boot-pi.md": {
@@ -11916,9 +11916,9 @@
     "semantic_hash": ""
   },
   "_bmad-output/party-mode/memories/installed/.memlog.md": {
-    "mtime": 1789288785.6556244,
-    "seen": 1789399986.874368,
-    "ast_hash": "3e119effdb339fe30000d2c46fb5df57",
+    "mtime": 1789403447.8786,
+    "seen": 1789467078.918102,
+    "ast_hash": "bfc81f1e4982480314bb60661cffade4",
     "semantic_hash": ""
   },
   "_bmad-output/planning-artifacts/pico-w-calendar-clock/architecture/.memlog.md": {
@@ -12351,6 +12351,24 @@
     "mtime": 1788620662.0717263,
     "seen": 1789399986.8744278,
     "ast_hash": "6de4580c0339d96077b27e95f0a1ec4c",
+    "semantic_hash": ""
+  },
+  "_bmad-output/implementation-artifacts/touch-ui/spec-clock-upcoming-events.md": {
+    "mtime": 1789405522.8316805,
+    "seen": 1789467078.918087,
+    "ast_hash": "8c30e8d178c0926d4ef1e60c9f2813e9",
+    "semantic_hash": ""
+  },
+  "_bmad-output/specs/spec-clock-upcoming-events/.memlog.md": {
+    "mtime": 1789404580.9540677,
+    "seen": 1789467078.9181519,
+    "ast_hash": "c9ec8c20ab14655d193bfdacea87aa55",
+    "semantic_hash": ""
+  },
+  "_bmad-output/specs/spec-clock-upcoming-events/SPEC.md": {
+    "mtime": 1789404572.5647984,
+    "seen": 1789467078.9181519,
+    "ast_hash": "1429b6d9c04bedfb343570a419643ddb",
     "semantic_hash": ""
   }
 }

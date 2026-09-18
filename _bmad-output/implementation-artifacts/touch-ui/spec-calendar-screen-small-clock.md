@@ -25,11 +25,11 @@ deferred:
 
 **Problem:** Calendar view does not show current time, so users cannot know the time while viewing the month grid.
 
-**Approach:** Render local time as a small `HH:MM` label in the top-left corner of Calendar view. Use unsynced color for this label and update it as part of Calendar view rendering, without adding a separate refresh mechanism.
+**Approach:** Render local time as a larger `HH:MM` label in the top-right corner of Calendar view. Use the same `FONT_LUNAR` size and blue `COLOR_LUNAR` text as the Luna today label, without a background box, and update it as part of Calendar view rendering without adding a separate refresh mechanism.
 
 ## Boundaries & Constraints
 
-**Always:** Keep Calendar view pure and DisplayPort-only; use existing `TimeSnapshot.local`; format exactly 24-hour `HH:MM`; use `FONT_BADGE` and `COLOR_UNSYNCED`; keep label at top-left; redraw when displayed local minute changes so cached rendering cannot leave stale time.
+**Always:** Keep Calendar view pure and DisplayPort-only; use existing `TimeSnapshot.local`; format exactly 24-hour `HH:MM`; use `FONT_LUNAR` and `COLOR_LUNAR` text with no background box; keep label at top-right; redraw when displayed local minute changes so cached rendering cannot leave stale time.
 
 **Never:** Add hardware imports, network/time polling, a second timer, a background refresh path, or alter Clock view, calendar grid geometry, unsynced badge behavior, or hardware wiring.
 
@@ -37,28 +37,28 @@ deferred:
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |----------|--------------|---------------------------|----------------|
-| LOCAL_TIME | Calendar render with local `14:07` | Draws `14:07` at `(0, 0)` using `FONT_BADGE` and `COLOR_UNSYNCED` | No error expected |
+| LOCAL_TIME | Calendar render with local `14:07` | Draws blue `14:07` in the top-right on the normal calendar background using `FONT_LUNAR` | No error expected |
 | MINUTE_CHANGE | Cached Calendar render changes local minute from `14:07` to `14:08` | Calendar redraw updates corner label to `14:08` during normal Calendar rendering | No separate refresh path |
-| NO_LOCAL_TIME | Calendar render with `snapshot.local is None` | Draws `--:--` using same position/font/color, matching Clock placeholder semantics | No exception |
+| NO_LOCAL_TIME | Calendar render with `snapshot.local is None` | Draws blue `--:--` in the top-right on the normal calendar background using same font, matching Clock placeholder semantics | No exception |
 
 </intent-contract>
 
 ## Code Map
 
-- `src/ui/calendar_view.py:1-140` -- Calendar renderer and cache; add compact local-time formatting, corner draw, and minute cache key.
-- `src/config.py:64-96` -- Existing `FONT_BADGE`, `COLOR_UNSYNCED`, and clock placeholder constants; reuse without new hardware/runtime dependencies.
+- `src/ui/calendar_view.py:1-145` -- Calendar renderer and cache; add local-time formatting, top-right corner draw, and minute cache key.
+- `src/config.py:64-96` -- Existing `FONT_LUNAR`, `COLOR_LUNAR`, and clock placeholder constants; reuse without new hardware/runtime dependencies.
 - `tests/test_calendar_view.py:98-370` -- Calendar renderer tests and FakeDisplayPort operation assertions; add happy, minute-change, and no-local coverage.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `src/ui/calendar_view.py` -- render cached local `HH:MM` at top-left in unsynced color and invalidate cache on local-minute changes -- keeps time visible without independent refresh.
+- [x] `src/ui/calendar_view.py` -- render cached local `HH:MM` at top-right in `FONT_LUNAR` size with blue text and no box; invalidate cache on local-minute changes -- keeps time visible without independent refresh.
 - [x] `tests/test_calendar_view.py` -- verify position, font, color, placeholder, and minute-change redraw -- covers matrix and prevents stale corner time.
 
 **Acceptance Criteria:**
-- Given Calendar view renders with local time `14:07`, when rendering completes, then `14:07` appears at x=0/y=0 with `FONT_BADGE` and `COLOR_UNSYNCED`.
+- Given Calendar view renders with local time `14:07`, when rendering completes, then blue `14:07` appears at top-right with `FONT_LUNAR` and no background box.
 - Given Calendar view has cached `14:07`, when next Calendar render receives local `14:08`, then screen operations include a redraw with `14:08`.
-- Given Calendar view renders without local time, when rendering completes, then `--:--` appears at x=0/y=0 with `FONT_BADGE` and `COLOR_UNSYNCED`.
+- Given Calendar view renders without local time, when rendering completes, then blue `--:--` appears at top-right with `FONT_LUNAR` and no background box.
 - Given Calendar view is rendered, when inspecting imports, then no hardware, network, or MicroPython-only module is imported.
 
 ## Spec Change Log
@@ -94,11 +94,11 @@ deferred:
 
 ## Design Notes
 
-Corner clock uses same placeholder and compact font family as Clock view, but unsynced red remains intentional: this is a small status cue, not primary time typography. Calendar cache tracks local hour/minute so repeated render calls remain cheap while minute changes repaint the existing view and label together.
+Corner clock uses same placeholder, `FONT_LUNAR` size, and blue text as Luna today on Clock view. No background box keeps this compact calendar clock clear of competing color fields. Calendar cache tracks local hour/minute so repeated render calls remain cheap while minute changes repaint the existing view and label together.
 
 ## Auto Run Result
 
-Summary: Added small local `HH:MM` clock to Calendar view at top-left in unsynced color. Calendar cache redraws when local hour/minute changes, without a separate refresh path.
+Summary: Added larger local `HH:MM` clock to Calendar view at top-right using `FONT_LUNAR` size and blue text without a background box. Calendar cache redraws when local hour/minute changes, without a separate refresh path.
 
 Files changed:
 - `src/ui/calendar_view.py` -- formats and renders corner clock; tracks local time in cache.

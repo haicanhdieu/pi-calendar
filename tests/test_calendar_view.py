@@ -149,25 +149,30 @@ def test_synced_calendar_draws_month_header_and_grid_without_badge():
     assert not hasattr(display, "pixels")
 
 
-def test_calendar_draws_small_unsynced_clock_at_top_left():
+def test_calendar_draws_larger_unsynced_clock_at_top_right_using_lunar_font():
     display = FakeDisplayPort()
     view = CalendarView(display)
     local = _local()
 
     view.render(_snapshot(local), _grid_for(local))
 
+    clock_w, _clock_h = display.measure_text("14:07", config.FONT_LUNAR)
+    clock_x = display.width - clock_w - config.CALENDAR_CLOCK_BOX_PADDING_X_PX
+
     assert (
         "draw_text",
         "14:07",
-        4,
-        2,
-        config.FONT_BADGE,
-        config.COLOR_WHITE,
+        clock_x,
+        config.CALENDAR_CLOCK_BOX_PADDING_Y_PX,
+        config.FONT_LUNAR,
+        config.COLOR_LUNAR,
     ) in display.ops
-    assert ("fill_rect", 0, 0, 37, 12, config.COLOR_UNSYNCED) in display.ops
+    assert not any(
+        op[0] == "fill_rect" and op[-1] == config.COLOR_LUNAR for op in display.ops
+    )
 
 
-def test_calendar_redraws_small_clock_when_local_minute_changes():
+def test_calendar_redraws_corner_clock_when_local_minute_changes():
     display = FakeDisplayPort()
     view = CalendarView(display)
     first = _local()
@@ -181,10 +186,12 @@ def test_calendar_redraws_small_clock_when_local_minute_changes():
     assert (
         "draw_text",
         "14:08",
-        4,
-        2,
-        config.FONT_BADGE,
-        config.COLOR_WHITE,
+        display.width
+        - display.measure_text("14:08", config.FONT_LUNAR)[0]
+        - config.CALENDAR_CLOCK_BOX_PADDING_X_PX,
+        config.CALENDAR_CLOCK_BOX_PADDING_Y_PX,
+        config.FONT_LUNAR,
+        config.COLOR_LUNAR,
     ) in display.ops
     assert any(
         op[0] == "fill_rect"
@@ -204,12 +211,13 @@ def test_calendar_draws_placeholder_clock_without_local_time():
     assert (
         "draw_text",
         config.CLOCK_PLACEHOLDER_HHMM,
-        4,
-        2,
-        config.FONT_BADGE,
-        config.COLOR_WHITE,
+        display.width
+        - display.measure_text(config.CLOCK_PLACEHOLDER_HHMM, config.FONT_LUNAR)[0]
+        - config.CALENDAR_CLOCK_BOX_PADDING_X_PX,
+        config.CALENDAR_CLOCK_BOX_PADDING_Y_PX,
+        config.FONT_LUNAR,
+        config.COLOR_LUNAR,
     ) in display.ops
-    assert ("fill_rect", 0, 0, 37, 12, config.COLOR_UNSYNCED) in display.ops
 
 
 def test_weekday_header_is_monday_first_single_letters():
