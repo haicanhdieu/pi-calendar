@@ -5,6 +5,8 @@ from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
 from src.ui.display_port import FakeDisplayPort
 from tests.test_app_loop import FakeClockPort, FakeTicks
+from tests.test_settings_store import FakeFS, _record_bytes, _store
+import json
 
 
 class FakeBuzzer:
@@ -266,3 +268,99 @@ def test_postponed_one_time_alert_disables_existing_id_only_after_resolution():
     app.step()
     assert app._alert_settings["alerts"][0]["enabled"] is False
     assert alert["enabled"] is True
+
+
+def _persisted_alert_store(alerts, pending=None):
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2,
+        alerts=alerts,
+        postpone_delay_minutes=10,
+        pending_postponed_occurrence=pending,
+    )})
+    return fs, _store(fs)
+
+
+def _pending(due_hour, due_minute, alerts):
+    return {
+        "due": {
+            "year": 2026, "month": 9, "day": 9, "weekday": 2,
+            "hour": due_hour, "minute": due_minute,
+        },
+        "alerts": alerts,
+        "delay": 10,
+    }
+
+
+def test_future_pending_postpone_restores_after_reboot_and_raises_at_due_time():
+    ticks = FakeTicks(0)
+    alert = {"id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2]}
+    fs, store = _persisted_alert_store([alert], _pending(14, 10, [alert]))
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 5, 0))
+    buzzer = FakeBuzzer()
+    app = App(
+        clock_port=clock, clock_view=ClockView(FakeDisplayPort()),
+        calendar_view=CalendarView(FakeDisplayPort()), ticks_module=ticks,
+        sync_enabled=False, buzzer_port=buzzer, settings_store=store,
+    )
+
+    app.step()
+    assert app._active_alert is None
+    assert buzzer.ticks == []
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 10, 0)
+    ticks.advance(300000)
+    app.step()
+
+    assert [item["id"] for item in app._active_alert["alerts"]] == ["wake"]
+    assert buzzer.ticks == [(300000, True)]
+    assert json.loads(fs.files[".settings-v1"])["pending_postponed_occurrence"] is None
+
+
+def test_overdue_pending_postpone_is_cleared_without_sound_and_base_alerts_remain():
+    ticks = FakeTicks(0)
+    alert = {"id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2]}
+    fs, store = _persisted_alert_store([alert], _pending(14, 0, [alert]))
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 7, 5, 0))
+    buzzer = FakeBuzzer()
+    app = App(
+        clock_port=clock, clock_view=ClockView(FakeDisplayPort()),
+        calendar_view=CalendarView(FakeDisplayPort()), ticks_module=ticks,
+        sync_enabled=False, buzzer_port=buzzer, settings_store=store,
+    )
+
+    app.step()
+
+    saved = json.loads(fs.files[".settings-v1"])
+    assert saved["pending_postponed_occurrence"] is None
+    assert saved["alerts"] == [alert]
+    assert app._active_alert is None
+    assert buzzer.ticks == []
+
+
+def test_postpone_commit_captures_members_and_preserves_unrelated_settings():
+    ticks = FakeTicks(0)
+    alert = {"id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2]}
+    fs, store = _persisted_alert_store([alert])
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    touch = type("Touch", (), {"read": lambda self: (False, None, None)})()
+    app = App(
+        clock_port=clock, clock_view=ClockView(FakeDisplayPort()),
+        calendar_view=CalendarView(FakeDisplayPort()), ticks_module=ticks,
+        sync_enabled=False, buzzer_port=buzzer, settings_store=store,
+        touch_port=touch,
+    )
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    touch.read = lambda: (True, 160, 220)
+    ticks.advance(1000)
+    app.step()
+
+    saved = json.loads(fs.files[".settings-v1"])
+    pending = saved["pending_postponed_occurrence"]
+    assert saved["wifi_ssid"] == "ssid"
+    assert saved["admin_verifier"]
+    assert pending["alerts"] == [alert]
+    assert pending["due"]["hour"] == 14
+    assert pending["due"]["minute"] == 10

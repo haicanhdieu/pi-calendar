@@ -90,6 +90,8 @@ def validate_settings_object(obj):
         return ValidationResult(False, REASON_UNSUPPORTED)
     if not required_keys.issubset(keys):
         return ValidationResult(False, REASON_INCOMPLETE)
+    if version == SETTINGS_VERSION and "pending_postponed_occurrence" in keys:
+        required_keys = required_keys | {"pending_postponed_occurrence"}
     if keys != required_keys:
         return ValidationResult(False, REASON_INVALID)
 
@@ -174,6 +176,7 @@ def validate_settings_object(obj):
                 }
             )
 
+
     settings = {
         "settings_version": version,
         "wifi_ssid": ssid,
@@ -186,6 +189,8 @@ def validate_settings_object(obj):
     if version == SETTINGS_VERSION:
         settings["alerts"] = alerts
         settings["postpone_delay_minutes"] = postpone_delay_minutes
+        if "pending_postponed_occurrence" in obj:
+            settings["pending_postponed_occurrence"] = obj.get("pending_postponed_occurrence")
     return ValidationResult(True, REASON_OK, settings)
 
 

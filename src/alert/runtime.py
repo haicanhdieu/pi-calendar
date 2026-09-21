@@ -10,6 +10,48 @@ from src.alert.scheduler import (
 from src.alert.terminal import disable_one_time_alerts
 
 
+def _pending_payload(postponed):
+    due = postponed["due"]
+    return {
+        "due": {
+            "year": due.year, "month": due.month, "day": due.day,
+            "weekday": due.weekday, "hour": due.hour, "minute": due.minute,
+        },
+        "alerts": [dict(item, weekdays=list(item.get("weekdays", [])))
+                   for item in postponed["alerts"]],
+        "delay": postponed["delay"],
+    }
+
+
+def _pending_datetime(raw):
+    from src.time.model import DateTime
+
+    due = raw.get("due", {})
+    return DateTime(
+        due["year"], due["month"], due["day"], due["weekday"],
+        due["hour"], due["minute"], 0,
+    )
+
+
+def _commit_alert_state(store, settings, pending, log):
+    if store is None or not isinstance(settings, dict):
+        return settings
+    try:
+        return store.commit(
+            wifi_ssid=settings["wifi_ssid"],
+            wifi_password=settings["wifi_password"],
+            admin_salt_hex=settings["admin_salt"],
+            admin_verifier_hex=settings["admin_verifier"],
+            color_scheme=settings["color_scheme"],
+            alerts=settings.get("alerts", []),
+            postpone_delay_minutes=settings.get("postpone_delay_minutes", 10),
+            pending_postponed_occurrence=pending,
+        )
+    except Exception as exc:
+        log("alert_fail persist %s" % getattr(exc, "code", "commit"))
+        return None
+
+
 def t(app, edge_down, y):
     if not edge_down:
         app.state.surface_deadline = None
@@ -69,8 +111,39 @@ def evaluate(app, snapshot, now):
         app._alert_cfg = (buzzer, store, settings)
     active = getattr(app, "_active_alert", None)
     postponed = getattr(app, "_postponed_alert", None)
+    if postponed is None:
+        raw_pending = settings.get("pending_postponed_occurrence")
+        if isinstance(raw_pending, dict):
+            try:
+                postponed = {
+                    "alerts": [dict(item) for item in raw_pending["alerts"]],
+                    "due": _pending_datetime(raw_pending),
+                    "delay": raw_pending["delay"],
+                    "confirmation": False,
+                    "persisted": True,
+                    "restored": True,
+                }
+                app._postponed_alert = postponed
+            except (KeyError, TypeError, ValueError):
+                postponed = None
     if postponed is not None:
         if due_reached(snapshot.local, postponed["due"]):
+            if postponed.get("persisted") and postponed.get("restored"):
+                cleared = _commit_alert_state(store, settings, None, app._log)
+                if cleared is None and store is not None:
+                    return False
+                settings = cleared or settings
+                app._alert_cfg = (buzzer, store, settings)
+                # A restart must never turn an overdue pending occurrence into
+                # a same-minute base-alert raise.
+                app._postponed_alert = None
+                return True
+            if postponed.get("persisted"):
+                cleared = _commit_alert_state(store, settings, None, app._log)
+                if cleared is None and store is not None:
+                    return False
+                settings = cleared or settings
+                app._alert_cfg = (buzzer, store, settings)
             app._postponed_alert = None
             app._active_alert = {
                 "alerts": postponed["alerts"],
@@ -85,6 +158,7 @@ def evaluate(app, snapshot, now):
         if postponed.get("confirmation"):
             postponed["confirmation"] = False
             return False
+        postponed["restored"] = False
         return False
     if active is not None:
         if active.get("postpone"):
@@ -97,6 +171,12 @@ def evaluate(app, snapshot, now):
                 "delay": delay,
                 "confirmation": True,
             }
+            committed = _commit_alert_state(store, settings, _pending_payload(postponed), app._log)
+            if store is not None and committed is None:
+                return False
+            if committed is not None:
+                settings = committed
+                app._alert_cfg = (buzzer, store, settings)
             app._postponed_alert = postponed
             app._active_alert = None
             app._alert_started_ticks = None
@@ -111,6 +191,10 @@ def evaluate(app, snapshot, now):
                 active["alerts"], settings,
                 store, app._log,
             )
+            if store is not None and settings is not None:
+                cleared = _commit_alert_state(store, settings, None, app._log)
+                if cleared is not None:
+                    settings = cleared
             app._alert_cfg = (buzzer, store, settings)
             app._alert_settings = settings
             app._active_alert = None
@@ -126,6 +210,10 @@ def evaluate(app, snapshot, now):
                 active["alerts"], settings,
                 store, app._log,
             )
+            if store is not None and settings is not None:
+                cleared = _commit_alert_state(store, settings, None, app._log)
+                if cleared is not None:
+                    settings = cleared
             app._alert_cfg = (buzzer, store, settings)
             app._alert_settings = settings
             app._active_alert = None

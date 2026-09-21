@@ -205,6 +205,7 @@ class SettingsStore:
         color_scheme=COLOR_SCHEME_V1,
         alerts=None,
         postpone_delay_minutes=10,
+        pending_postponed_occurrence=None,
     ):
         """
         Atomically persist a complete version-1 record.
@@ -239,6 +240,7 @@ class SettingsStore:
             "color_scheme": color_scheme,
             "alerts": [] if alerts is None else alerts,
             "postpone_delay_minutes": postpone_delay_minutes,
+            "pending_postponed_occurrence": pending_postponed_occurrence,
         }
         return self._commit_record(record)
 

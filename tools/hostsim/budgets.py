@@ -13,7 +13,7 @@ raise it deliberately and say why in the commit message.
 # Compiled-size budgets (``mpy-cross`` output, bytes).  A proxy for heap cost:
 # the heap holds the same bytecode plus per-object overhead, so growth here is
 # growth there.  Cheap to check and needs no MicroPython interpreter.
-BOOT_RESIDENT_MPY_BYTES = 47_050  # Story 2.3 alert-touch dispatch headroom
+BOOT_RESIDENT_MPY_BYTES = 47_150  # Story 2.5 pending-state schema headroom
 STATION_WEB_MPY_BYTES = 37_000  # measured 34,166
 COMBINED_MPY_BYTES = 84_000  # measured 78,019
 
