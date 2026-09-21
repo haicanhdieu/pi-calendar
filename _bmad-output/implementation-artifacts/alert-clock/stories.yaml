@@ -1,0 +1,43 @@
+stories:
+  - id: 1.1-view-stored-alerts-on-the-config-page
+    title: View stored alerts on the Config page
+    description: Display authenticated stored alerts with versioned settings migration, readable recurrence, and an explicit empty state.
+  - id: 1.2-add-an-alert-with-a-time-and-recurrence
+    title: Add an alert with a time and recurrence
+    description: Add an authenticated inline alert form with validated local time, enabled state, and one-time or weekday recurrence.
+  - id: 1.3-edit-an-alert-and-toggle-its-enabled-state
+    title: Edit an alert and toggle its enabled state
+    description: Edit an existing alert inline and persist time, recurrence, and enabled-state changes atomically.
+  - id: 1.4-delete-an-alert-with-explicit-confirmation
+    title: Delete an alert with explicit confirmation
+    description: Delete an existing alert only after explicit browser confirmation while preserving remaining settings.
+  - id: 1.5-set-the-global-postpone-delay
+    title: Set the global postpone delay
+    description: Configure and persist the authenticated global postpone delay as a whole number from one through sixty minutes.
+  - id: 2.1-sound-a-bounded-tut-cadence-through-the-buzzer-port
+    title: Sound a bounded tut cadence through the buzzer port
+    description: Provide a non-blocking active-high buzzer port with the required 180 millisecond high and 220 millisecond low cadence.
+  - id: 2.2-a-due-alert-takes-over-the-screen-sounds-and-auto-stops
+    title: A due alert takes over the screen, sounds, and auto-stops
+    description: Raise due alerts from local civil time, preempt normal views, sound them, and auto-stop after five monotonic minutes.
+  - id: 2.3-stop-an-active-alert-with-one-tap
+    title: Stop an active alert with one tap
+    description: Resolve every alert in an active occurrence from one debounced STOP action and resume normal rotation.
+  - id: 2.4-postpone-an-active-alert-and-see-its-new-due-time
+    title: Postpone an active alert and see its new due time
+    description: Defer an active occurrence by the configured delay, show its explicit due-time confirmation, and re-alert later.
+  - id: 2.5-a-pending-postpone-survives-a-reboot
+    title: A pending postpone survives a reboot
+    description: Persist pending postponed occurrence state atomically and restore only future due times after reboot.
+  - id: 2.6-alerts-that-collide-join-one-occurrence
+    title: Alerts that collide join one occurrence
+    description: Combine same-minute and already-active due alerts into one occurrence with shared resolution behavior.
+  - id: 2.7-configuration-changes-never-disrupt-an-alert-already-ringing
+    title: Configuration changes never disrupt an alert already ringing
+    description: Apply committed alert configuration at loop boundaries while active and postponed occurrences retain their captured members.
+  - id: 2.8-a-buzzer-or-render-failure-stays-bounded-and-recoverable
+    title: A buzzer or render failure stays bounded and recoverable
+    description: Surface secret-free bounded failure states, silence safely, preserve loop recovery, and permit later alert attempts.
+  - id: 2.9-prove-the-whole-alert-flow-on-the-flashed-device
+    title: Prove the whole alert flow on the flashed Device
+    description: Record separate flashed-device evidence for buzzer, controls, auto-stop, postpone, collisions, persistence, and Wi-Fi-unavailable operation.
