@@ -558,6 +558,48 @@ def test_invalid_or_unknown_edit_does_not_mutate_settings():
         assert fs.files[".settings-v1"] == prior
 
 
+def test_delete_alert_with_extra_field_is_rejected_without_mutating():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x1d" * n)
+    sid = table.create(0)
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2,
+        alerts=[{"id": "morning", "hour": 7, "minute": 0, "enabled": True, "weekdays": []}],
+        postpone_delay_minutes=10,
+    )})
+    store = _store(fs)
+    headers = {"cookie": "pc_session={}".format(sid),
+               "content-type": "application/x-www-form-urlencoded"}
+    prior = fs.files[".settings-v1"]
+
+    response = route_config_request(
+        Req("POST", "/settings", headers,
+            b"alert_action=delete&alert_id=morning&extra=1"),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b"Invalid alert action." in response
+    assert fs.files[".settings-v1"] == prior
+
+    response = route_config_request(
+        Req("POST", "/settings", headers, b"alert_action=delete"),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b"Invalid alert action." in response, (
+        "exactly one field (missing alert_id) fails the len(fields)!=2 check "
+        "before the dedicated alert_id-presence check ever runs"
+    )
+    assert fs.files[".settings-v1"] == prior
+
+    response = route_config_request(
+        Req("POST", "/settings", headers, b"alert_action=delete&bogus=1"),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b"Invalid alert fields." in response, (
+        "two fields but no alert_id key must reach the dedicated presence check"
+    )
+    assert fs.files[".settings-v1"] == prior
+
+
 def test_route_login_post_kdf_and_busy():
     ticks = FakeTicks(0)
     table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x03" * n)

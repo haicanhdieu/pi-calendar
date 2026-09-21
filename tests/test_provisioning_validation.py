@@ -204,6 +204,78 @@ def test_alert_id_validation_accepts_stable_ids_and_rejects_unsafe_ids():
     assert validate_alert_id("Morning").reason == "fields"
     assert validate_alert_id("morning/").reason == "fields"
     assert validate_alert_id(1).reason == "fields"
+    assert validate_alert_id("").reason == "fields"
+    assert validate_alert_id(None).reason == "fields"
+    assert validate_alert_id("morning.1").reason == "fields"
+    assert validate_alert_id("morning_1").reason == "fields"
+    assert validate_alert_id(" morning").reason == "fields"
+    assert validate_alert_id("9").ok
+    assert validate_alert_id("-").ok
+
+
+def test_alert_form_validation_rejects_malformed_time_and_accepts_boundaries():
+    def _time(value):
+        return validate_alert_form_fields(
+            {"alert_action": "add", "alert_time": value}, "alert-1", 0,
+        )
+
+    assert _time("00:00").ok
+    assert _time("23:59").ok
+    assert _time("24:00").reason == "time"
+    assert _time("23:60").reason == "time"
+    assert _time("9:00").reason == "time", "must reject a non-zero-padded hour"
+    assert _time("09:0").reason == "time", "must reject a non-zero-padded minute"
+    assert _time("ab:00").reason == "time"
+    assert _time("07:0a").reason == "time"
+    assert _time("07-00").reason == "time", "must require the colon separator"
+    assert _time("070:00").reason == "time"
+    assert _time("07:000").reason == "time"
+    assert _time("0700").reason == "time"
+    assert _time("").reason == "time"
+    assert _time(None).reason == "time", "missing alert_time must reject, not KeyError"
+    assert _time(7).reason == "time", "non-string alert_time must reject, not TypeError"
+    assert _time("-1:00").reason == "time"
+    assert _time("07:-1").reason == "time"
+
+
+def test_alert_form_validation_rejects_unknown_action_values():
+    base = {"alert_time": "07:00"}
+    assert validate_alert_form_fields(dict(base, alert_action="delete"), "alert-1", 0).reason == "action"
+    assert validate_alert_form_fields(dict(base, alert_action="bogus"), "alert-1", 0).reason == "action"
+    assert validate_alert_form_fields(base, "alert-1", 0).reason == "action", (
+        "a missing alert_action must reject, not KeyError"
+    )
+    assert validate_alert_form_fields(dict(base, alert_action=""), "alert-1", 0).reason == "action"
+
+
+def test_alert_form_validation_enabled_is_case_sensitive_and_typed():
+    base = {"alert_action": "add", "alert_time": "07:00"}
+    assert validate_alert_form_fields(dict(base, alert_enabled="On"), "alert-1", 0).reason == "enabled"
+    assert validate_alert_form_fields(dict(base, alert_enabled="1"), "alert-1", 0).reason == "enabled"
+    assert validate_alert_form_fields(dict(base, alert_enabled="true"), "alert-1", 0).reason == "enabled"
+    assert validate_alert_form_fields(dict(base, alert_enabled=""), "alert-1", 0).reason == "enabled"
+    # Omitted entirely (real unchecked-checkbox semantics) must be accepted as disabled.
+    ok = validate_alert_form_fields(base, "alert-1", 0)
+    assert ok.ok and ok.settings["enabled"] is False
+
+
+def test_alert_form_validation_weekday_boundaries_and_unknown_index():
+    base = {"alert_action": "add", "alert_time": "07:00"}
+    all_days = validate_alert_form_fields(
+        dict(base, **{"weekday_{}".format(i): "on" for i in range(7)}), "alert-1", 0,
+    )
+    assert all_days.ok and all_days.settings["weekdays"] == [0, 1, 2, 3, 4, 5, 6]
+    # weekday_7 is outside the 0-6 range the editor renders, so it is simply
+    # an unrecognized field name, not a recurrence-shaped rejection.
+    assert validate_alert_form_fields(dict(base, weekday_7="on"), "alert-1", 0).reason == "fields"
+    assert validate_alert_form_fields(dict(base, weekday_0="off"), "alert-1", 0).reason == "recurrence"
+    assert validate_alert_form_fields(dict(base, weekday_0=""), "alert-1", 0).reason == "recurrence"
+
+
+def test_alert_form_validation_add_ignores_alert_id_field():
+    # alert_id is only in the allowlist for "edit"; on "add" it is unknown.
+    fields = {"alert_action": "add", "alert_time": "07:00", "alert_id": "morning"}
+    assert validate_alert_form_fields(fields, "alert-1", 0).reason == "fields"
 
 
 def test_postpone_delay_validation_accepts_only_whole_minutes_1_to_60():
