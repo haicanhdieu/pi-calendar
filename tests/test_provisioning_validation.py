@@ -17,6 +17,7 @@ from src.provisioning.verifier import (
     derive_admin_verifier,
     verify_admin_password,
 )
+from src.device.web.alert_validation import validate_alert_form_fields
 
 _ROOT = Path(__file__).resolve().parents[1]
 _FORBIDDEN = frozenset({"machine", "network", "socket", "ntptime"})
@@ -163,3 +164,24 @@ def test_pure_provisioning_modules_forbid_device_imports():
             elif isinstance(node, ast.ImportFrom):
                 if node.module:
                     assert node.module.split(".")[0] not in _FORBIDDEN
+
+
+def test_alert_form_validation_returns_canonical_weekday_alert():
+    result = validate_alert_form_fields(
+        {"alert_action": "add", "alert_time": "07:00",
+         "alert_enabled": "on", "weekday_0": "on", "weekday_4": "on"},
+        "alert-1", 0,
+    )
+    assert result.ok is True
+    assert result.settings == {
+        "id": "alert-1", "hour": 7, "minute": 0,
+        "enabled": True, "weekdays": [0, 4],
+    }
+
+
+def test_alert_form_validation_rejects_unknown_and_invalid_fields():
+    base = {"alert_action": "add", "alert_time": "07:00"}
+    assert validate_alert_form_fields(dict(base, extra="x"), "alert-1", 0).reason == "fields"
+    assert validate_alert_form_fields(dict(base, alert_enabled="false"), "alert-1", 0).reason == "enabled"
+    assert validate_alert_form_fields(dict(base, weekday_0="yes"), "alert-1", 0).reason == "recurrence"
+    assert validate_alert_form_fields(base, "alert-1", 10).reason == "limit"

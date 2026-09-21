@@ -3,10 +3,7 @@
 from src import config
 from src.device.web.http_parse import cookie_header_value, parse_form_urlencoded
 from src.device.web import pages
-from src.provisioning.validation import (
-    validate_admin_password_field,
-    validate_setup_form_fields,
-)
+from src.provisioning.validation import validate_setup_form_fields
 
 ACTION_RESPOND = "respond"
 ACTION_SCAN = "scan"
@@ -110,11 +107,13 @@ def route_config_request(request, mode, session_table, now, kdf_busy, settings_s
     if path == "/login" and method == "POST":
         return _route_login_post(request, kdf_busy)
 
-    if path in ("/", "/settings") and method == "GET":
+    if path in ("/", "/settings", "/settings/add") and method == "GET":
         return _route_protected_get(request, session_table, now, settings_store)
 
     if path in ("/", "/settings") and method == "POST":
-        return _route_password_change_post(request, session_table, now, kdf_busy)
+        from src.device.web.settings_post import route
+        return route(request, session_table, now, kdf_busy, settings_store,
+                     _lookup_session, RouteResult)
 
     if path in ("/", "/settings", "/login"):
         return RouteResult(ACTION_RESPOND, pages.response_unsupported())
@@ -149,48 +148,9 @@ def _route_protected_get(request, session_table, now, settings_store=None):
             settings = None
     return RouteResult(
         ACTION_RESPOND,
-        pages.response_settings_page(settings=settings),
-        renew_session_id=entry.encoded_id,
-    )
-
-
-def _route_password_change_post(request, session_table, now, kdf_busy):
-    entry, reject = _lookup_session(request, session_table, now)
-    if reject is not None:
-        return reject
-
-    if kdf_busy:
-        return RouteResult(
-            ACTION_RESPOND, pages.response_busy(), error_code="busy"
-        )
-
-    ctype = request.headers.get("content-type", "")
-    if ctype and "application/x-www-form-urlencoded" not in ctype.lower():
-        return RouteResult(ACTION_RESPOND, pages.response_bad_request())
-
-    fields = parse_form_urlencoded(request.body)
-    if fields is None:
-        return RouteResult(ACTION_RESPOND, pages.response_bad_request())
-
-    new_password = fields.get("new_password", "")
-    if not isinstance(new_password, str):
-        new_password = str(new_password)
-    check = validate_admin_password_field(new_password)
-    if not check.ok:
-        new_password = None
-        fields = None
-        request.body = b""
-        return RouteResult(ACTION_RESPOND, pages.response_bad_request())
-
-    password_ba = bytearray(new_password.encode("utf-8"))
-    new_password = None
-    check = None
-    fields = None
-    request.body = b""
-
-    return RouteResult(
-        ACTION_PASSWORD_CHANGE_KDF,
-        password=password_ba,
+        pages.response_settings_page(
+            settings=settings, alert_editor=request.path == "/settings/add"
+        ),
         renew_session_id=entry.encoded_id,
     )
 

@@ -202,6 +202,106 @@ def test_unauthenticated_alert_data_never_renders():
     assert b"No alerts stored" not in response
 
 
+def test_authenticated_add_alert_commits_weekday_recurrence():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x14" * n)
+    sid = table.create(0)
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2, alerts=[], postpone_delay_minutes=10
+    )})
+    store = _store(fs)
+    body = b"alert_action=add&alert_time=07%3A00&alert_enabled=on&weekday_0=on&weekday_1=on&weekday_2=on&weekday_3=on&weekday_4=on"
+    response = route_config_request(
+        Req("POST", "/settings", {
+            "cookie": "pc_session={}".format(sid),
+            "content-type": "application/x-www-form-urlencoded",
+        }, body), MODE_STATION_ONLINE, table, 0, False, settings_store=store
+    ).response
+    assert b"Alert saved." in response
+    saved = store.load()
+    assert saved["alerts"] == [{
+        "id": "alert-1", "hour": 7, "minute": 0,
+        "enabled": True, "weekdays": [0, 1, 2, 3, 4],
+    }]
+    assert b"07:00" in response and "Monday\u2013Friday".encode() in response
+
+
+def test_add_one_time_alert_and_invalid_add_do_not_mutate_record():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x15" * n)
+    sid = table.create(0)
+    fs = FakeFS({".settings-v1": _record_bytes()})
+    store = _store(fs)
+    headers = {
+        "cookie": "pc_session={}".format(sid),
+        "content-type": "application/x-www-form-urlencoded",
+    }
+    one_time = route_config_request(
+        Req("POST", "/settings", headers, b"alert_action=add&alert_time=09%3A30"),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b"Alert saved." in one_time
+    assert store.load()["alerts"][0]["weekdays"] == []
+    prior = fs.files[".settings-v1"]
+    invalid = route_config_request(
+        Req("POST", "/settings", headers, b"alert_action=add&alert_time=99%3A99"),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b"Invalid Time." in invalid
+    assert fs.files[".settings-v1"] == prior
+
+
+def test_invalid_add_with_unknown_field_does_not_commit():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x17" * n)
+    sid = table.create(0)
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2, alerts=[], postpone_delay_minutes=10
+    )})
+    store = _store(fs)
+    prior = fs.files[".settings-v1"]
+    response = route_config_request(
+        Req("POST", "/settings", {
+            "cookie": "pc_session={}".format(sid),
+            "content-type": "application/x-www-form-urlencoded",
+        }, b"alert_action=add&alert_time=09%3A30&weekday_9=on"),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b"Invalid alert fields." in response
+    assert fs.files[".settings-v1"] == prior
+
+
+def test_add_alert_is_unavailable_and_rejected_at_ten():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x16" * n)
+    sid = table.create(0)
+    alerts = [
+        {"id": "alert-{}".format(i), "hour": i, "minute": 0,
+         "enabled": True, "weekdays": []}
+        for i in range(10)
+    ]
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2, alerts=alerts, postpone_delay_minutes=10
+    )})
+    store = _store(fs)
+    get = route_config_request(
+        Req("GET", "/settings", {"cookie": "pc_session={}".format(sid)}),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b"Ten-alert limit reached" in get
+    assert b'name="alert_action"' not in get
+    prior = fs.files[".settings-v1"]
+    post = route_config_request(
+        Req("POST", "/settings", {
+            "cookie": "pc_session={}".format(sid),
+            "content-type": "application/x-www-form-urlencoded",
+        }, b"alert_action=add&alert_time=10%3A00"),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b"Ten-alert limit reached" in post
+    assert fs.files[".settings-v1"] == prior
+
+
 def test_route_login_post_kdf_and_busy():
     ticks = FakeTicks(0)
     table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x03" * n)
