@@ -111,6 +111,8 @@ def main():
         mailbox=mailbox,
         sync_enabled=sync_enabled,
         network_events=network_events,
+        buzzer_port=buzzer_port,
+        settings_store=settings_store,
         touch_port=touch_port,
         reboot_port=reboot_port,
         sleep_ms_fn=sleep_ms,

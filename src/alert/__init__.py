@@ -1,0 +1,1 @@
+"""Pure alert scheduling domain."""

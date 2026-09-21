@@ -1,5 +1,3 @@
-"""Single-writer App loop: snapshots, view rotation, tick deadlines."""
-
 from src import config
 from src import ticks as default_ticks
 from src.calendar.gregorian import build_month_grid
@@ -37,8 +35,6 @@ _OVERLAY_STATION_IP = "station_ip"
 
 
 class _SyncCommand:
-    """Duck-typed SyncCommand so App never imports ``src.device``."""
-
     __slots__ = ("command_id", "deadline_ms")
 
     def __init__(self, command_id, deadline_ms):
@@ -47,8 +43,6 @@ class _SyncCommand:
 
 
 class AppState:
-    """Mutable product state owned exclusively by App."""
-
     __slots__ = (
         "trust",
         "utc_valid",
@@ -78,15 +72,6 @@ class AppState:
 
 
 class App:
-    """
-    Sole writer of AppState.
-
-    Reads advancing UTC only through an injected ClockPort, derives immutable
-    TimeSnapshots via pure time logic, and schedules work with ticks helpers.
-    Loop order (AD-12): touch → adapter results → network events → snapshot →
-    rollover → view deadline → base render → status overlays.
-    """
-
     def __init__(
         self,
         clock_port,
@@ -102,6 +87,9 @@ class App:
         touch_port=None,
         reboot_port=None,
         sleep_ms_fn=None,
+        buzzer_port=None,
+        settings_store=None,
+        alert_settings=None,
     ):
         self._clock = clock_port
         self._view = clock_view
@@ -120,6 +108,7 @@ class App:
         self._network_events = network_events
         self._touch_port = touch_port
         self._reboot_port = reboot_port
+        self._alert_cfg = (buzzer_port, settings_store, alert_settings)
         if sleep_ms_fn is None:
             def sleep_ms_fn(ms):
                 from time import sleep_ms as _sleep_ms
@@ -129,7 +118,6 @@ class App:
         self._sleep_ms_fn = sleep_ms_fn
         self.state = AppState()
         self._booted = False
-        self._last_snapshot = None
         self._last_local_ymd = None
         self._month_grid = None
         self._next_command_id = 1
@@ -147,7 +135,6 @@ class App:
         self.state.surface_deadline = None
 
     def boot(self):
-        """Enter Clock as the active view and arm tick deadlines."""
         t = self._ticks
         now = t.ticks_ms()
         self.state.active_view = VIEW_CLOCK
@@ -177,22 +164,10 @@ class App:
         self._booted = True
 
     def report_time_source_failure(self, reason):
-        """
-        Soft-fail path for expected sync/credential problems.
-
-        Marks trust unsynced, emits a concise diagnostic, and returns without
-        raising or blocking the loop.
-        """
         self.state.trust = TRUST_UNSYNCED
         self._log("time-source: unsynced — %s" % (reason,))
 
     def step(self, now_ticks=None):
-        """
-        One non-blocking loop iteration (AD-12 event order).
-
-        When ``now_ticks`` is omitted, uses ``ticks_ms()``. Host tests inject
-        fake ticks and advance FakeClockPort without sleeping.
-        """
         if not self._booted:
             self.boot()
 
@@ -217,7 +192,11 @@ class App:
         # 2. Derive snapshot.
         utc = self._clock.read_utc()
         snapshot = make_snapshot(utc, self.state.trust, self.state.sync_age_ms)
-        self._last_snapshot = snapshot
+
+        from src.alert.runtime import evaluate
+
+        if evaluate(self, snapshot, now):
+            return
 
         # 3. Handle date / month rollover.
         force_redraw = self._handle_rollover(snapshot, now) or force_redraw
@@ -238,7 +217,6 @@ class App:
             self.state.redraw_deadline = self._next_redraw_deadline(now)
 
     def _poll_touch(self, now):
-        """Read the optional touch port once and commit its surface decision."""
         edge_down = False
         x = y = None
         if self._touch_port is not None:
@@ -306,7 +284,6 @@ class App:
         return reboot_tap
 
     def _handle_settings_reboot_tap(self):
-        """Draw Press Flash, dwell, then invoke the injected reboot port once."""
         self._settings_view.draw_reboot_press_flash()
         self._sleep_ms_fn(config.PRESS_FLASH_MS)
         reboot_port = self._reboot_port
@@ -322,7 +299,6 @@ class App:
         self.state.view_deadline = self._ticks.ticks_add(now, duration)
 
     def _next_redraw_deadline(self, now):
-        """Use the short cadence only while the Bar reveal is in progress."""
         if (
             self.state.active_surface == SURFACE_BAR
             and self._bar_reveal_started is not None
@@ -393,7 +369,6 @@ class App:
             self._overlay_clear_deadline = None
 
     def _network_status(self):
-        """Immutable-ish retained network-status payload for Settings."""
         kind = self._overlay_kind
         if kind is None:
             return None
@@ -407,7 +382,6 @@ class App:
         return self._ticks.ticks_diff(now_ms, deadline_ms) >= 0
 
     def _should_apply_result(self, result, expected_command_id, deadline_ms, now_ms):
-        """Matching, non-expired gate (duck-typed; no ``src.device`` import)."""
         if result is None:
             return False
         if result.command_id != expected_command_id:
@@ -476,7 +450,6 @@ class App:
         # Rejected (busy / result occupied): leave retry_deadline due.
 
     def _handle_rollover(self, snapshot, now):
-        """Apply same-month today refresh or month-change cut; return force flag."""
         local = snapshot.local
         if local is None:
             return False
@@ -505,7 +478,6 @@ class App:
         return True
 
     def _handle_view_deadline(self, snapshot, now):
-        """Rotate or re-arm dwell; return True when painted content changes."""
         t = self._ticks
         nxt = next_view_after_dwell(self.state.active_view, snapshot)
         if nxt == self.state.active_view:
@@ -605,14 +577,3 @@ class App:
             self._bar_retract_started = None
             self._bar_retract_start_height = None
             self._bar_visible_height = 0
-
-    def run_forever(self, sleep_ms_fn=None):
-        """Device loop: step + short sleep. Not used by host tests."""
-        if sleep_ms_fn is None:
-            from time import sleep_ms as sleep_ms_fn
-
-        if not self._booted:
-            self.boot()
-        while True:
-            self.step()
-            sleep_ms_fn(10)

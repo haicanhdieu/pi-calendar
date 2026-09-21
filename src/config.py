@@ -45,6 +45,9 @@ BAR_HEIGHT_PX = 36
 TAP_TARGET_SIZE_PX = 48
 PRESS_FLASH_MS = 120
 
+# Alert Clock Story 2.2: monotonic safety exit for unanswered occurrences.
+ALERT_AUTO_STOP_MS = 5 * 60 * 1000
+
 # Settings view layout (Story 3.1)
 SETTINGS_TOP_PADDING_PX = 28
 SETTINGS_STATUS_GUIDELINE_GAP_PX = 18
