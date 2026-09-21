@@ -682,6 +682,121 @@ def test_coordinator_unauth_redirect_and_setup_404():
     assert b"404" in client2.sent
 
 
+def test_coordinator_authenticated_add_page_returns_complete_editor_response():
+    coordinator, http, sockets, _ticks, store = _online_coordinator()
+    coordinator._get_sessions()
+    sid = coordinator._sessions.create(0)
+    client = FakeStreamSocket()
+    sockets.listen.enqueue(client)
+    client.push_client_bytes(
+        _http_get("/settings/add", "pc_session=" + sid)
+    )
+
+    assert _pump(coordinator, lambda: client.closed and client.sent)
+    assert client.sent.startswith(b"HTTP/1.0 200 OK")
+    assert b'name="alert_time"' in client.sent
+    assert b"name=weekday_0" in client.sent
+
+
+def test_coordinator_authenticated_edit_page_uses_lazy_session_factory():
+    coordinator, _http, sockets, _ticks, _store = _online_coordinator()
+    coordinator._get_sessions()
+    sid = coordinator._sessions.create(0)
+    client = FakeStreamSocket()
+    sockets.listen.enqueue(client)
+    client.push_client_bytes(_http_get("/settings/edit/morning", "pc_session=" + sid))
+
+    assert _pump(coordinator, lambda: client.closed and client.sent)
+    assert client.sent.startswith(b"HTTP/1.0 200 OK")
+    assert b"Device Settings" in client.sent
+
+
+def test_coordinator_unauthenticated_add_page_redirects_without_editor():
+    coordinator, _http, sockets, _ticks, _store = _online_coordinator()
+    client = FakeStreamSocket()
+    sockets.listen.enqueue(client)
+    client.push_client_bytes(_http_get("/settings/add"))
+
+    assert _pump(coordinator, lambda: client.closed and client.sent)
+    assert client.sent.startswith(b"HTTP/1.0 302 Found")
+    assert b"Location: /login" in client.sent
+    assert b"alert_time" not in client.sent
+
+
+def test_coordinator_expired_add_session_redirects_without_editor():
+    coordinator, _http, sockets, ticks, _store = _online_coordinator()
+    coordinator._get_sessions()
+    sid = coordinator._sessions.create(0)
+    ticks.now = 10**9
+    client = FakeStreamSocket()
+    sockets.listen.enqueue(client)
+    client.push_client_bytes(_http_get("/settings/add", "pc_session=" + sid))
+
+    assert _pump(coordinator, lambda: client.closed and client.sent)
+    assert client.sent.startswith(b"HTTP/1.0 302 Found")
+    assert b"Location: /login" in client.sent
+    assert b"Max-Age=0" in client.sent
+    assert b"alert_time" not in client.sent
+
+
+def test_request_render_failure_returns_503_and_followup_request_recovers(monkeypatch):
+    coordinator, http, sockets, _ticks, _store = _online_coordinator()
+    coordinator._get_sessions()
+    sid = coordinator._sessions.create(0)
+    client = FakeStreamSocket()
+    sockets.listen.enqueue(client)
+    client.push_client_bytes(_http_get("/settings/add", "pc_session=" + sid))
+
+    from src.device.web import pages
+
+    original = pages.response_settings_page
+    monkeypatch.setattr(
+        pages,
+        "response_settings_page",
+        lambda *args, **kwargs: (_ for _ in ()).throw(MemoryError()),
+    )
+    events = []
+    coordinator._event_sink = events
+    assert _pump(coordinator, lambda: client.closed and client.sent)
+    assert client.sent.startswith(b"HTTP/1.0 503 Service Unavailable")
+    assert b"Service temporarily unavailable" in client.sent
+    assert client.closed
+    assert events[-1].error_code == "web_asset"
+    assert http._listen is not None
+
+    monkeypatch.setattr(pages, "response_settings_page", original)
+    followup = FakeStreamSocket()
+    sockets.listen.enqueue(followup)
+    followup.push_client_bytes(_http_get("/settings", "pc_session=" + sid))
+    assert _pump(coordinator, lambda: followup.closed and followup.sent)
+    assert followup.sent.startswith(b"HTTP/1.0 200 OK")
+    assert b"Device Settings" in followup.sent
+
+
+def test_generic_request_failure_returns_503_and_emits_existing_event(monkeypatch):
+    coordinator, http, sockets, _ticks, _store = _online_coordinator()
+    coordinator._get_sessions()
+    sid = coordinator._sessions.create(0)
+    client = FakeStreamSocket()
+    sockets.listen.enqueue(client)
+    client.push_client_bytes(_http_get("/settings/add", "pc_session=" + sid))
+
+    from src.device.web import pages
+
+    monkeypatch.setattr(
+        pages,
+        "response_settings_page",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+    events = []
+    coordinator._event_sink = events
+    assert _pump(coordinator, lambda: client.closed and client.sent)
+    assert client.sent.startswith(b"HTTP/1.0 503 Service Unavailable")
+    assert client.closed
+    assert http._listen is not None
+    assert events[-1].error_code == "web_asset"
+
+
 def test_coordinator_bad_password_no_session_cookie():
     coordinator, http, sockets, ticks, _store = _online_coordinator()
     client = FakeStreamSocket()

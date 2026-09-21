@@ -13,6 +13,15 @@ ACTION_SCAN = "scan"
 ACTION_CONNECT = "connect"
 
 _WOULD_BLOCK_ERRNOS = (11, 35, 10035)
+_REQUEST_FAILURE_MEMORY = "request_memory"
+_REQUEST_FAILURE = "request_error"
+_REQUEST_FAILURE_RESPONSE = (
+    b"HTTP/1.0 503 Service Unavailable\r\n"
+    b"Content-Type: text/plain; charset=utf-8\r\n"
+    b"Content-Length: 31\r\n"
+    b"Connection: close\r\n\r\n"
+    b"Service temporarily unavailable"
+)
 
 
 class WebResourceError(Exception):
@@ -155,6 +164,14 @@ class SetupHttpServer:
             if client is not self._held_client:
                 self._close_client(client)
 
+    def consume_failure_phase(self):
+        """Return and clear a request-dispatch failure phase once."""
+        phase = self.last_failure_phase
+        if phase is not None and phase.startswith("request"):
+            self.last_failure_phase = None
+            return phase
+        return None
+
     def tick(
         self,
         mode,
@@ -293,30 +310,51 @@ class SetupHttpServer:
             self._close_client(client)
             return None
 
-        request, error, _consumed = client.parser.feed(data)
-        if error is not None:
-            pages = self._setup_pages()
-            client.outbox = self._as_source(pages.response_for_parse_error(error))
-            client.parser.release()
-            client.out_offset = 0
-            client.closing = True
-            return None
-        if request is None:
-            return None
+        request_complete = False
+        try:
+            request, error, _consumed = client.parser.feed(data)
+            if error is not None:
+                request_complete = True
+                pages = self._setup_pages()
+                client.outbox = self._as_source(pages.response_for_parse_error(error))
+                client.parser.release()
+                client.out_offset = 0
+                client.closing = True
+                return None
+            if request is None:
+                return None
+            request_complete = True
 
-        if mode == "STATION_ONLINE":
-            result = self._dispatch_config(
-                client, request, session_table, now_ticks, kdf_busy, settings_store
-            )
-        else:
-            result = self._dispatch_setup(client, request, mode, candidate_active, scan_fn)
-        if client.outbox is not None:
-            client.outbox = self._as_source(client.outbox)
-        # The route has copied only its owned values (or selected a response).
-        # Do not retain the parser's headers/body alongside KDF/job state.
-        if not client.held:
+            if mode == "STATION_ONLINE":
+                result = self._dispatch_config(
+                    client, request, session_table, now_ticks, kdf_busy, settings_store
+                )
+            else:
+                result = self._dispatch_setup(client, request, mode, candidate_active, scan_fn)
+            if client.outbox is not None:
+                client.outbox = self._as_source(client.outbox)
+            return result
+        except MemoryError:
+            return self._queue_request_failure(client, _REQUEST_FAILURE_MEMORY)
+        except Exception:
+            return self._queue_request_failure(client, _REQUEST_FAILURE)
+        finally:
+            # The route has copied only its owned values (or selected a response).
+            # Do not retain the parser's headers/body alongside KDF/job state.
+            if request_complete and not client.held:
+                client.parser.release()
+
+    def _queue_request_failure(self, client, phase):
+        """Queue a bounded response and keep the listener available."""
+        self.last_failure_phase = phase
+        try:
             client.parser.release()
-        return result
+        except Exception:
+            pass
+        client.outbox = _REQUEST_FAILURE_RESPONSE
+        client.out_offset = 0
+        client.closing = True
+        return None
 
     def _dispatch_setup(self, client, request, mode, candidate_active, scan_fn):
         from src.device.web.setup_router import route_setup_request
@@ -392,7 +430,10 @@ class SetupHttpServer:
         from src.device.web.router import (
             ACTION_LOGIN_KDF, ACTION_PASSWORD_CHANGE_KDF, route_config_request,
         )
-        if callable(session_table) and request.path in ("/", "/settings"):
+        if callable(session_table) and (
+            request.path in ("/", "/settings", "/settings/add")
+            or request.path.startswith("/settings/edit/")
+        ):
             session_table = session_table()
         if now_ticks is None:
             client.outbox = config_pages.response_not_found()

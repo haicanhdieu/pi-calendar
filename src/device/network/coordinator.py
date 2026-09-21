@@ -580,6 +580,17 @@ class NetworkCoordinator:
             self._log("web_asset " + type(exc).__name__)
             self._web_failure("asset", station=True, now=now)
             return kdf_active
+        request_failure = None
+        consume_failure = getattr(http, "consume_failure_phase", None)
+        if callable(consume_failure):
+            request_failure = consume_failure()
+        if request_failure is not None:
+            self._log("web_" + request_failure)
+            self._web_failure("asset", station=True, now=now)
+            # A request-local failure must not pause later authenticated requests.
+            self._web_next_retry = now
+            http.drain_writes()
+            return kdf_active
         if action is None:
             self._web_recovered("asset")
             return kdf_active
@@ -861,6 +872,15 @@ class NetworkCoordinator:
             http.close_clients()
             self._log("web_asset " + type(exc).__name__)
             self._web_failure("asset", now=now)
+            return
+        request_failure = None
+        consume_failure = getattr(http, "consume_failure_phase", None)
+        if callable(consume_failure):
+            request_failure = consume_failure()
+        if request_failure is not None:
+            self._log("web_" + request_failure)
+            self._web_failure("asset", now=now)
+            http.drain_writes()
             return
         if action is None:
             self._web_recovered("asset")
