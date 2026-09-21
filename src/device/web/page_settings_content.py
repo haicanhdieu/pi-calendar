@@ -43,7 +43,8 @@ def _alert_rows(settings, editing_alert_id=None):
         recurrence = _weekday_text(alert["weekdays"])
         editor = ""
         if alert.get("id") == editing_alert_id:
-            editor = __import__("src.device.web.page_alert_editor", fromlist=["alert_editor_html"]).alert_editor_html(alert)
+            from src.device.web.page_alert_editor import alert_editor_html
+            editor = alert_editor_html(alert)
         rows.append(
             '<article><strong>{time}</strong>'
             '<span>{recurrence} \u00b7 {state}</span>'
@@ -77,13 +78,13 @@ def settings_page_html(password_changed=False, settings=None, alert_saved=False,
         settings.get("postpone_delay_minutes", 10), postpone_saved, postpone_error
     )
     alerts = settings.get("alerts", [])
-    add_control = (
-        '<p class="limit-note">Ten-alert limit reached. Delete an alert before adding another.</p>'
-        if len(alerts) >= 10 else (
-            __import__("src.device.web.page_alert_editor", fromlist=["alert_editor_html"])
-            .alert_editor_html() if alert_editor else '<p><a href="/settings/add">Add alert</a></p>'
-        )
-    )
+    if len(alerts) >= 10:
+        add_control = '<p class="limit-note">Ten-alert limit reached. Delete an alert before adding another.</p>'
+    elif alert_editor:
+        from src.device.web.page_alert_editor import alert_editor_html
+        add_control = alert_editor_html()
+    else:
+        add_control = '<p><a href="/settings/add">Add alert</a></p>'
     return (
         _PAGE_START + banner + alert_feedback + _alert_rows(settings, editing_alert_id) + add_control
         + _PAGE_END.format(postpone_section, " open" if password_changed else "")

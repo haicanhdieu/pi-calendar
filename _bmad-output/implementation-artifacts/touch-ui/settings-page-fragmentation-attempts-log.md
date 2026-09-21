@@ -125,6 +125,42 @@ answers whether the render loop matters at all here.
    to break the display loop. That door is closed until something else
    changes the memory budget at that point in boot.
 
+## New data point (2026-09-21, live-device E2E session)
+
+While building a live-device E2E suite for the settings page, found the
+same failure class hits a *different* first-use import than `session.py`:
+the first request that renders the alert-editor inline form (either a
+rejected `add` that re-shows the editor with an error banner, or
+`GET /settings/edit/<id>`) reliably 503s with `web_request_memory` on a
+freshly booted device -- confirmed via passive serial capture with a
+temporary `sys.print_exception` added to `server.py`'s `_read_client`
+(reverted before commit; not left in the tree). That request path lazily
+imports `src/device/web/page_alert_editor.py`.
+
+Separately (and unrelated to the fragmentation itself), that same code
+path had a real, deterministic bug: `page_settings_content.py` used
+`__import__("src.device.web.page_alert_editor", fromlist=["alert_editor_html"])`
+to do the lazy import. MicroPython's built-in `__import__` does not accept
+`fromlist` as a keyword argument (`TypeError: function doesn't take
+keyword arguments`) -- CPython's does, so this was invisible to every host
+test and only surfaced on real hardware. Fixed by replacing both call
+sites with plain `from ... import ...` statements (verified working
+on-device via `mpremote exec` before and after). Also added
+`page_alert_editor.py`, `alert_route.py`, `alert_validation.py`,
+`postpone_route.py`, and `settings_post.py` to `tools/deploy.py`'s
+`PRECOMPILE` list, matching their sibling web modules -- they had been
+missing since the alert feature was added.
+
+The `__import__` bug was 100% deterministic and is now fixed and verified
+gone (confirmed via `mpremote exec` reproducing the exact render call
+directly). The `MemoryError` on the same request is the pre-existing,
+still-unresolved fragmentation issue described above, now confirmed to
+also affect the alert-editor import specifically, not just `session.py`.
+Precompiling `page_alert_editor.py` to `.mpy` did not resolve it on its
+own. `tests_e2e/test_alerts_business_e2e.py` documents this and is
+expected to keep failing on the alert-editor-touching cases until this
+underlying issue is resolved.
+
 ## Repo state at end of session
 
 - `src/device/display/ili9341.py` -- buffer-reuse fix, uncommitted,
