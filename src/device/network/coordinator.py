@@ -569,6 +569,7 @@ class NetworkCoordinator:
                 MODE_STATION_ONLINE, candidate_active=False, scan_fn=None,
                 session_table=sessions, now_ticks=now,
                 kdf_busy=self._kdf_job is not None,
+                settings_store=self._settings_store,
             )
         except MemoryError:
             http.close_clients()
@@ -769,6 +770,8 @@ class NetworkCoordinator:
                 admin_salt_hex=salt_hex,
                 admin_verifier_hex=verifier_hex,
                 color_scheme=COLOR_SCHEME_V1,
+                alerts=settings.get("alerts", []),
+                postpone_delay_minutes=settings.get("postpone_delay_minutes", 10),
             )
         except Exception:
             return False

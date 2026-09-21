@@ -88,7 +88,7 @@ Behavioral; visual specs live in `DESIGN.md.Components`.
 | State | Surface | Treatment |
 |---|---|---|
 | No active alert | Normal views | Existing rotation/menu rules continue. Scheduler evaluates enabled alerts against local time. |
-| Due enabled Alert | Active-alert TFT | Raise within one second of matching local minute/recurrence; begin non-blocking 500 ms sound / 500 ms silence cadence. Key occurrence by local date/hour/minute to prevent repeated-loop and backward-time duplicate raise. |
+| Due enabled Alert | Active-alert TFT | Raise within one second of matching local minute/recurrence; begin non-blocking 180 ms high / 220 ms low cadence. Key occurrence by local date/hour/minute to prevent repeated-loop and backward-time duplicate raise. |
 | Combined occurrence | Active-alert TFT | Alerts due same minute, or due while active alert unanswered, join one Active alert; explicit combined count shown. Stop and Auto-stop resolve all; Postpone defers all to shared due time. [ASSUMPTION: collision policy] |
 | Active / sounding | Active-alert TFT | Buzzer cadence continues; Stop/Postpone remain visible; normal Rotation, Bar, Settings, idle timeout cannot reclaim screen. Web, Wi-Fi recovery, timekeeping, touch remain responsive. |
 | Stop | Normal Rotation | Silence immediately; resolve current joined occurrence. Repeating base Alerts stay enabled; completed one-time base Alerts disable but remain stored. [ASSUMPTION: stored disabled one-time Alert] |

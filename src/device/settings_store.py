@@ -5,6 +5,7 @@ import json
 from src import config
 from src.provisioning.validation import (
     COLOR_SCHEME_V1,
+    LEGACY_SETTINGS_VERSION,
     SETTINGS_VERSION,
     validate_settings_json,
 )
@@ -136,6 +137,16 @@ class SettingsStore:
                 current_settings = result.settings
 
         if current_settings is not None:
+            if current_settings.get("settings_version") == LEGACY_SETTINGS_VERSION:
+                migrated = dict(current_settings)
+                migrated["settings_version"] = SETTINGS_VERSION
+                migrated["alerts"] = []
+                migrated["postpone_delay_minutes"] = 10
+                try:
+                    current_settings = self._commit_record(migrated)
+                except SettingsCommitError:
+                    # Keep serving valid legacy settings if flash replacement fails.
+                    current_settings = migrated
             self._cached = current_settings
             self._loaded = True
             return self._cached
@@ -192,6 +203,8 @@ class SettingsStore:
         admin_salt_hex=None,
         admin_verifier_hex=None,
         color_scheme=COLOR_SCHEME_V1,
+        alerts=None,
+        postpone_delay_minutes=10,
     ):
         """
         Atomically persist a complete version-1 record.
@@ -224,7 +237,12 @@ class SettingsStore:
             "admin_salt": admin_salt_hex,
             "admin_verifier": admin_verifier_hex,
             "color_scheme": color_scheme,
+            "alerts": [] if alerts is None else alerts,
+            "postpone_delay_minutes": postpone_delay_minutes,
         }
+        return self._commit_record(record)
+
+    def _commit_record(self, record):
         check = validate_settings_json(json.dumps(record))
         if not check.ok:
             raise SettingsCommitError(COMMIT_VALIDATE_FAIL, check.reason)

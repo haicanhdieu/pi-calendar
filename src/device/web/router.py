@@ -89,7 +89,7 @@ def route_setup_request(request, mode, candidate_active):
     return RouteResult(ACTION_RESPOND, pages.response_not_found())
 
 
-def route_config_request(request, mode, session_table, now, kdf_busy):
+def route_config_request(request, mode, session_table, now, kdf_busy, settings_store=None):
     """
     Route Config login/settings requests (``STATION_ONLINE`` only).
 
@@ -111,7 +111,7 @@ def route_config_request(request, mode, session_table, now, kdf_busy):
         return _route_login_post(request, kdf_busy)
 
     if path in ("/", "/settings") and method == "GET":
-        return _route_protected_get(request, session_table, now)
+        return _route_protected_get(request, session_table, now, settings_store)
 
     if path in ("/", "/settings") and method == "POST":
         return _route_password_change_post(request, session_table, now, kdf_busy)
@@ -136,14 +136,20 @@ def _lookup_session(request, session_table, now):
     return entry, None
 
 
-def _route_protected_get(request, session_table, now):
+def _route_protected_get(request, session_table, now, settings_store=None):
     entry, reject = _lookup_session(request, session_table, now)
     if reject is not None:
         return reject
 
+    settings = None
+    if settings_store is not None:
+        try:
+            settings = settings_store.load()
+        except Exception:
+            settings = None
     return RouteResult(
         ACTION_RESPOND,
-        pages.response_settings_page(),
+        pages.response_settings_page(settings=settings),
         renew_session_id=entry.encoded_id,
     )
 

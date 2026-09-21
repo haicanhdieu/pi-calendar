@@ -164,6 +164,7 @@ class SetupHttpServer:
         now_ticks=None,
         kdf_busy=False,
         page_state=None,
+        settings_store=None,
     ):
         """
         Advance one bounded unit of HTTP work.
@@ -197,6 +198,7 @@ class SetupHttpServer:
                 session_table,
                 now_ticks,
                 kdf_busy,
+                settings_store,
             )
             if result is not None:
                 return result
@@ -275,6 +277,7 @@ class SetupHttpServer:
         session_table,
         now_ticks,
         kdf_busy,
+        settings_store,
     ):
         try:
             data = client.sock.recv(self._per_tick_bytes)
@@ -303,7 +306,7 @@ class SetupHttpServer:
 
         if mode == "STATION_ONLINE":
             result = self._dispatch_config(
-                client, request, session_table, now_ticks, kdf_busy
+                client, request, session_table, now_ticks, kdf_busy, settings_store
             )
         else:
             result = self._dispatch_setup(client, request, mode, candidate_active, scan_fn)
@@ -382,7 +385,7 @@ class SetupHttpServer:
         client.closing = True
         return None
 
-    def _dispatch_config(self, client, request, session_table, now_ticks, kdf_busy):
+    def _dispatch_config(self, client, request, session_table, now_ticks, kdf_busy, settings_store=None):
         # Admin routing/pages are intentionally imported only after a browser
         # reaches the station-online surface.
         from src.device.web import pages as config_pages
@@ -402,6 +405,7 @@ class SetupHttpServer:
             session_table,
             now_ticks,
             kdf_busy=bool(kdf_busy) or self._held_client is not None,
+            settings_store=settings_store,
         )
         if routed.action == ACTION_RESPOND:
             if routed.renew_session_id is not None:

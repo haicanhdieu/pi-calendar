@@ -156,6 +156,52 @@ def test_route_protected_valid_and_expired_cookie():
     assert b"Max-Age=0" in r.response
 
 
+def test_authenticated_settings_page_lists_alerts_and_empty_state():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x12" * n)
+    sid = table.create(0)
+    fs = FakeFS({
+        ".settings-v1": _record_bytes(
+            settings_version=2,
+            alerts=[
+                {"id": "weekday", "hour": 7, "minute": 0, "enabled": True, "weekdays": [0, 1, 2, 3, 4]},
+                {"id": "once", "hour": 9, "minute": 30, "enabled": False, "weekdays": []},
+            ],
+            postpone_delay_minutes=10,
+        )
+    })
+    store = _store(fs)
+    request = Req("GET", "/settings", {"cookie": "pc_session={}".format(sid)})
+
+    response = route_config_request(
+        request, MODE_STATION_ONLINE, table, 0, False, settings_store=store
+    ).response
+
+    assert b"ALERTS" in response
+    assert b"07:00" in response
+    assert "Monday\u2013Friday".encode() in response
+    assert b"On" in response and b"Off" in response
+    assert response.index(b"ALERTS") < response.index(b"POSTPONE")
+
+    empty = _store(FakeFS({".settings-v1": _record_bytes()}))
+    empty_response = route_config_request(
+        request, MODE_STATION_ONLINE, table, 0, False, settings_store=empty
+    ).response
+    assert b"No alerts stored." in empty_response
+
+
+def test_unauthenticated_alert_data_never_renders():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x13" * n)
+    store = _store(FakeFS({".settings-v1": _record_bytes()}))
+    response = route_config_request(
+        Req("GET", "/settings"), MODE_STATION_ONLINE, table, 0, False,
+        settings_store=store,
+    ).response
+    assert b"302" in response
+    assert b"No alerts stored" not in response
+
+
 def test_route_login_post_kdf_and_busy():
     ticks = FakeTicks(0)
     table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x03" * n)

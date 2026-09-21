@@ -35,8 +35,8 @@ project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 development_status:
-  epic-1: backlog
-  1-1-view-stored-alerts-on-the-config-page: backlog
+  epic-1: in-progress
+  1-1-view-stored-alerts-on-the-config-page: done
   1-2-add-an-alert-with-a-time-and-recurrence: backlog
   1-3-edit-an-alert-and-toggle-its-enabled-state: backlog
   1-4-delete-an-alert-with-explicit-confirmation: backlog

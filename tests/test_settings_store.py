@@ -142,6 +142,34 @@ def test_valid_current_wins():
     assert store.is_configured() is True
 
 
+def test_legacy_record_migrates_to_alert_capable_record_atomically():
+    legacy = _record_bytes(wifi_ssid="legacy-net")
+    fs = FakeFS({".settings-v1": legacy})
+    store = _store(fs)
+
+    loaded = store.load()
+
+    assert loaded["settings_version"] == 2
+    assert loaded["alerts"] == []
+    assert loaded["postpone_delay_minutes"] == 10
+    persisted = json.loads(fs.files[".settings-v1"])
+    prior = json.loads(legacy)
+    for key in ("wifi_ssid", "wifi_password", "admin_salt", "admin_verifier"):
+        assert persisted[key] == prior[key]
+    assert ".settings-v1.bak" in fs.files
+
+
+def test_legacy_migration_write_failure_keeps_valid_backup():
+    fs = FakeFS({".settings-v1": _record_bytes()})
+    fs.fail_rename_from = ".settings-v1.tmp"
+    store = _store(fs)
+
+    loaded = store.load()
+
+    assert loaded["settings_version"] == 2
+    assert json.loads(fs.files[".settings-v1.bak"])["settings_version"] == 1
+
+
 def test_malformed_current_preserved_without_delete():
     fs = FakeFS({".settings-v1": b"{not-json"})
     store = _store(fs)

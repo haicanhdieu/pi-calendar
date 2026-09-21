@@ -20,10 +20,10 @@ def login_page_html(incorrect=False):
     return _impl(incorrect=incorrect)
 
 
-def settings_page_html(password_changed=False):
+def settings_page_html(password_changed=False, settings=None):
     from src.device.web.page_settings_content import settings_page_html as _impl
 
-    return _impl(password_changed=password_changed)
+    return _impl(password_changed=password_changed, settings=settings)
 
 
 def http_response(
@@ -130,9 +130,11 @@ def response_login_page(incorrect=False):
     return http_response(200, "OK", login_page_html(incorrect=incorrect))
 
 
-def response_settings_page(password_changed=False):
+def response_settings_page(password_changed=False, settings=None):
     return http_response(
-        200, "OK", settings_page_html(password_changed=password_changed)
+        200, "OK", settings_page_html(
+            password_changed=password_changed, settings=settings
+        )
     )
 
 
