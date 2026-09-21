@@ -52,5 +52,5 @@ development_status:
   2-6-alerts-that-collide-join-one-occurrence: done
   2-7-configuration-changes-never-disrupt-an-alert-already-ringing: done
   2-8-a-buzzer-or-render-failure-stays-bounded-and-recoverable: done
-  2-9-prove-the-whole-alert-flow-on-the-flashed-device: backlog
+  2-9-prove-the-whole-alert-flow-on-the-flashed-device: blocked
   epic-2-retrospective: optional
