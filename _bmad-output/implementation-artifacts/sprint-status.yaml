@@ -28,8 +28,8 @@
 # - Developer typically creates the next story after the previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
-generated: 09-21-2026 15:23
-last_updated: 09-21-2026 15:23
+generated: 09-21-2026 19:51
+last_updated: 09-21-2026 19:51
 project: pi-calendar
 project_key: NOKEY
 tracking_system: file-system
@@ -49,7 +49,7 @@ development_status:
   2-3-stop-an-active-alert-with-one-tap: done
   2-4-postpone-an-active-alert-and-see-its-new-due-time: done
   2-5-a-pending-postpone-survives-a-reboot: backlog
-  2-6-alerts-that-collide-join-one-occurrence: backlog
+  2-6-alerts-that-collide-join-one-occurrence: done
   2-7-configuration-changes-never-disrupt-an-alert-already-ringing: backlog
   2-8-a-buzzer-or-render-failure-stays-bounded-and-recoverable: backlog
   2-9-prove-the-whole-alert-flow-on-the-flashed-device: backlog

@@ -55,6 +55,16 @@ def test_no_local_snapshot_does_not_advance_baseline():
     assert scheduler.evaluate(local(6, 59), []) == []
 
 
+def test_same_minute_alerts_raise_together_once():
+    scheduler = AlertScheduler()
+    first = alert("first")
+    second = alert("second")
+    scheduler.evaluate(local(6, 59), [first, second])
+
+    assert scheduler.evaluate(local(7, 0), [first, second]) == [first, second]
+    assert scheduler.evaluate(local(7, 0), [first, second]) == []
+
+
 def test_add_minutes_handles_month_and_year_boundaries():
     from src.alert.scheduler import add_minutes
 

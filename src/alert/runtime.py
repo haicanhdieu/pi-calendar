@@ -161,6 +161,17 @@ def evaluate(app, snapshot, now):
         postponed["restored"] = False
         return False
     if active is not None:
+        # Admit later due alerts into same occurrence. Keep original start
+        # tick and local time so cadence and auto-stop deadline stay stable.
+        newly_due = app._alert_scheduler.evaluate(
+            snapshot.local, settings.get("alerts", [])
+        )
+        if newly_due:
+            member_ids = {item.get("id") for item in active["alerts"]}
+            active["alerts"].extend(
+                item for item in newly_due if item.get("id") not in member_ids
+            )
+
         if active.get("postpone"):
             if buzzer is not None:
                 buzzer.silence()

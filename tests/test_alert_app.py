@@ -54,6 +54,33 @@ def test_due_alert_takes_over_and_ticks_buzzer_once_each_active_pass():
     assert len(buzzer.ticks) == 2
 
 
+def test_alert_due_while_active_joins_without_restarting_deadline():
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    app, display = _app(clock, ticks, buzzer, [
+        {"id": "first", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2]},
+        {"id": "second", "hour": 14, "minute": 1, "enabled": True, "weekdays": [2]},
+    ])
+    app.step()
+
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    assert [item["id"] for item in app._active_alert["alerts"]] == ["first"]
+    started = app._alert_started_ticks
+
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 1, 0)
+    ticks.advance(1000)
+    app.step()
+
+    assert [item["id"] for item in app._active_alert["alerts"]] == ["first", "second"]
+    assert app._alert_started_ticks == started
+    assert buzzer.ticks == [(1000, True), (2000, True)]
+    texts = [op[1] for op in display.ops if op[0] == "draw_text"]
+    assert "2 ALERTS" in texts
+
+
 def test_auto_stop_silences_and_returns_to_rotation():
     ticks = FakeTicks(0)
     clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
@@ -132,6 +159,32 @@ def test_stop_disables_existing_one_time_alert_but_not_missing_id():
     assert app._active_alert is None
     assert app._alert_settings["alerts"][0]["enabled"] is False
     assert alert["enabled"] is True
+
+
+def test_stop_resolves_all_joined_alerts_with_one_time_member_disabled():
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    touch = type("Touch", (), {"read": lambda self: (False, None, None)})()
+    repeating = {"id": "repeat", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2]}
+    one_time = {"id": "once", "hour": 14, "minute": 0, "enabled": True, "weekdays": []}
+    app, _display = _app(clock, ticks, buzzer, [repeating, one_time])
+    app._touch_port = touch
+    app.step()
+
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    assert [item["id"] for item in app._active_alert["alerts"]] == ["repeat", "once"]
+
+    touch.read = lambda: (True, 160, 120)
+    ticks.advance(1000)
+    app.step()
+
+    assert app._active_alert is None
+    saved = {item["id"]: item for item in app._alert_settings["alerts"]}
+    assert saved["repeat"]["enabled"] is True
+    assert saved["once"]["enabled"] is False
 
 
 def test_stop_replay_before_release_cannot_open_normal_bar():
