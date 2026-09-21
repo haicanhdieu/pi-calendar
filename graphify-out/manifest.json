@@ -12676,5 +12676,11 @@
     "seen": 1789996703.103816,
     "ast_hash": "987c0b39d4c42fc9d95cbc08eb375d0e",
     "semantic_hash": ""
+  },
+  "_bmad-output/implementation-artifacts/alert-clock/spec-2-9-prove-the-whole-alert-flow-on-the-flashed-device.md": {
+    "mtime": 1789997005.4949126,
+    "seen": 1789997065.3488781,
+    "ast_hash": "ffae90b9da83524c5c2ae4017b9751e9",
+    "semantic_hash": ""
   }
 }
