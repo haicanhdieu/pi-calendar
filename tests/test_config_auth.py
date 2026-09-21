@@ -339,6 +339,114 @@ def test_authenticated_edit_alert_preserves_id_and_updates_time_recurrence_and_e
     assert store.load()["postpone_delay_minutes"] == 15
 
 
+def test_delete_alert_requires_confirmation_markup_and_removes_exact_id_atomically():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x1a" * n)
+    sid = table.create(0)
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2,
+        wifi_ssid="wifi", wifi_password="secret123",
+        alerts=[
+            {"id": "morning", "hour": 7, "minute": 0, "enabled": True, "weekdays": [0]},
+            {"id": "evening", "hour": 19, "minute": 30, "enabled": False, "weekdays": [4]},
+        ], postpone_delay_minutes=25,
+    )})
+    store = _store(fs)
+    cookie = "pc_session={}".format(sid)
+
+    editor = route_config_request(
+        Req("GET", "/settings/edit/morning", {"cookie": cookie}),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b'class="danger"' in editor
+    assert b'name="alert_action" value="delete"' in editor
+    assert b"confirm('Delete this alert?')" in editor
+
+    prior = fs.files[".settings-v1"]
+    response = route_config_request(
+        Req("POST", "/settings", {
+            "cookie": cookie,
+            "content-type": "application/x-www-form-urlencoded",
+        }, b"alert_action=delete&alert_id=morning"),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b"Alert deleted." in response
+    assert store.load()["alerts"] == [{
+        "id": "evening", "hour": 19, "minute": 30,
+        "enabled": False, "weekdays": [4],
+    }]
+    assert store.load()["wifi_ssid"] == "wifi"
+    assert store.load()["postpone_delay_minutes"] == 25
+    assert fs.files[".settings-v1"] != prior
+    assert b"morning" not in response
+    assert b"evening" in response
+
+
+def test_delete_alert_unknown_or_unauthenticated_does_not_mutate():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x1b" * n)
+    sid = table.create(0)
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2, postpone_delay_minutes=10,
+        alerts=[{"id": "morning", "hour": 7, "minute": 0, "enabled": True, "weekdays": []}],
+    )})
+    store = _store(fs)
+    prior = fs.files[".settings-v1"]
+    headers = {"cookie": "pc_session={}".format(sid),
+               "content-type": "application/x-www-form-urlencoded"}
+    response = route_config_request(
+        Req("POST", "/settings", headers,
+            b"alert_action=delete&alert_id=missing"),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b"Alert not found." in response
+    assert fs.files[".settings-v1"] == prior
+
+    response = route_config_request(
+        Req("POST", "/settings", {},
+            b"alert_action=delete&alert_id=morning"),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b"302" in response and b"Location: /login" in response
+    assert fs.files[".settings-v1"] == prior
+
+
+def test_delete_from_ten_alerts_reenables_add_and_commit_failure_preserves_record():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x1c" * n)
+    sid = table.create(0)
+    alerts = [{"id": "alert-{}".format(i), "hour": i, "minute": 0,
+               "enabled": True, "weekdays": []} for i in range(10)]
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2, alerts=alerts, postpone_delay_minutes=10
+    )})
+    store = _store(fs)
+    headers = {"cookie": "pc_session={}".format(sid),
+               "content-type": "application/x-www-form-urlencoded"}
+    response = route_config_request(
+        Req("POST", "/settings", headers,
+            b"alert_action=delete&alert_id=alert-9"),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b"Ten-alert limit reached" not in response
+    assert b"/settings/add" in response
+    assert len(store.load()["alerts"]) == 9
+
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2, alerts=alerts, postpone_delay_minutes=10
+    )})
+    fs.fail_rename_from = ".settings-v1"
+    store = _store(fs)
+    prior = fs.files[".settings-v1"]
+    response = route_config_request(
+        Req("POST", "/settings", headers,
+            b"alert_action=delete&alert_id=alert-9"),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b"Alert could not be deleted." in response
+    assert fs.files[".settings-v1"] == prior
+
+
 def test_invalid_or_unknown_edit_does_not_mutate_settings():
     ticks = FakeTicks(0)
     table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x19" * n)

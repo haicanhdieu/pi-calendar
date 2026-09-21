@@ -5,6 +5,13 @@ class ValidationResult:
     def __init__(self, ok, reason, settings=None):
         self.ok, self.reason, self.settings = ok, reason, settings
 
+
+def validate_alert_id(alert_id):
+    if (not isinstance(alert_id, str) or not alert_id or alert_id != alert_id.lower()
+            or any(c not in "abcdefghijklmnopqrstuvwxyz0123456789-" for c in alert_id)):
+        return ValidationResult(False, "fields")
+    return ValidationResult(True, "ok")
+
 def validate_alert_form_fields(fields, alert_id, alert_count):
     if not isinstance(fields, dict) or type(alert_count) is not int:
         return ValidationResult(False, "limit" if alert_count >= 10 else "fields")
@@ -40,7 +47,7 @@ def validate_alert_form_fields(fields, alert_id, alert_count):
             weekdays.append(i)
     if action == "edit" and fields.get("alert_id") != alert_id:
         return ValidationResult(False, "fields")
-    if not isinstance(alert_id, str) or not alert_id or alert_id != alert_id.lower() or any(c not in "abcdefghijklmnopqrstuvwxyz0123456789-" for c in alert_id):
+    if not validate_alert_id(alert_id).ok:
         return ValidationResult(False, "fields")
     return ValidationResult(True, "ok", {
         "id": alert_id, "hour": hour, "minute": minute,

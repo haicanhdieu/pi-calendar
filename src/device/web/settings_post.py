@@ -44,6 +44,20 @@ def route(request, session_table, now, kdf_busy, settings_store, lookup, result)
         return result("respond", pages.response_settings_page(
             settings=updated, alert_saved=True
         ), renew_session_id=entry.encoded_id)
+    if fields.get("alert_action") == "delete":
+        from src.device.web.alert_route import delete_alert
+        settings, updated, error, status = delete_alert(fields, settings_store)
+        alert_id = fields.get("alert_id")
+        if error:
+            if settings is None:
+                return result("respond", pages.response_bad_request())
+            return result("respond", pages.response_settings_page(
+                settings=settings, alert_error=error,
+                editing_alert_id=alert_id, status_code=status,
+            ))
+        response = pages.response_settings_page(settings=updated, alert_saved=True)
+        return result("respond", response.replace(b"Alert saved.", b"Alert deleted."),
+                      renew_session_id=entry.encoded_id)
     password = fields.get("new_password", "")
     if not isinstance(password, str):
         password = str(password)

@@ -11,7 +11,7 @@ _START = (
     '<label><input name="alert_enabled" type=checkbox checked>Enabled</label>'
     '<fieldset><legend>Repeat on</legend>'
 )
-_END = '</fieldset><button>Save</button><button type=button disabled>Delete</button></form></details>'
+_END = '</fieldset><button>Save</button>{delete_control}</form></details>'
 
 
 def alert_editor_html(alert=None):
@@ -32,4 +32,9 @@ def alert_editor_html(alert=None):
     for index, name in enumerate(_DAYS.split("|")):
         checked = " checked" if index in selected else ""
         fields.append('<label><input name=weekday_{} type=checkbox{}>{}</label>'.format(index, checked, name))
-    return start + "".join(fields) + _END
+    delete_control = (
+        '<button class="danger" type="submit" name="alert_action" value="delete" '
+        'onclick="return confirm(\'Delete this alert?\')">Delete</button>'
+        if editing else '<button type="button" disabled>Delete</button>'
+    )
+    return start + "".join(fields) + _END.format(delete_control=delete_control)

@@ -17,7 +17,7 @@ from src.provisioning.verifier import (
     derive_admin_verifier,
     verify_admin_password,
 )
-from src.device.web.alert_validation import validate_alert_form_fields
+from src.device.web.alert_validation import validate_alert_form_fields, validate_alert_id
 
 _ROOT = Path(__file__).resolve().parents[1]
 _FORBIDDEN = frozenset({"machine", "network", "socket", "ntptime"})
@@ -196,3 +196,10 @@ def test_alert_form_validation_accepts_edit_and_requires_matching_id():
     assert result.settings["hour"] == 6
     assert result.settings["weekdays"] == [0]
     assert validate_alert_form_fields(fields, "evening", 1).reason == "fields"
+
+
+def test_alert_id_validation_accepts_stable_ids_and_rejects_unsafe_ids():
+    assert validate_alert_id("morning-1").ok
+    assert validate_alert_id("Morning").reason == "fields"
+    assert validate_alert_id("morning/").reason == "fields"
+    assert validate_alert_id(1).reason == "fields"
