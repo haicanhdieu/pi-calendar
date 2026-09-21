@@ -2,7 +2,7 @@
 title: 'Add an alert with a time and recurrence'
 type: 'feature'
 created: '2026-09-21'
-status: 'in-review'
+status: 'done'
 baseline_revision: '17560d6ba0243eab68de8a720f366e00276099bc'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -40,21 +40,19 @@ deferred: []
 
 ## Code Map
 
-- `src/provisioning/validation.py` -- canonical v2 record rules; add focused alert/form validation while retaining whole-record validation.
-- `src/device/settings_store.py` -- atomic `commit()` boundary; pass existing Wi-Fi/admin values and current alert list.
-- `src/device/web/page_settings_content.py` -- flat Config alert section, Add control, inline editor, weekday labels, feedback, limit state.
-- `src/device/web/router.py` -- authenticated POST routing and form parsing; reject invalid add requests before coordinator commit.
-- `src/device/web/server.py` -- dispatch new bounded authenticated add action through cooperative HTTP.
-- `src/device/network/coordinator.py` -- commit validated alert against current canonical settings and return rendered page.
-- `tests/test_provisioning_validation.py`, `tests/test_settings_store.py`, `tests/test_config_auth.py` -- validation, atomic persistence, auth, rendering, limit, and no-op failure evidence.
+- `src/device/web/page_settings_content.py`, `src/device/web/page_alert_editor.py` -- flat Config alert list, Add link/editor, weekday labels, feedback, and limit state; editor remains lazy for heap headroom.
+- `src/device/web/router.py`, `src/device/web/settings_post.py` -- authenticated GET/POST routing; password flow retained and Add flow kept lazy.
+- `src/device/web/alert_validation.py`, `src/device/web/alert_route.py` -- pure form validation and atomic SettingsStore append path, loaded only for Add requests.
+- `src/device/web/pages.py` -- carries alert editor, success, and error state through response builders.
+- `tests/test_provisioning_validation.py`, `tests/test_config_auth.py` -- validation, atomic persistence, auth, rendering, limit, and no-op failure evidence.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- `src/provisioning/validation.py` -- validate add form and canonical alert fields -- prevent malformed records entering atomic commit.
-- `src/device/web/page_settings_content.py` -- render Add/editor/weekday controls and bounded feedback -- satisfy browser UX.
-- `src/device/web/router.py`, `src/device/web/server.py`, `src/device/network/coordinator.py` -- route authenticated add and commit one updated record -- apply immediately without reboot.
-- `tests/test_provisioning_validation.py`, `tests/test_settings_store.py`, `tests/test_config_auth.py` -- test matrix and persistence/auth boundaries -- prove no-op invalid paths.
+- `src/device/web/alert_validation.py`, `src/device/web/alert_route.py` -- validate form and append through existing SettingsStore atomic commit -- prevent malformed records entering persistence.
+- `src/device/web/page_settings_content.py`, `src/device/web/page_alert_editor.py`, `src/device/web/pages.py` -- render Add/editor/weekday controls and bounded feedback -- satisfy browser UX without increasing initial station heap.
+- `src/device/web/router.py`, `src/device/web/settings_post.py` -- route authenticated Add and preserve password-change KDF path -- apply immediately without reboot.
+- `tests/test_provisioning_validation.py`, `tests/test_config_auth.py` -- test matrix and persistence/auth boundaries -- prove no-op invalid paths.
 
 **Acceptance Criteria:**
 - Given an authenticated Config page with fewer than ten alerts, when Add alert is activated, then an inline editor offers time, enabled, seven text weekday controls, Save, and Delete, with no label/sound/volume/per-alert postpone controls.
@@ -70,3 +68,35 @@ deferred: []
 - `uv run pytest tests/test_provisioning_validation.py tests/test_settings_store.py tests/test_config_auth.py` -- expected: all focused tests pass.
 - `uv run pytest` -- expected: full host suite passes.
 - `git diff --check` -- expected: no whitespace errors.
+
+## Review Triage Log
+
+### 2026-09-21 — Review pass
+- verdicts: 0 findings — high 0, medium 0, low 0, false 0, maybe-false 0
+- findings:
+  - Manual review completed because invocation explicitly prohibited reviewer-agent spawning; no actionable findings.
+
+## Auto Run Result
+
+Status: done
+
+Summary: Added authenticated Add alert flow with lazy form validation/persistence modules, inline time/enabled/weekday editor, one-time and weekday recurrence handling, success/error feedback, ten-alert protection, and atomic SettingsStore commits. Preserved password-change behavior and reduced station-web footprint to satisfy heap gates.
+
+Files changed:
+- `src/device/web/alert_validation.py`, `src/device/web/alert_route.py`, `src/device/web/settings_post.py` -- lazy validation, atomic Add persistence, and authenticated POST handling.
+- `src/device/web/page_alert_editor.py`, `src/device/web/page_settings_content.py`, `src/device/web/pages.py` -- Config Add/editor/list/feedback rendering.
+- `src/device/web/router.py` -- authenticated Add route and `/settings/add` editor route.
+- `tests/test_config_auth.py`, `tests/test_provisioning_validation.py` -- Story 1.2 acceptance and edge-case coverage.
+- `_bmad-output/implementation-artifacts/alert-clock/epic-1-context.md`, this story artifact, sprint status, and graphify output -- implementation trail and generated graph refresh.
+
+Review findings breakdown: 0 patches, 0 deferred items, 0 rejected findings. Manual review used because agent spawning was explicitly prohibited.
+
+Follow-up review recommendation: false.
+
+Verification:
+- `uv run pytest tests/test_provisioning_validation.py tests/test_settings_store.py tests/test_config_auth.py` -- 65 passed.
+- `uv run pytest` -- 576 passed.
+- Hostsim size/heap checks -- boot 46,825 bytes, station web 35,382 bytes, combined 82,207 bytes; all contiguous probes passed.
+- `git diff --check` -- passed.
+
+Residual risks: Pico browser/device behavior and restart persistence remain unverified on hardware; no on-device claim made.
