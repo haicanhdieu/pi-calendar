@@ -503,12 +503,12 @@ class NetworkCoordinator:
         Returns True when this tick consumed the config-auth budget (so the
         mailbox NTP path should wait). Idle HTTP with no KDF returns False.
         """
-        if not self._web_retry_due(now):
-            return self._kdf_job is not None
-        http = self._get_http(now=now, station=True)
-        if http is None:
-            return self._kdf_job is not None
-
+        # Step an in-flight KDF job unconditionally: it is pure computation
+        # (no socket I/O), so it must keep progressing even while the web
+        # listener itself is backing off from an unrelated failure. Gating
+        # this on _web_retry_due previously meant a stuck/failing listener
+        # froze the job forever, and every later /login attempt saw a
+        # permanent 503 Busy that only a device reboot could clear.
         kdf_active = self._kdf_job is not None
         if kdf_active:
             from src.provisioning.kdf_job import PURPOSE_PASSWORD_CHANGE_DERIVE
@@ -522,6 +522,12 @@ class NetworkCoordinator:
                     self._finish_password_change_kdf(result, now)
                 else:
                     self._finish_login_kdf(result, now)
+
+        if not self._web_retry_due(now):
+            return kdf_active
+        http = self._get_http(now=now, station=True)
+        if http is None:
+            return kdf_active
 
         if not http.ensure_listening():
             self._web_failure(getattr(http, "last_failure_phase", None) or "listen", station=True, now=now)

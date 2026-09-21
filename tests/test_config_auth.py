@@ -1455,6 +1455,55 @@ def test_coordinator_password_change_concurrent_busy():
     assert b"Busy" in second.sent
 
 
+def test_login_kdf_keeps_stepping_while_web_listener_is_backed_off():
+    """
+    A stuck/failing web listener must not freeze an in-flight KDF job.
+
+    Regression for a device-side lockout: an unrelated listen failure sets
+    ``_web_next_retry`` into the future; the previous coordinator gated ALL
+    per-tick work (including pure-computation KDF stepping) behind that
+    same retry timer, so a persistently failing listener meant an admin
+    login already accepted (job created) never finished, and every later
+    ``/login`` attempt saw a permanent 503 Busy until reboot. KDF stepping
+    is pure computation with no socket I/O, so it must progress regardless
+    of listener backoff.
+    """
+    coordinator, http, sockets, ticks, store = _online_coordinator(password="adminpass")
+
+    client = FakeStreamSocket()
+    sockets.listen.enqueue(client)
+    client.push_client_bytes(_http_login_post("adminpass"))
+
+    for _ in range(5):
+        coordinator.tick()
+        if coordinator._kdf_job is not None:
+            break
+    assert coordinator._kdf_job is not None, "login KDF job should be in flight"
+
+    # Simulate an active listener backoff (e.g. from an unrelated transient
+    # listen/socket failure) covering the rest of the KDF job's rounds.
+    coordinator._web_next_retry = ticks.ticks_add(ticks.now, config.HTTP_RETRY_MS)
+    assert coordinator._web_retry_due(ticks.now) is False
+
+    for _ in range(250):
+        assert coordinator._web_retry_due(ticks.now) is False, (
+            "test setup bug: backoff window elapsed before the job could finish"
+        )
+        coordinator.tick()
+        if coordinator._kdf_job is None:
+            break
+    assert coordinator._kdf_job is None, "KDF job must finish even while the listener backs off"
+    assert client.sent == b"", "response must stay queued, not flushed, while backed off"
+
+    # Once the backoff window elapses, the already-finished job's queued
+    # response flushes on the very next serviceable tick — no reboot needed.
+    ticks.now = coordinator._ticks.ticks_add(coordinator._web_next_retry, 1)
+    assert coordinator._web_retry_due(ticks.now) is True
+    assert _pump(coordinator, lambda: b"302" in client.sent)
+    assert b"Location: /settings" in client.sent
+    assert b"Set-Cookie: pc_session=" in client.sent
+
+
 def test_theme_stub_inert_no_mutating_route():
     ticks = FakeTicks(0)
     table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x09" * n)
