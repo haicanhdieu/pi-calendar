@@ -21,6 +21,40 @@ class FakeBuzzer:
         self.silence_count += 1
 
 
+class FaultBuzzer(FakeBuzzer):
+    def __init__(self, failures=None):
+        super().__init__()
+        self.failures = list(failures or [])
+        self.initialize_count = 0
+
+    def initialize(self):
+        self.initialize_count += 1
+        return "ok"
+
+    def tick(self, now, sounding):
+        if self.failures:
+            failure = self.failures.pop(0)
+            if isinstance(failure, Exception):
+                raise failure
+            return failure
+        return super().tick(now, sounding)
+
+
+def _due_app(buzzer, logs=None):
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    app, display = _app(clock, ticks, buzzer, [{
+        "id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2],
+    }])
+    if logs is not None:
+        app._log = logs.append
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    return app, display, clock, ticks
+
+
 def _app(clock, ticks, buzzer, alerts):
     display = FakeDisplayPort()
     return App(
@@ -52,6 +86,64 @@ def test_due_alert_takes_over_and_ticks_buzzer_once_each_active_pass():
     ticks.advance(1000)
     app.step()
     assert len(buzzer.ticks) == 2
+
+
+def test_buzzer_failure_is_bounded_logged_without_payload_and_stop_still_recovers():
+    logs = []
+    app, _display, _clock, ticks = _due_app(FaultBuzzer(["high_fail"]), logs)
+    assert app._active_alert is not None
+    assert logs == ["alert_fail buzzer high_fail"]
+
+    app._active_alert["stop"] = True
+    ticks.advance(1000)
+    app.step()
+
+    assert app._active_alert is None
+    assert all("wake" not in line and "failure" not in line for line in logs)
+
+
+def test_buzzer_exception_allows_later_occurrence_after_reinitialization():
+    logs = []
+    buzzer = FaultBuzzer([RuntimeError("secret-settings")])
+    app, _display, clock, ticks = _due_app(buzzer, logs)
+    assert app._active_alert is not None
+    assert logs == ["alert_fail buzzer tick_exception"]
+
+    app._active_alert["stop"] = True
+    ticks.advance(1000)
+    app.step()
+    app._alert_cfg = (buzzer, None, {"alerts": [{
+        "id": "later", "hour": 8, "minute": 1, "enabled": True, "weekdays": [2],
+    }], "postpone_delay_minutes": 10})
+    clock._utc = DateTime(2026, 9, 9, 2, 1, 1, 0)
+    ticks.advance(60000)
+    app.step()
+    assert buzzer.initialize_count == 1
+    assert buzzer.ticks == [(62000, True)]
+
+
+def test_alert_render_failure_is_bounded_and_does_not_leak_exception_text():
+    logs = []
+    app, _display, _clock, ticks = _due_app(FakeBuzzer(), logs)
+
+    class BrokenAlertView:
+        def render(self, *args):
+            raise RuntimeError("admin-password")
+
+        def render_postponed(self, *args):
+            raise RuntimeError("admin-password")
+
+    app._alert_view = BrokenAlertView()
+    ticks.advance(1000)
+    app.step()
+
+    app._active_alert["stop"] = True
+    ticks.advance(1000)
+    app.step()
+
+    assert app._active_alert is None
+    assert logs == ["alert_fail render exception"]
+    assert all("admin-password" not in line for line in logs)
 
 
 def test_alert_due_while_active_joins_without_restarting_deadline():

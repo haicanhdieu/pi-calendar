@@ -67,6 +67,102 @@ def _refresh_committed_settings(app, buzzer, store, settings):
     return settings
 
 
+_BUZZER_CODES = {
+    "init_fail", "not_ready", "high_fail", "low_fail",
+}
+_BUZZER_SUCCESS = {
+    "ok", "silent", "high_start", "high_end", "low_end", "wait",
+}
+
+
+def _failure_code(result):
+    if isinstance(result, str) and result in _BUZZER_CODES:
+        return result
+    return "operation"
+
+
+def _is_buzzer_failure(result):
+    return result is not None and result not in _BUZZER_SUCCESS
+
+
+def _log_failure_once(app, phase, code, attr):
+    if getattr(app, attr, False):
+        return
+    setattr(app, attr, True)
+    app._log("alert_fail %s %s" % (phase, code))
+
+
+def _buzzer_fault(app, buzzer, code):
+    setattr(app, "_alert_buzzer_faulted", True)
+    _log_failure_once(app, "buzzer", code, "_alert_buzzer_failure_logged")
+    try:
+        buzzer.silence()
+    except Exception:
+        pass
+
+
+def _prepare_buzzer(app, buzzer):
+    if buzzer is None or not getattr(app, "_alert_buzzer_faulted", False):
+        return buzzer is not None
+    initialize = getattr(buzzer, "initialize", None)
+    if initialize is None:
+        return False
+    try:
+        result = initialize()
+    except Exception:
+        _buzzer_fault(app, buzzer, "init_exception")
+        return False
+    if _is_buzzer_failure(result):
+        _buzzer_fault(app, buzzer, _failure_code(result))
+        return False
+    app._alert_buzzer_faulted = False
+    app._alert_buzzer_failure_logged = False
+    return True
+
+
+def _buzzer_tick(app, buzzer, now, sounding):
+    if buzzer is None or getattr(app, "_alert_buzzer_faulted", False):
+        return
+    try:
+        result = buzzer.tick(now, sounding)
+    except Exception:
+        _buzzer_fault(app, buzzer, "tick_exception")
+        return
+    if _is_buzzer_failure(result):
+        _buzzer_fault(app, buzzer, _failure_code(result))
+
+
+def _buzzer_silence(app, buzzer):
+    if buzzer is None:
+        return
+    try:
+        result = buzzer.silence()
+    except Exception:
+        _buzzer_fault(app, buzzer, "silence_exception")
+        return
+    if _is_buzzer_failure(result):
+        _buzzer_fault(app, buzzer, _failure_code(result))
+
+
+def _safe_render(app, snapshot, render_fn, phase="render"):
+    if getattr(app, "_alert_render_failed", False):
+        return False
+    try:
+        render_fn()
+        return True
+    except Exception:
+        _log_failure_once(app, phase, "exception", "_alert_render_failure_logged")
+        app._alert_render_failed = True
+        return False
+
+
+def _safe_base_render(app, snapshot, now):
+    try:
+        app._render(snapshot, now)
+    except Exception:
+        _log_failure_once(app, "render", "base_exception", "_alert_base_render_failure_logged")
+
+
 def t(app, edge_down, y):
     if not edge_down:
         app.state.surface_deadline = None
@@ -96,12 +192,12 @@ def render(app, snapshot):
 
         app._alert_view = AlertView(app._view._display)
     occurrence = app._active_alert
-    app._alert_view.render(
+    return _safe_render(app, snapshot, lambda: app._alert_view.render(
         snapshot,
         occurrence["local"],
         occurrence["postpone_minutes"],
         len(occurrence["alerts"]),
-    )
+    ))
 
 
 def render_postponed(app, snapshot, postponed):
@@ -109,11 +205,11 @@ def render_postponed(app, snapshot, postponed):
         from src.ui.alert_view import AlertView
 
         app._alert_view = AlertView(app._view._display)
-    app._alert_view.render_postponed(
+    return _safe_render(app, snapshot, lambda: app._alert_view.render_postponed(
         snapshot,
         postponed["due"],
         len(postponed["alerts"]),
-    )
+    ))
 
 
 def evaluate(app, snapshot, now):
@@ -167,8 +263,10 @@ def evaluate(app, snapshot, now):
                 "postpone_minutes": postponed["delay"],
             }
             app._alert_started_ticks = now
-            if buzzer is not None:
-                buzzer.tick(now, True)
+            app._alert_render_failed = False
+            app._alert_render_failure_logged = False
+            _prepare_buzzer(app, buzzer)
+            _buzzer_tick(app, buzzer, now, True)
             render(app, snapshot)
             return True
         if postponed.get("confirmation"):
@@ -189,8 +287,7 @@ def evaluate(app, snapshot, now):
             )
 
         if active.get("postpone"):
-            if buzzer is not None:
-                buzzer.silence()
+            _buzzer_silence(app, buzzer)
             delay = normalize_postpone_minutes(settings.get("postpone_delay_minutes"))
             postponed = {
                 "alerts": active["alerts"],
@@ -207,6 +304,8 @@ def evaluate(app, snapshot, now):
             app._postponed_alert = postponed
             app._active_alert = None
             app._alert_started_ticks = None
+            app._alert_render_failed = False
+            app._alert_render_failure_logged = False
             app.state.active_surface = "rotation"
             app._rearm_active_view_dwell(now)
             render_postponed(app, snapshot, postponed)
@@ -228,11 +327,10 @@ def evaluate(app, snapshot, now):
             app._alert_started_ticks = None
             app.state.active_surface = "rotation"
             app._rearm_active_view_dwell(now)
-            app._render(snapshot, now)
+            _safe_base_render(app, snapshot, now)
             return True
         if ticks.ticks_diff(now, app._alert_started_ticks) >= config.ALERT_AUTO_STOP_MS:
-            if buzzer is not None:
-                buzzer.silence()
+            _buzzer_silence(app, buzzer)
             settings = disable_one_time_alerts(
                 active["alerts"], settings,
                 store, app._log,
@@ -247,10 +345,9 @@ def evaluate(app, snapshot, now):
             app._alert_started_ticks = None
             app.state.active_surface = "rotation"
             app._rearm_active_view_dwell(now)
-            app._render(snapshot, now)
+            _safe_base_render(app, snapshot, now)
             return True
-        if buzzer is not None:
-            buzzer.tick(now, True)
+        _buzzer_tick(app, buzzer, now, True)
         render(app, snapshot)
         return True
     if getattr(app, "_alert_scheduler", None) is None:
@@ -264,7 +361,9 @@ def evaluate(app, snapshot, now):
         "postpone_minutes": normalize_postpone_minutes(settings.get("postpone_delay_minutes")),
     }
     app._alert_started_ticks = now
-    if buzzer is not None:
-        buzzer.tick(now, True)
+    app._alert_render_failed = False
+    app._alert_render_failure_logged = False
+    _prepare_buzzer(app, buzzer)
+    _buzzer_tick(app, buzzer, now, True)
     render(app, snapshot)
     return True
