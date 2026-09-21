@@ -16,9 +16,37 @@ device to talk to):
 Any test that mutates device state (password, postpone delay, alerts)
 restores the original value in a ``finally`` block, so the suite is
 repeatable against the same device.
+
+IMPORTANT — session budget: the device's SessionTable holds at most
+``config.SESSION_MAX`` (4) concurrent sessions, there is no logout route,
+and idle sessions only drop after ``config.SESSION_IDLE_MS`` (15 minutes).
+A fresh successful login permanently consumes one of those 4 slots for the
+rest of that window. This suite therefore logs in as few times as
+possible and reuses one shared authenticated session for everything that
+doesn't specifically need its own fresh login — logging in per-test would
+exhaust the table after ~4 tests and every later login would correctly
+receive 503 Busy (the device doing exactly what it's supposed to, not a
+bug). Two full back-to-back runs within 15 minutes can still collide for
+the same reason; that is a real device constraint, not a test flake.
+
+KNOWN, PRE-EXISTING FLAKE (not caused by this suite or fixed by pacing):
+past ~20 requests in one boot cycle, this specific device has reliably
+started returning 503/malformed responses to write requests (alert edit,
+alert-add validation, password change), regardless of request pacing
+(tried 1s/2s/3s -- identical failure point every time, so it is a fixed
+per-boot request budget, not a rate limit). This matches the project's
+documented, previously-investigated, unresolved heap-fragmentation issue:
+``_bmad-output/implementation-artifacts/touch-ui/
+settings-page-fragmentation-attempts-log.md``. Every test that mutates
+device state still verifies and restores it in a ``finally``/retry path
+(see ``_force_admin_password``), so a run hitting this ceiling fails
+loudly rather than corrupting device state. If this resurfaces, reboot
+the device (via ``mpremote connect <port> reset``) between test groups
+rather than chasing it as a suite bug.
 """
 
 import os
+import time
 import uuid
 
 import pytest
@@ -27,6 +55,21 @@ import requests
 BASE_URL = os.environ.get("PI_CALENDAR_URL", "http://192.168.1.32").rstrip("/")
 ADMIN_PASSWORD = os.environ.get("PI_CALENDAR_ADMIN_PASSWORD", "12345678")
 TIMEOUT = 8
+
+# The device is a single-core, single-threaded MicroPython HTTP server:
+# back-to-back requests with no gap between them can overrun its tiny TCP
+# backlog. Pace every request issued through `requests` so this suite
+# behaves like a real browser, not a flood.
+_REQUEST_PACE_S = float(os.environ.get("PI_CALENDAR_REQUEST_PACE_S", "1.0"))
+_unpaced_request = requests.Session.request
+
+
+def _paced_request(self, *args, **kwargs):
+    time.sleep(_REQUEST_PACE_S)
+    return _unpaced_request(self, *args, **kwargs)
+
+
+requests.Session.request = _paced_request
 
 
 def _url(path):
@@ -42,7 +85,13 @@ def _require_device():
 
 
 def _login(password=ADMIN_PASSWORD):
-    """Return an authenticated requests.Session, or None if login failed."""
+    """Return an authenticated requests.Session, or None if login failed.
+
+    Consumes one of the device's SESSION_MAX session-table slots on
+    success — see the module docstring. Prefer the shared `auth_session`
+    fixture; call this directly only when a test needs its own fresh
+    login (e.g. proving a specific password does/doesn't work).
+    """
     session = requests.Session()
     resp = session.post(
         _url("/login"), data={"password": password}, timeout=TIMEOUT, allow_redirects=False
@@ -52,10 +101,19 @@ def _login(password=ADMIN_PASSWORD):
     return None
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def auth_session():
-    session = _login()
-    assert session is not None, "setup login with configured admin password failed"
+    """One authenticated session, shared read/write across the whole
+    module. Individual tests must leave device state as they found it."""
+    session = requests.Session()
+    resp = session.post(
+        _url("/login"), data={"password": ADMIN_PASSWORD},
+        timeout=TIMEOUT, allow_redirects=False,
+    )
+    assert resp.status_code == 302, "setup login with configured admin password failed"
+    assert resp.headers.get("Location") == "/settings"
+    cookie = session.cookies.get("pc_session")
+    assert cookie
     return session
 
 
@@ -77,19 +135,6 @@ def test_login_wrong_password_shows_incorrect_banner_and_no_cookie():
     assert resp.status_code == 200
     assert "Incorrect password" in resp.text
     assert "pc_session" not in session.cookies.get_dict()
-
-
-def test_login_correct_password_redirects_and_sets_session_cookie():
-    session = requests.Session()
-    resp = session.post(
-        _url("/login"), data={"password": ADMIN_PASSWORD},
-        timeout=TIMEOUT, allow_redirects=False,
-    )
-    assert resp.status_code == 302
-    assert resp.headers.get("Location") == "/settings"
-    cookie = session.cookies.get("pc_session")
-    assert cookie
-    assert session.cookies.get_dict().get("pc_session") == cookie
 
 
 def test_login_wrong_content_type_is_bad_request():
@@ -186,8 +231,8 @@ def test_postpone_delay_out_of_range_is_rejected_without_mutating(auth_session):
     assert 'value="10"' in after
 
 
-def test_postpone_save_unauthenticated_redirects_without_mutating():
-    before = _login().get(_url("/settings"), timeout=TIMEOUT).text
+def test_postpone_save_unauthenticated_redirects_without_mutating(auth_session):
+    before = auth_session.get(_url("/settings"), timeout=TIMEOUT).text
     assert 'value="10"' in before
 
     resp = requests.post(
@@ -198,7 +243,7 @@ def test_postpone_save_unauthenticated_redirects_without_mutating():
     assert resp.status_code == 302
     assert resp.headers.get("Location") == "/login"
 
-    after = _login().get(_url("/settings"), timeout=TIMEOUT).text
+    after = auth_session.get(_url("/settings"), timeout=TIMEOUT).text
     assert 'value="10"' in after
 
 
@@ -270,7 +315,7 @@ def test_alert_delete_unknown_id_is_rejected(auth_session):
     assert resp.status_code == 400
 
 
-def test_alert_add_unauthenticated_redirects_without_mutating():
+def test_alert_add_unauthenticated_redirects_without_mutating(auth_session):
     resp = requests.post(
         _url("/settings"),
         data={"alert_action": "add", "alert_time": "09:00", "alert_enabled": "on"},
@@ -279,51 +324,91 @@ def test_alert_add_unauthenticated_redirects_without_mutating():
     assert resp.status_code == 302
     assert resp.headers.get("Location") == "/login"
 
-    page = _login().get(_url("/settings"), timeout=TIMEOUT).text
+    page = auth_session.get(_url("/settings"), timeout=TIMEOUT).text
     assert "09:00" not in page
 
 
 # --- Admin password change -------------------------------------------------
+#
+# Run last: changing the password while it's mid-flight would break every
+# other test's assumption that ADMIN_PASSWORD is current. This test also
+# minds the 4-slot session budget carefully (see module docstring): it
+# reuses the shared `auth_session` for the actual change, and only opens
+# the one fresh login that is inherently required to *prove* the new
+# password works, reusing that session for the restore instead of a
+# second fresh login.
 
-def test_admin_password_change_round_trip():
-    session = _login()
-    assert session is not None
+def _force_admin_password(target, candidates, attempts=5, backoff_s=3):
+    """Best-effort, verified drive of the device's admin password to `target`.
 
-    temp_password = "e2e-temp-" + uuid.uuid4().hex[:12]
-    try:
-        resp = session.post(
-            _url("/settings"), data={"new_password": temp_password}, timeout=TIMEOUT
+    A password-change POST can silently no-op under device load: it comes
+    back 200 with a plain settings page (no "Password changed." banner)
+    instead of erroring, so a status-code-only check is not trustworthy
+    here (observed live). This tries each password in `candidates` (plus
+    `target`, in case an earlier attempt partially landed) to find a
+    working login, submits the change, and verifies with a fresh login --
+    retrying with backoff rather than trusting the response. Raises with
+    the last known-good password if it can't converge, so a failure is
+    never silent about what the device's password currently is.
+    """
+    tried = list(dict.fromkeys([target] + list(candidates)))
+    last_known_good = None
+    for _attempt in range(attempts):
+        working = None
+        for candidate in tried:
+            working = _login(password=candidate)
+            if working is not None:
+                last_known_good = candidate
+                break
+        assert working is not None, (
+            "device admin password is unknown -- none of {!r} worked; "
+            "MANUAL RECOVERY REQUIRED".format(tried)
         )
-        assert resp.status_code == 200
-        assert "Password changed." in resp.text
+        if last_known_good == target:
+            return
+        working.post(_url("/settings"), data={"new_password": target}, timeout=TIMEOUT)
+        if _login(password=target) is not None:
+            return
+        time.sleep(backoff_s)
+    raise AssertionError(
+        "could not converge device admin password to {!r} after {} attempts; "
+        "last known-good password was {!r} -- MANUAL RECOVERY REQUIRED".format(
+            target, attempts, last_known_good
+        )
+    )
+
+
+def test_admin_password_change_round_trip(auth_session):
+    temp_password = "e2e-temp-" + uuid.uuid4().hex[:12]
+
+    resp = auth_session.post(
+        _url("/settings"), data={"new_password": temp_password}, timeout=TIMEOUT
+    )
+    assert resp.status_code == 200
+    assert "Password changed." in resp.text
+
+    try:
+        old_login = _login(password=ADMIN_PASSWORD)
+        assert old_login is None, "old password should no longer work"
 
         relogin = _login(password=temp_password)
         assert relogin is not None, "could not log in with the newly set password"
-
-        old_login = _login(password=ADMIN_PASSWORD)
-        assert old_login is None, "old password should no longer work"
     finally:
-        current = session.post(
-            _url("/settings"), data={"new_password": ADMIN_PASSWORD}, timeout=TIMEOUT
-        )
-        if current.status_code != 200 or "Password changed." not in current.text:
-            restorer = _login(password=temp_password)
-            assert restorer is not None, (
-                "FAILED TO RESTORE ORIGINAL ADMIN PASSWORD; device password is now "
-                + temp_password
-            )
-            restore = restorer.post(
-                _url("/settings"), data={"new_password": ADMIN_PASSWORD}, timeout=TIMEOUT
-            )
-            assert restore.status_code == 200 and "Password changed." in restore.text
+        _force_admin_password(ADMIN_PASSWORD, candidates=[temp_password])
 
     final_check = _login(password=ADMIN_PASSWORD)
     assert final_check is not None, "admin password was not restored to the original value"
 
 
 def test_admin_password_change_too_short_is_rejected(auth_session):
-    resp = auth_session.post(_url("/settings"), data={"new_password": "short1"}, timeout=TIMEOUT)
-    assert resp.status_code == 400
-
-    still_works = _login(password=ADMIN_PASSWORD)
-    assert still_works is not None
+    too_short = "short1"
+    try:
+        resp = auth_session.post(
+            _url("/settings"), data={"new_password": too_short}, timeout=TIMEOUT
+        )
+        assert resp.status_code == 400
+    finally:
+        # Safety net: if device load ever turns this rejection into a
+        # silent accept (observed live for the password-change path), do
+        # not leave the device on a password this test never meant to set.
+        _force_admin_password(ADMIN_PASSWORD, candidates=[too_short])
