@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pi Calendar — Active Alert</title>
+<style>
+/* Spine: DESIGN.md Brand/Colors/Typography/Layout/Components; EXPERIENCE.md
+   Active/sounding state, Touch primitives, Accessibility Floor, Flow 2. Illustrative mock; spine wins. */
+:root { --bg:#0a0a0a; --green:#3dff7a; --amber:#ffb238; --red:#ff4d4d; }
+* { box-sizing:border-box; } body { margin:0; min-height:100vh; display:grid; place-items:center; background:#181818; font-family:Arial,Helvetica,sans-serif; }
+.device { width:min(100vw,640px); aspect-ratio:4/3; display:grid; grid-template-rows:25% 50% 25%; position:relative; background:var(--bg); color:var(--green); overflow:hidden; }
+.unsynced { position:absolute; right:14px; top:14px; background:var(--red); color:var(--bg); border-radius:3px; font:700 11px Arial,sans-serif; letter-spacing:1px; padding:5px 7px; }
+.info { padding:14px; }.heading { margin:4px 0 0; color:var(--amber); font-size:16px; line-height:1; letter-spacing:2px; font-weight:700; }.time { margin:5px 0 1px; color:var(--green); font-size:clamp(50px,13vw,92px); line-height:.9; letter-spacing:-5px; font-weight:700; font-variant-numeric:tabular-nums; text-shadow:0 0 12px color-mix(in srgb,var(--green) 28%,transparent); }.count { margin:8px 0 0; color:var(--amber); font-size:14px; font-weight:700; letter-spacing:1px; }.action { width:100%; height:100%; border:2px solid currentColor; background:transparent; color:var(--green); font:700 clamp(24px,6vw,42px) Arial,sans-serif; letter-spacing:2px; }.action.postpone { color:var(--amber); font-size:clamp(15px,3.5vw,23px); }.sound { position:absolute; right:16px; top:77px; color:var(--amber); font:700 11px Arial,sans-serif; letter-spacing:1px; }
+</style>
+</head>
+<body>
+<main class="device" aria-label="Pi Calendar active alert TFT screen">
+  <span class="unsynced">UNSYNCED</span>
+  <div class="info"><p class="heading">ALERT</p><div class="time">07:00</div><p class="count">2 ALERTS</p></div>
+  <span class="sound">SOUNDING</span>
+  <button class="action">STOP</button><button class="action postpone">POSTPONE 10 MIN</button>
+</main>
+</body>
+</html>

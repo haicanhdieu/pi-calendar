@@ -1,0 +1,19 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pi Calendar — Alert Settings</title>
+<style>
+/* DESIGN.md Colors/Typography/Layout/Components; EXPERIENCE.md IA/Components. */
+body{margin:0;background:#12161c;color:#e8ecf1;font:15px Arial,sans-serif}main{max-width:410px;margin:auto;padding:20px}h1{font-size:20px;margin:12px 0 28px}h2{color:#9aa5b1;font-size:12px;letter-spacing:1px;margin:28px 0 10px}.row,input,button{box-sizing:border-box;width:100%;min-height:48px;border-radius:10px;margin:0 0 8px}.row,input{background:#1b212a;border:1px solid #2a323d;color:#e8ecf1;padding:14px}.row b{font-size:20px}.row small{float:right;color:#9aa5b1}button{border:0;background:#7c6cf6;color:#0a0f16;font-weight:bold}label{display:block;margin-bottom:6px;color:#9aa5b1;font-size:13px}.saved{color:#3ddc84}
+</style>
+<main>
+  <h1>Device Settings</h1>
+  <p class="saved">Alert saved.</p>
+  <h2>ALERTS</h2>
+  <div class="row"><b>07:00</b><small>Monday–Friday · On</small></div>
+  <div class="row"><b>09:30</b><small>One time · Off</small></div>
+  <button>Add alert</button>
+  <h2>POSTPONE</h2>
+  <label for="delay">Postpone delay (min)</label>
+  <input id="delay" type="number" value="10" min="1" max="60">
+</main>

@@ -1,7 +1,7 @@
 # Team override for bmad-product-brief. See .claude/skills/bmad-product-brief/customize.toml for full surface.
 #
 # Group artifacts slug-then-subtype under the shared planning-artifacts bucket,
-# flattened (no dated run folder). Path points at the currently active slug (touch-ui); see AGENTS.md.
+# flattened (no dated run folder). Path points at the currently active slug (alert-clock); see AGENTS.md.
 [workflow]
-brief_output_path = "{planning_artifacts}/touch-ui/briefs"
+brief_output_path = "{planning_artifacts}/alert-clock/briefs"
 run_folder_pattern = ""

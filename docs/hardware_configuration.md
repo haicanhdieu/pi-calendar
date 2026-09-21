@@ -67,6 +67,28 @@ The display and touch board must use a common ground with the Pico. Keep VCC
 at the module's documented logic voltage; this configuration assumes a
 3.3 V-compatible SPI module, as the Pico GPIOs are not 5 V tolerant.
 
+## HW-508 buzzer wiring
+
+The installed three-pin HW-508 board is silk-screened `S`, `VCC`, `GND`.
+This differs from the `S`/`NC`/`-` passive-module variant; use the physical
+silkscreen on this board as controlling evidence.
+
+| HW-508 pin | Pico W connection | Pico W physical pin | Purpose |
+|---|---|---:|---|
+| `S` | GP15 | 20 | Direct-GPIO control signal |
+| `VCC` | 3V3(OUT) | 36 | 3.3 V module power |
+| `GND` | GND | 23 | Common ground |
+
+Flashed-device bench evidence, 2026-09-21: GP15 direct 3.3 V control produced
+audible output for a 10-second test and a repeating `tut` cadence (180 ms high,
+220 ms low). This proves audibility only, not deployment approval. Before
+enabling production firmware control or making a permanent connection, measure
+current, confirm the `S` input polarity and 3.3 V safety, and confirm direct
+GPIO drive stays within Pico and module limits. Do not connect `VCC` or `S` to
+Pico `VBUS`/5 V. Keep GP15 driven low before applying power. If validation
+fails, use a suitable driver/buffer circuit instead of direct GPIO drive and
+update this section.
+
 ## SPI configuration
 
 ```text
@@ -79,6 +101,7 @@ DC:   GP20
 RST:  GP21
 Touch CS:  GP22
 Touch IRQ: GP26
+Buzzer S: GP15 (direct-GPIO audibility verified; electrical validation pending)
 ```
 
 The current firmware uses a 40 MHz SPI clock.
@@ -97,3 +120,6 @@ The current firmware uses a 40 MHz SPI clock.
   the splash screen; an unlit LED after startup is therefore expected.
 - Keep the GPIO assignments and `0xA8` display orientation unchanged unless
   the physical wiring or display orientation is intentionally changed.
+- HW-508 production firmware control remains disabled until current, polarity,
+  and direct-drive safety checks pass; audible bench output alone does not
+  establish electrical safety.

@@ -1,7 +1,7 @@
 # Team override for bmad-prd. See .claude/skills/bmad-prd/customize.toml for full surface.
 #
 # Group artifacts slug-then-subtype under the shared planning-artifacts bucket,
-# flattened (no dated run folder). Path points at the currently active slug (touch-ui); see AGENTS.md.
+# flattened (no dated run folder). Path points at the currently active slug (alert-clock); see AGENTS.md.
 [workflow]
-prd_output_path = "{planning_artifacts}/touch-ui/prds"
+prd_output_path = "{planning_artifacts}/alert-clock/prds"
 run_folder_pattern = ""
