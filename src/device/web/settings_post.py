@@ -30,6 +30,20 @@ def route(request, session_table, now, kdf_busy, settings_store, lookup, result)
         return result("respond", pages.response_settings_page(
             settings=updated, alert_saved=True
         ), renew_session_id=entry.encoded_id)
+    if fields.get("alert_action") == "edit":
+        from src.device.web.alert_route import edit_alert
+        settings, updated, error, status = edit_alert(fields, settings_store)
+        alert_id = fields.get("alert_id")
+        if error:
+            if settings is None:
+                return result("respond", pages.response_bad_request())
+            return result("respond", pages.response_settings_page(
+                settings=settings, alert_error=error,
+                editing_alert_id=alert_id, status_code=status,
+            ))
+        return result("respond", pages.response_settings_page(
+            settings=updated, alert_saved=True
+        ), renew_session_id=entry.encoded_id)
     password = fields.get("new_password", "")
     if not isinstance(password, str):
         password = str(password)

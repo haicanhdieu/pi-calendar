@@ -32,7 +32,7 @@ def _weekday_text(days):
     return ", ".join(names[index] for index in days)
 
 
-def _alert_rows(settings):
+def _alert_rows(settings, editing_alert_id=None):
     alerts = settings.get("alerts", []) if settings else []
     if not alerts:
         return '<p class="empty-state" aria-live="polite">No alerts stored.</p>'
@@ -41,20 +41,26 @@ def _alert_rows(settings):
         time_text = "{:02d}:{:02d}".format(alert["hour"], alert["minute"])
         state = "On" if alert["enabled"] else "Off"
         recurrence = _weekday_text(alert["weekdays"])
+        editor = ""
+        if alert.get("id") == editing_alert_id:
+            editor = __import__("src.device.web.page_alert_editor", fromlist=["alert_editor_html"]).alert_editor_html(alert)
         rows.append(
             '<article><strong>{time}</strong>'
             '<span>{recurrence} \u00b7 {state}</span>'
+            '<a href="/settings/edit/{id}">Edit</a>{editor}'
             "</article>".format(
                 time=time_text,
+                id=html_escape(alert["id"]),
                 recurrence=html_escape(recurrence),
                 state=state,
+                editor=editor,
             )
         )
     return "".join(rows)
 
 
 def settings_page_html(password_changed=False, settings=None, alert_saved=False,
-                       alert_error=None, alert_editor=False):
+                       alert_error=None, alert_editor=False, editing_alert_id=None):
     banner = '<p class="banner success" aria-live="polite">Password changed.</p>' if password_changed else ""
     alert_feedback = (
         '<p class="banner success" aria-live="polite">Alert saved.</p>'
@@ -75,7 +81,7 @@ def settings_page_html(password_changed=False, settings=None, alert_saved=False,
         )
     )
     return (
-        _PAGE_START + banner + alert_feedback + _alert_rows(settings) + add_control
+        _PAGE_START + banner + alert_feedback + _alert_rows(settings, editing_alert_id) + add_control
         + _PAGE_END.format(
             password_open=" open" if password_changed else "",
         ).replace("</span>", html_escape(str(postpone)) + " minutes</span>", 1)

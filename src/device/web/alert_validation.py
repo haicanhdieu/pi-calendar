@@ -6,14 +6,19 @@ class ValidationResult:
         self.ok, self.reason, self.settings = ok, reason, settings
 
 def validate_alert_form_fields(fields, alert_id, alert_count):
-    if not isinstance(fields, dict) or type(alert_count) is not int or alert_count >= 10:
+    if not isinstance(fields, dict) or type(alert_count) is not int:
         return ValidationResult(False, "limit" if alert_count >= 10 else "fields")
+    action = fields.get("alert_action")
+    if action not in ("add", "edit"):
+        return ValidationResult(False, "action")
+    if action == "add" and alert_count >= 10:
+        return ValidationResult(False, "limit")
     allowed = {"alert_action", "alert_time", "alert_enabled"}
+    if action == "edit":
+        allowed.add("alert_id")
     allowed.update("weekday_{}".format(i) for i in range(7))
     if any(k not in allowed for k in fields):
         return ValidationResult(False, "fields")
-    if fields.get("alert_action") != "add":
-        return ValidationResult(False, "action")
     value = fields.get("alert_time")
     if not isinstance(value, str) or len(value) != 5 or value[2] != ":":
         return ValidationResult(False, "time")
@@ -33,6 +38,8 @@ def validate_alert_form_fields(fields, alert_id, alert_count):
             if fields[key] != "on":
                 return ValidationResult(False, "recurrence")
             weekdays.append(i)
+    if action == "edit" and fields.get("alert_id") != alert_id:
+        return ValidationResult(False, "fields")
     if not isinstance(alert_id, str) or not alert_id or alert_id != alert_id.lower() or any(c not in "abcdefghijklmnopqrstuvwxyz0123456789-" for c in alert_id):
         return ValidationResult(False, "fields")
     return ValidationResult(True, "ok", {

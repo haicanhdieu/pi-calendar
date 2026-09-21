@@ -185,3 +185,14 @@ def test_alert_form_validation_rejects_unknown_and_invalid_fields():
     assert validate_alert_form_fields(dict(base, alert_enabled="false"), "alert-1", 0).reason == "enabled"
     assert validate_alert_form_fields(dict(base, weekday_0="yes"), "alert-1", 0).reason == "recurrence"
     assert validate_alert_form_fields(base, "alert-1", 10).reason == "limit"
+
+
+def test_alert_form_validation_accepts_edit_and_requires_matching_id():
+    fields = {"alert_action": "edit", "alert_id": "morning",
+              "alert_time": "06:30", "weekday_0": "on"}
+    result = validate_alert_form_fields(fields, "morning", 1)
+    assert result.ok
+    assert result.settings["id"] == "morning"
+    assert result.settings["hour"] == 6
+    assert result.settings["weekdays"] == [0]
+    assert validate_alert_form_fields(fields, "evening", 1).reason == "fields"

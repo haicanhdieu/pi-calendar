@@ -107,7 +107,8 @@ def route_config_request(request, mode, session_table, now, kdf_busy, settings_s
     if path == "/login" and method == "POST":
         return _route_login_post(request, kdf_busy)
 
-    if path in ("/", "/settings", "/settings/add") and method == "GET":
+    if (path in ("/", "/settings", "/settings/add") or
+            path.startswith("/settings/edit/")) and method == "GET":
         return _route_protected_get(request, session_table, now, settings_store)
 
     if path in ("/", "/settings") and method == "POST":
@@ -149,7 +150,9 @@ def _route_protected_get(request, session_table, now, settings_store=None):
     return RouteResult(
         ACTION_RESPOND,
         pages.response_settings_page(
-            settings=settings, alert_editor=request.path == "/settings/add"
+            settings=settings, alert_editor=request.path == "/settings/add",
+            editing_alert_id=(request.path[len("/settings/edit/"):]
+                              if request.path.startswith("/settings/edit/") else None),
         ),
         renew_session_id=entry.encoded_id,
     )

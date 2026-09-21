@@ -302,6 +302,69 @@ def test_add_alert_is_unavailable_and_rejected_at_ten():
     assert fs.files[".settings-v1"] == prior
 
 
+def test_authenticated_edit_alert_preserves_id_and_updates_time_recurrence_and_enabled():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x18" * n)
+    sid = table.create(0)
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2,
+        alerts=[{"id": "morning", "hour": 7, "minute": 0, "enabled": True,
+                 "weekdays": [0, 1, 2, 3, 4]}],
+        postpone_delay_minutes=15,
+    )})
+    store = _store(fs)
+    headers = {"cookie": "pc_session={}".format(sid),
+               "content-type": "application/x-www-form-urlencoded"}
+
+    opened = route_config_request(
+        Req("GET", "/settings/edit/morning", {"cookie": headers["cookie"]}),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b'name="alert_id" value="morning"' in opened
+    assert b'value="07:00"' in opened
+    assert b'name=weekday_0 type=checkbox checked' in opened
+    assert b'name=weekday_5 type=checkbox>' in opened
+
+    body = b"alert_action=edit&alert_id=morning&alert_time=06%3A30"
+    response = route_config_request(
+        Req("POST", "/settings", headers, body), MODE_STATION_ONLINE,
+        table, 0, False, settings_store=store,
+    ).response
+    assert b"Alert saved." in response
+    assert store.load()["alerts"] == [{
+        "id": "morning", "hour": 6, "minute": 30,
+        "enabled": False, "weekdays": [],
+    }]
+    assert b"06:30" in response and b"One time" in response and b"Off" in response
+    assert store.load()["postpone_delay_minutes"] == 15
+
+
+def test_invalid_or_unknown_edit_does_not_mutate_settings():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x19" * n)
+    sid = table.create(0)
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2,
+        alerts=[{"id": "morning", "hour": 7, "minute": 0, "enabled": True,
+                 "weekdays": [0, 1]}],
+        postpone_delay_minutes=10,
+    )})
+    store = _store(fs)
+    headers = {"cookie": "pc_session={}".format(sid),
+               "content-type": "application/x-www-form-urlencoded"}
+    prior = fs.files[".settings-v1"]
+    for body, message in (
+        (b"alert_action=edit&alert_id=morning&alert_time=99%3A99", b"Invalid Time."),
+        (b"alert_action=edit&alert_id=missing&alert_time=06%3A30", b"Alert not found."),
+    ):
+        response = route_config_request(
+            Req("POST", "/settings", headers, body), MODE_STATION_ONLINE,
+            table, 0, False, settings_store=store,
+        ).response
+        assert message in response
+        assert fs.files[".settings-v1"] == prior
+
+
 def test_route_login_post_kdf_and_busy():
     ticks = FakeTicks(0)
     table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x03" * n)
