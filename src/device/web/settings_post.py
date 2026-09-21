@@ -17,6 +17,18 @@ def route(request, session_table, now, kdf_busy, settings_store, lookup, result)
     fields = parse_form_urlencoded(request.body)
     if fields is None:
         return result("respond", pages.response_bad_request())
+    if fields.get("postpone_action") == "save":
+        from src.device.web.postpone_route import save_postpone_delay
+        settings, updated, error, status = save_postpone_delay(fields, settings_store)
+        if error:
+            if settings is None:
+                return result("respond", pages.response_bad_request())
+            return result("respond", pages.response_settings_page(
+                settings=settings, postpone_error=error, status_code=status,
+            ))
+        return result("respond", pages.response_settings_page(
+            settings=updated, postpone_saved=True
+        ), renew_session_id=entry.encoded_id)
     if fields.get("alert_action") == "add":
         from src.device.web.alert_route import add_alert
         settings, updated, error, status = add_alert(fields, settings_store)

@@ -21,14 +21,12 @@ def login_page_html(incorrect=False):
 
 
 def settings_page_html(password_changed=False, settings=None, alert_saved=False,
-                       alert_error=None, alert_editor=False, editing_alert_id=None):
+                       alert_error=None, alert_editor=False, editing_alert_id=None,
+                       postpone_saved=False, postpone_error=None):
     from src.device.web.page_settings_content import settings_page_html as _impl
 
-    return _impl(
-        password_changed=password_changed, settings=settings,
-        alert_saved=alert_saved, alert_error=alert_error, alert_editor=alert_editor,
-        editing_alert_id=editing_alert_id,
-    )
+    return _impl(password_changed, settings, alert_saved, alert_error, alert_editor,
+                 editing_alert_id, postpone_saved, postpone_error)
 
 
 def http_response(
@@ -137,14 +135,11 @@ def response_login_page(incorrect=False):
 
 def response_settings_page(password_changed=False, settings=None, alert_saved=False,
                            alert_error=None, alert_editor=False, editing_alert_id=None,
-                           status_code=200):
+                           postpone_saved=False, postpone_error=None, status_code=200):
     return http_response(
         status_code, "OK" if status_code == 200 else "Bad Request",
-        settings_page_html(
-            password_changed=password_changed, settings=settings,
-            alert_saved=alert_saved, alert_error=alert_error, alert_editor=alert_editor,
-            editing_alert_id=editing_alert_id,
-        )
+        settings_page_html(password_changed, settings, alert_saved, alert_error,
+                           alert_editor, editing_alert_id, postpone_saved, postpone_error)
     )
 
 

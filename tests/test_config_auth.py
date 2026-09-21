@@ -81,6 +81,10 @@ def test_login_and_settings_pages_tokens():
     assert '<details' in settings
     assert 'disabled' in settings
     assert 'name="new_password"' in settings
+    assert 'name="postpone_delay_minutes"' in settings
+    assert 'value="10"' in settings
+    assert "Postpone delay (min)" in settings
+    assert "minutes" in settings
     assert 'method="POST"' in settings
     assert 'action="/settings"' in settings
     assert "water.css" in settings
@@ -188,6 +192,87 @@ def test_authenticated_settings_page_lists_alerts_and_empty_state():
         request, MODE_STATION_ONLINE, table, 0, False, settings_store=empty
     ).response
     assert b"No alerts stored." in empty_response
+
+
+def test_authenticated_postpone_save_preserves_record_and_renders_success():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x19" * n)
+    sid = table.create(0)
+    alerts = [{"id": "morning", "hour": 7, "minute": 0,
+               "enabled": True, "weekdays": [0, 1]}]
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2,
+        wifi_ssid="preserve-me", wifi_password="secret123",
+        alerts=alerts, postpone_delay_minutes=10,
+    )})
+    store = _store(fs)
+    before = store.load()
+    response = route_config_request(
+        Req("POST", "/settings", {
+            "cookie": "pc_session={}".format(sid),
+            "content-type": "application/x-www-form-urlencoded",
+        }, b"postpone_action=save&postpone_delay_minutes=15"),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+
+    assert b"Postpone delay saved." in response
+    saved = store.load()
+    assert saved["postpone_delay_minutes"] == 15
+    assert saved["alerts"] == alerts
+    assert saved["wifi_ssid"] == before["wifi_ssid"]
+    assert saved["wifi_password"] == before["wifi_password"]
+    assert b'value="15"' in response and b"minutes" in response
+
+
+def test_postpone_invalid_values_and_commit_failure_do_not_mutate_record():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x1b" * n)
+    sid = table.create(0)
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2, alerts=[], postpone_delay_minutes=10
+    )})
+    store = _store(fs)
+    headers = {"cookie": "pc_session={}".format(sid),
+               "content-type": "application/x-www-form-urlencoded"}
+    prior = fs.files[".settings-v1"]
+    for value in ("0", "61", "1.5", "not-a-number"):
+        response = route_config_request(
+            Req("POST", "/settings", headers,
+                ("postpone_action=save&postpone_delay_minutes=" + value).encode()),
+            MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+        ).response
+        assert b"1 to 60 whole minutes" in response
+        assert fs.files[".settings-v1"] == prior
+
+    def boom(*_args, **_kwargs):
+        raise SettingsCommitError("write_fail", "forced")
+
+    store.commit = boom
+    response = route_config_request(
+        Req("POST", "/settings", headers,
+            b"postpone_action=save&postpone_delay_minutes=15"),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b"Postpone delay could not be saved." in response
+    assert fs.files[".settings-v1"] == prior
+
+
+def test_unauthenticated_postpone_save_redirects_without_mutation():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x1c" * n)
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2, alerts=[], postpone_delay_minutes=10
+    )})
+    store = _store(fs)
+    prior = fs.files[".settings-v1"]
+    response = route_config_request(
+        Req("POST", "/settings",
+            {"content-type": "application/x-www-form-urlencoded"},
+            b"postpone_action=save&postpone_delay_minutes=15"),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+    assert b"Location: /login" in response
+    assert fs.files[".settings-v1"] == prior
 
 
 def test_unauthenticated_alert_data_never_renders():

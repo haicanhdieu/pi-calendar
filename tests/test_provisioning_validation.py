@@ -18,6 +18,7 @@ from src.provisioning.verifier import (
     verify_admin_password,
 )
 from src.device.web.alert_validation import validate_alert_form_fields, validate_alert_id
+from src.device.web.postpone_route import validate_postpone_delay
 
 _ROOT = Path(__file__).resolve().parents[1]
 _FORBIDDEN = frozenset({"machine", "network", "socket", "ntptime"})
@@ -203,3 +204,10 @@ def test_alert_id_validation_accepts_stable_ids_and_rejects_unsafe_ids():
     assert validate_alert_id("Morning").reason == "fields"
     assert validate_alert_id("morning/").reason == "fields"
     assert validate_alert_id(1).reason == "fields"
+
+
+def test_postpone_delay_validation_accepts_only_whole_minutes_1_to_60():
+    assert validate_postpone_delay("1") == 1
+    assert validate_postpone_delay("60") == 60
+    for value in ("0", "61", "1.5", "", "abc", 15, True):
+        assert validate_postpone_delay(value) is None

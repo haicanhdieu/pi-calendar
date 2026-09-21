@@ -11,8 +11,8 @@ _PAGE_START = (
     '<section><h2>ALERTS</h2>'
 )
 _PAGE_END = (
-    '</section><section><h2>POSTPONE</h2><p>Postpone delay: <span>'
-    '</span></p></section><details{password_open}><summary>Admin Password</summary>'
+    '{0}</section><details{1}>'
+    '<summary>Admin Password</summary>'
     '<form method="POST" action="/settings"><label>New Password</label>'
     '<input name="new_password"><button>Save</button></form></details>'
     '<details aria-disabled="true"><summary>Color Scheme</summary>'
@@ -60,7 +60,8 @@ def _alert_rows(settings, editing_alert_id=None):
 
 
 def settings_page_html(password_changed=False, settings=None, alert_saved=False,
-                       alert_error=None, alert_editor=False, editing_alert_id=None):
+                       alert_error=None, alert_editor=False, editing_alert_id=None,
+                       postpone_saved=False, postpone_error=None):
     banner = '<p class="banner success" aria-live="polite">Password changed.</p>' if password_changed else ""
     alert_feedback = (
         '<p class="banner success" aria-live="polite">Alert saved.</p>'
@@ -71,7 +72,10 @@ def settings_page_html(password_changed=False, settings=None, alert_saved=False,
             html_escape(alert_error)
         )
     settings = settings or {}
-    postpone = settings.get("postpone_delay_minutes", 10)
+    from src.device.web.postpone_route import postpone_section_html
+    postpone_section = postpone_section_html(
+        settings.get("postpone_delay_minutes", 10), postpone_saved, postpone_error
+    )
     alerts = settings.get("alerts", [])
     add_control = (
         '<p class="limit-note">Ten-alert limit reached. Delete an alert before adding another.</p>'
@@ -82,7 +86,5 @@ def settings_page_html(password_changed=False, settings=None, alert_saved=False,
     )
     return (
         _PAGE_START + banner + alert_feedback + _alert_rows(settings, editing_alert_id) + add_control
-        + _PAGE_END.format(
-            password_open=" open" if password_changed else "",
-        ).replace("</span>", html_escape(str(postpone)) + " minutes</span>", 1)
+        + _PAGE_END.format(postpone_section, " open" if password_changed else "")
     )
