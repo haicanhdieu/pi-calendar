@@ -12390,9 +12390,9 @@
     "semantic_hash": ""
   },
   "_bmad-output/implementation-artifacts/sprint-status.yaml": {
-    "mtime": 1789996730.5011327,
-    "seen": 1789996794.0575821,
-    "ast_hash": "7fe1b97cd6c45aa616605e710842e1de",
+    "mtime": 1789997164.9406698,
+    "seen": 1789998998.442005,
+    "ast_hash": "204d5e4ad8711deb93e43e09ee29e27d",
     "semantic_hash": ""
   },
   "_bmad-output/planning-artifacts/alert-clock/architecture/.memlog.md": {
@@ -12678,9 +12678,21 @@
     "semantic_hash": ""
   },
   "_bmad-output/implementation-artifacts/alert-clock/spec-2-9-prove-the-whole-alert-flow-on-the-flashed-device.md": {
-    "mtime": 1789997005.4949126,
-    "seen": 1789997065.3488781,
-    "ast_hash": "ffae90b9da83524c5c2ae4017b9751e9",
+    "mtime": 1789998914.8126926,
+    "seen": 1789998998.441976,
+    "ast_hash": "5c62126a1a8a443618e2b4a5b40aaf31",
+    "semantic_hash": ""
+  },
+  "_bmad-output/test-artifacts/alert-clock/story-2.9-device-evidence.md": {
+    "mtime": 1789998914.8046644,
+    "seen": 1789998998.442101,
+    "ast_hash": "b2114e2a4440457b9763f9bcd6b70069",
+    "semantic_hash": ""
+  },
+  "_bmad-output/test-artifacts/alert-clock/story-2.9-host-evidence.md": {
+    "mtime": 1789998914.8001523,
+    "seen": 1789998998.442102,
+    "ast_hash": "a93ba59d1b2299025fa515b802cacfce",
     "semantic_hash": ""
   }
 }
