@@ -53,3 +53,11 @@ def test_no_local_snapshot_does_not_advance_baseline():
     scheduler = AlertScheduler()
     assert scheduler.evaluate(None, [alert()]) == []
     assert scheduler.evaluate(local(6, 59), []) == []
+
+
+def test_add_minutes_handles_month_and_year_boundaries():
+    from src.alert.scheduler import add_minutes
+
+    assert add_minutes(local(23, 55, day=31, month=12), 10) == local(
+        0, 5, weekday=4, day=1, month=1, year=2027
+    )

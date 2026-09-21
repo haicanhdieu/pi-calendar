@@ -420,8 +420,8 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "src/app.py": {
-    "mtime": 1789991617.9082937,
-    "seen": 1789991692.9097779,
+    "mtime": 1789992746.43682,
+    "seen": 1789992796.054847,
     "ast_hash": "89375896969147d2b4a7fce2316a0234",
     "semantic_hash": ""
   },
@@ -12390,9 +12390,9 @@
     "semantic_hash": ""
   },
   "_bmad-output/implementation-artifacts/sprint-status.yaml": {
-    "mtime": 1789988867.8160398,
-    "seen": 1789988949.6709068,
-    "ast_hash": "afe9dd56c090f695fb394ee5d554f815",
+    "mtime": 1789991730.8627508,
+    "seen": 1789992796.0564191,
+    "ast_hash": "1719e3cd12203a7764e1bdc05ed6b398",
     "semantic_hash": ""
   },
   "_bmad-output/planning-artifacts/alert-clock/architecture/.memlog.md": {
@@ -12594,15 +12594,15 @@
     "semantic_hash": ""
   },
   "src/alert/runtime.py": {
-    "mtime": 1789991617.9165223,
-    "seen": 1789991692.909775,
-    "ast_hash": "a7f12a4c66048606ebf40fd9f17e52ad",
+    "mtime": 1789992746.4382443,
+    "seen": 1789992796.054842,
+    "ast_hash": "82742809c83491f910deb8287b711a6e",
     "semantic_hash": ""
   },
   "src/alert/scheduler.py": {
-    "mtime": 1789989272.654521,
-    "seen": 1789990407.5720918,
-    "ast_hash": "c920435e614875af17f34023adaf1dc8",
+    "mtime": 1789992660.3401341,
+    "seen": 1789992796.054843,
+    "ast_hash": "31ef0bf0e65d5be2870c45e3302cd6b6",
     "semantic_hash": ""
   },
   "src/alert/terminal.py": {
@@ -12612,27 +12612,27 @@
     "semantic_hash": ""
   },
   "src/ui/alert_view.py": {
-    "mtime": 1789991460.4976845,
-    "seen": 1789991692.909826,
-    "ast_hash": "905fd2aff7d90f71d42cb8a05924e6a0",
+    "mtime": 1789992660.3393724,
+    "seen": 1789992796.054894,
+    "ast_hash": "ceff59978f7b0cd850a7b3e3633cee43",
     "semantic_hash": ""
   },
   "tests/test_alert_app.py": {
-    "mtime": 1789991064.501871,
-    "seen": 1789991692.909833,
-    "ast_hash": "5dc606e2cc071daa761db6437945e024",
+    "mtime": 1789992702.1752267,
+    "seen": 1789992796.054902,
+    "ast_hash": "4b4b9d497b855b11cc63fa3fec62e27d",
     "semantic_hash": ""
   },
   "tests/test_alert_scheduler.py": {
-    "mtime": 1789989448.9870238,
-    "seen": 1789990407.572155,
-    "ast_hash": "cf5107f7acc6c62869c08dd07c079eb2",
+    "mtime": 1789992671.37157,
+    "seen": 1789992796.054902,
+    "ast_hash": "9dabc905e89c7fd0adf5c671d042c0cc",
     "semantic_hash": ""
   },
   "tests/test_alert_view.py": {
-    "mtime": 1789989448.9873807,
-    "seen": 1789990407.572155,
-    "ast_hash": "97655fb9e7a6ca18929129b6fe65e995",
+    "mtime": 1789992605.2915523,
+    "seen": 1789992796.054903,
+    "ast_hash": "ae2f0a615325eab7b83d0b5c4e368858",
     "semantic_hash": ""
   },
   "_bmad-output/implementation-artifacts/alert-clock/stories/2.2-a-due-alert-takes-over-the-screen-sounds-and-auto-stops.md": {
@@ -12642,9 +12642,15 @@
     "semantic_hash": ""
   },
   "_bmad-output/implementation-artifacts/alert-clock/stories/2.3-stop-an-active-alert-with-one-tap.md": {
-    "mtime": 1789991643.0168383,
-    "seen": 1789991692.911283,
-    "ast_hash": "dfdab4dacae875592b2dfcadd25a6984",
+    "mtime": 1789991730.8618612,
+    "seen": 1789992796.056401,
+    "ast_hash": "bc98aa68ac14d484f41d6806f2a778c3",
+    "semantic_hash": ""
+  },
+  "_bmad-output/implementation-artifacts/alert-clock/stories/2.4-postpone-an-active-alert-and-see-its-new-due-time.md": {
+    "mtime": 1789992805.1672075,
+    "seen": 1789992890.270928,
+    "ast_hash": "3b11c47de847da76315a98f7fe9bec0e",
     "semantic_hash": ""
   }
 }

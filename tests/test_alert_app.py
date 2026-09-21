@@ -155,3 +155,114 @@ def test_stop_replay_before_release_cannot_open_normal_bar():
     ticks.advance(1000)
     app.step()
     assert app.state.active_surface == "rotation"
+
+
+def test_postpone_silences_before_tick_confirms_due_time_and_realerts_once():
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    touch = type("Touch", (), {"read": lambda self: (False, None, None)})()
+    app, display = _app(clock, ticks, buzzer, [{
+        "id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2],
+    }])
+    app._touch_port = touch
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    touch.read = lambda: (True, 160, 220)
+    ticks.advance(1000)
+    app.step()
+
+    assert app._active_alert is None
+    assert app._postponed_alert["due"].hour == 14
+    assert app._postponed_alert["due"].minute == 10
+    assert buzzer.silence_count == 1
+    assert buzzer.ticks == [(1000, True)]
+    texts = [op[1] for op in display.ops if op[0] == "draw_text"]
+    assert "DUE 2026-09-09 14:10" in texts
+
+    ticks.advance(1000)
+    app.step()
+    assert app._active_alert is None
+    assert buzzer.ticks == [(1000, True)]
+
+    touch.read = lambda: (False, None, None)
+    clock._utc = DateTime(2026, 9, 9, 2, 17, 0, 0)
+    ticks.advance(600000)
+    app.step()
+    assert app._active_alert is not None
+    assert [item["id"] for item in app._active_alert["alerts"]] == ["wake"]
+    assert buzzer.ticks[-1] == (603000, True)
+
+
+def test_postpone_release_latch_prevents_replayed_edge_from_navigation():
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    samples = [(False, None, None)]
+
+    class Touch:
+        def read(self):
+            return samples.pop(0) if samples else (True, 10, 10)
+
+    app, _display = _app(clock, ticks, buzzer, [{
+        "id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2],
+    }])
+    app._touch_port = Touch()
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    samples.append((True, 160, 220))
+    ticks.advance(1000)
+    app.step()
+    ticks.advance(1000)
+    app.step()
+    assert app.state.active_surface == "rotation"
+
+
+def test_invalid_postpone_delay_uses_safe_default():
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    touch = type("Touch", (), {"read": lambda self: (False, None, None)})()
+    app, _display = _app(clock, ticks, buzzer, [{
+        "id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2],
+    }])
+    app._alert_cfg = (buzzer, None, {"alerts": app._alert_cfg[2]["alerts"], "postpone_delay_minutes": "bad"})
+    app._touch_port = touch
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    touch.read = lambda: (True, 160, 220)
+    ticks.advance(1000)
+    app.step()
+    assert app._postponed_alert["due"].minute == 10
+
+
+def test_postponed_one_time_alert_disables_existing_id_only_after_resolution():
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    touch = type("Touch", (), {"read": lambda self: (False, None, None)})()
+    alert = {"id": "once", "hour": 14, "minute": 0, "enabled": True, "weekdays": []}
+    app, _display = _app(clock, ticks, buzzer, [alert])
+    app._touch_port = touch
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    touch.read = lambda: (True, 160, 220)
+    ticks.advance(1000)
+    app.step()
+    touch.read = lambda: (False, None, None)
+    clock._utc = DateTime(2026, 9, 9, 2, 17, 0, 0)
+    ticks.advance(600000)
+    app.step()
+    touch.read = lambda: (True, 160, 120)
+    ticks.advance(1000)
+    app.step()
+    assert app._alert_settings["alerts"][0]["enabled"] is False
+    assert alert["enabled"] is True
