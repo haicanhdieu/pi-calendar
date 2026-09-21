@@ -27,7 +27,12 @@ def _load(modules, stage):
             failures.append("%s: MemoryError %s" % (name, exc))
         except Exception as exc:  # noqa: BLE001 - reported, not handled
             failures.append("%s: %s %s" % (name, type(exc).__name__, exc))
-    gc.collect()
+        # Collecting once after the whole stage leaves every import's
+        # compile-time garbage (parse buffers, temporary tuples) stacked up
+        # at once, fragmenting the heap in a way a real boot never sees:
+        # MicroPython's own allocation-threshold GC runs *during* this same
+        # import sequence on hardware, not only after it finishes.
+        gc.collect()
     _emit(stage + "_alloc", gc.mem_alloc())
     _emit(stage + "_free", gc.mem_free())
     for failure in failures:
