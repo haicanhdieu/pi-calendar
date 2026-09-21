@@ -5,6 +5,20 @@ from src.alert.scheduler import AlertScheduler
 from src.alert.terminal import disable_one_time_alerts
 
 
+def t(app, edge_down, y):
+    if not edge_down:
+        app.state.surface_deadline = None
+        return
+    active = getattr(app, "_active_alert", None)
+    if active is None:
+        return
+    app.state.surface_deadline = -1
+    display = app._view._display
+    top = display.height // 4
+    if y is not None and top <= y < top + display.height // 2:
+        active["stop"] = True
+
+
 def render(app, snapshot):
     if getattr(app, "_alert_view", None) is None:
         from src.ui.alert_view import AlertView
@@ -29,6 +43,21 @@ def evaluate(app, snapshot, now):
         app._alert_cfg = (buzzer, store, settings)
     active = getattr(app, "_active_alert", None)
     if active is not None:
+        if active.get("stop"):
+            if buzzer is not None:
+                buzzer.silence()
+            settings = disable_one_time_alerts(
+                active["alerts"], settings,
+                store, app._log,
+            )
+            app._alert_cfg = (buzzer, store, settings)
+            app._alert_settings = settings
+            app._active_alert = None
+            app._alert_started_ticks = None
+            app.state.active_surface = "rotation"
+            app._rearm_active_view_dwell(now)
+            app._render(snapshot, now)
+            return True
         if ticks.ticks_diff(now, app._alert_started_ticks) >= config.ALERT_AUTO_STOP_MS:
             if buzzer is not None:
                 buzzer.silence()

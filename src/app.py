@@ -72,6 +72,8 @@ class AppState:
 
 
 class App:
+    _active_alert = None
+
     def __init__(
         self,
         clock_port,
@@ -228,6 +230,11 @@ class App:
                 except (IndexError, TypeError):
                     # A malformed sample is never a Bar target hit.
                     pass
+        if self._active_alert or self.state.surface_deadline == -1:
+            from src.alert.runtime import t
+
+            t(self, edge_down, y)
+            return False
         previous = self.state.active_surface
         bar_target = None
         if previous == SURFACE_BAR and edge_down:

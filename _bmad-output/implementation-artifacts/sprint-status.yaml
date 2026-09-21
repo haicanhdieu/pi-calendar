@@ -43,10 +43,10 @@ development_status:
   1-5-set-the-global-postpone-delay: backlog
   epic-1-retrospective: optional
 
-  epic-2: backlog
+  epic-2: in-progress
   2-1-sound-a-bounded-tut-cadence-through-the-buzzer-port: done
   2-2-a-due-alert-takes-over-the-screen-sounds-and-auto-stops: backlog
-  2-3-stop-an-active-alert-with-one-tap: backlog
+  2-3-stop-an-active-alert-with-one-tap: done
   2-4-postpone-an-active-alert-and-see-its-new-due-time: backlog
   2-5-a-pending-postpone-survives-a-reboot: backlog
   2-6-alerts-that-collide-join-one-occurrence: backlog

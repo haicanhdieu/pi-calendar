@@ -1,4 +1,5 @@
 from src.app import App
+from src import config
 from src.time.model import DateTime
 from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
@@ -82,3 +83,75 @@ def test_repeating_alert_remains_enabled_after_auto_stop():
     ticks.advance(300000)
     app.step()
     assert app._alert_settings["alerts"][0]["enabled"] is True
+
+
+def test_stop_tap_silences_before_buzzer_tick_and_rearms_last_view():
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    touch = type("Touch", (), {"read": lambda self: (False, None, None)})()
+    app, _display = _app(clock, ticks, buzzer, [{
+        "id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2],
+    }])
+    app._touch_port = touch
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    assert app._active_alert is not None
+
+    touch.read = lambda: (True, 160, 120)
+    ticks.advance(1000)
+    app.step()
+
+    assert app._active_alert is None
+    assert buzzer.silence_count == 1
+    assert buzzer.ticks == [(1000, True)]
+    assert app.state.active_surface == "rotation"
+    assert app.state.view_deadline == ticks.ticks_add(2000, config.CLOCK_DWELL_MS)
+
+
+def test_stop_disables_existing_one_time_alert_but_not_missing_id():
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    alert = {"id": "once", "hour": 14, "minute": 0, "enabled": True, "weekdays": []}
+    touch = type("Touch", (), {"read": lambda self: (False, None, None)})()
+    app, _display = _app(clock, ticks, buzzer, [alert])
+    app._touch_port = touch
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    touch.read = lambda: (True, 160, 120)
+    ticks.advance(1000)
+    app.step()
+
+    assert app._active_alert is None
+    assert app._alert_settings["alerts"][0]["enabled"] is False
+    assert alert["enabled"] is True
+
+
+def test_stop_replay_before_release_cannot_open_normal_bar():
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    samples = [(False, None, None)]
+    class Touch:
+        def read(self):
+            return samples.pop(0) if samples else (True, 160, 120)
+    app, _display = _app(clock, ticks, buzzer, [{
+        "id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2],
+    }])
+    app._touch_port = Touch()
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    samples.append((True, 160, 120))
+    ticks.advance(1000)
+    app.step()
+    assert app._active_alert is None
+    ticks.advance(1000)
+    app.step()
+    assert app.state.active_surface == "rotation"
