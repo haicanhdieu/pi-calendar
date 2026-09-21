@@ -417,3 +417,105 @@ def test_postpone_commit_captures_members_and_preserves_unrelated_settings():
     assert pending["alerts"] == [alert]
     assert pending["due"]["hour"] == 14
     assert pending["due"]["minute"] == 10
+
+
+def test_active_occurrence_survives_committed_edit_without_resetting_lifecycle():
+    ticks = FakeTicks(0)
+    alert = {"id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2]}
+    fs, store = _persisted_alert_store([alert])
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    app = App(
+        clock_port=clock, clock_view=ClockView(FakeDisplayPort()),
+        calendar_view=CalendarView(FakeDisplayPort()), ticks_module=ticks,
+        sync_enabled=False, buzzer_port=buzzer, settings_store=store,
+    )
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    started = app._alert_started_ticks
+    captured = [dict(item) for item in app._active_alert["alerts"]]
+
+    store.commit(
+        wifi_ssid="ssid", wifi_password="password", admin_salt_hex="00" * 16,
+        admin_verifier_hex="11" * 32, color_scheme="forest-amber",
+        alerts=[{"id": "wake", "hour": 15, "minute": 0, "enabled": False, "weekdays": [2]}],
+        postpone_delay_minutes=10,
+    )
+    ticks.advance(1000)
+    app.step()
+
+    assert app._active_alert["alerts"] == captured
+    assert app._alert_started_ticks == started
+    assert buzzer.ticks == [(1000, True), (2000, True)]
+    assert app._alert_cfg[2]["alerts"][0]["enabled"] is False
+
+
+def test_committed_alert_joins_active_occurrence_at_next_loop_boundary():
+    ticks = FakeTicks(0)
+    first = {"id": "first", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2]}
+    fs, store = _persisted_alert_store([first])
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    app = App(
+        clock_port=clock, clock_view=ClockView(FakeDisplayPort()),
+        calendar_view=CalendarView(FakeDisplayPort()), ticks_module=ticks,
+        sync_enabled=False, buzzer_port=buzzer, settings_store=store,
+    )
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    started = app._alert_started_ticks
+
+    second = {"id": "second", "hour": 14, "minute": 1, "enabled": True, "weekdays": [2]}
+    store.commit(
+        wifi_ssid="ssid", wifi_password="password", admin_salt_hex="00" * 16,
+        admin_verifier_hex="11" * 32, color_scheme="forest-amber",
+        alerts=[first, second], postpone_delay_minutes=10,
+    )
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 1, 0)
+    ticks.advance(1000)
+    app.step()
+
+    assert [item["id"] for item in app._active_alert["alerts"]] == ["first", "second"]
+    assert app._alert_started_ticks == started
+    assert buzzer.ticks == [(1000, True), (2000, True)]
+
+
+def test_postponed_occurrence_keeps_captured_member_after_committed_delete():
+    ticks = FakeTicks(0)
+    alert = {"id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2]}
+    fs, store = _persisted_alert_store([alert])
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    touch = type("Touch", (), {"read": lambda self: (False, None, None)})()
+    app = App(
+        clock_port=clock, clock_view=ClockView(FakeDisplayPort()),
+        calendar_view=CalendarView(FakeDisplayPort()), ticks_module=ticks,
+        sync_enabled=False, buzzer_port=buzzer, settings_store=store,
+        touch_port=touch,
+    )
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    touch.read = lambda: (True, 160, 220)
+    ticks.advance(1000)
+    app.step()
+    captured = [dict(item) for item in app._postponed_alert["alerts"]]
+    due = app._postponed_alert["due"]
+
+    store.commit(
+        wifi_ssid="ssid", wifi_password="password", admin_salt_hex="00" * 16,
+        admin_verifier_hex="11" * 32, color_scheme="forest-amber", alerts=[], postpone_delay_minutes=60,
+    )
+    touch.read = lambda: (False, None, None)
+    clock._utc = DateTime(2026, 9, 9, 2, 17, 0, 0)
+    ticks.advance(600000)
+    app.step()
+
+    assert app._active_alert["alerts"] == captured
+    assert app._active_alert["local"] == due
+    assert app._alert_cfg[2]["alerts"] == []

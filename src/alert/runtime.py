@@ -52,6 +52,21 @@ def _commit_alert_state(store, settings, pending, log):
         return None
 
 
+def _refresh_committed_settings(app, buzzer, store, settings):
+    """Read latest atomically committed config at alert-loop boundary."""
+    if store is None:
+        return settings
+    try:
+        committed = store.load()
+    except Exception as exc:
+        app._log("alert_fail load %s" % getattr(exc, "code", "load"))
+        return settings
+    if isinstance(committed, dict):
+        app._alert_cfg = (buzzer, store, committed)
+        return committed
+    return settings
+
+
 def t(app, edge_down, y):
     if not edge_down:
         app.state.surface_deadline = None
@@ -104,6 +119,7 @@ def render_postponed(app, snapshot, postponed):
 def evaluate(app, snapshot, now):
     ticks = app._ticks
     buzzer, store, settings = app._alert_cfg
+    settings = _refresh_committed_settings(app, buzzer, store, settings)
     if not isinstance(settings, dict):
         settings = store.load() if store is not None else {}
         if not isinstance(settings, dict):
