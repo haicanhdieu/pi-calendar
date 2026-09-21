@@ -33,8 +33,11 @@ def edit_alert(fields, store):
         return None, None, "Bad Request", 400
     alerts = list(settings.get("alerts", []))
     alert_id = fields.get("alert_id") if isinstance(fields, dict) else None
-    index = next((i for i, alert in enumerate(alerts)
-                  if alert.get("id") == alert_id), None)
+    index = None
+    for i, alert in enumerate(alerts):
+        if alert.get("id") == alert_id:
+            index = i
+            break
     if index is None:
         return settings, None, "Alert not found.", 400
     check = validate_alert_form_fields(fields, alert_id, len(alerts))

@@ -22,25 +22,42 @@ Configure the target with env vars (defaults match the current bench unit):
 Run explicitly:
     pytest tests_e2e/test_alerts_business_e2e.py -v
 
-KNOWN, PRE-EXISTING FAILURE MODE for every test that renders the inline
-alert-editor form (a rejected add re-showing the editor with an error, or
-GET /settings/edit/<id>): the first such request after boot reliably hits
-a MemoryError on this device (confirmed via serial capture -- not a code
-bug in this codebase's request handling). This is the same documented,
-previously-investigated, unresolved heap-fragmentation class of issue as
+KNOWN, PRE-EXISTING FAILURE MODE: any early station-mode HTTP request on
+this device -- not narrowly the alert-editor render, that was this
+session's first hypothesis and turned out to be too narrow -- can hit a
+genuine MemoryError, confirmed via serial capture with a temporary
+sys.print_exception (added and reverted; not left in the tree). Some
+requests succeed, some don't, from run to run, on an otherwise-identical
+clean boot. This is the same documented, previously-investigated,
+unresolved heap-fragmentation class of issue as
 ``_bmad-output/implementation-artifacts/touch-ui/
-settings-page-fragmentation-attempts-log.md`` (which was about
-session.py's first-use import; the alert-editor's first-use import hits
-the same wall). It is NOT the same as a real bug this session already
-found and fixed on the same code path: page_settings_content.py used to
-call MicroPython's ``__import__`` with a ``fromlist=`` keyword argument,
-which CPython accepts but MicroPython's built-in does not -- a 100%
-deterministic TypeError, invisible to every host test, fixed by switching
-to plain ``from ... import ...`` statements. That fix is verified correct
-(via mpremote exec, both before and after). The MemoryError that remains
-is the open hardware issue, not this fix; expect these tests to keep
-failing until that is resolved, and do not re-attempt the same
+settings-page-fragmentation-attempts-log.md`` (originally about
+session.py's first-use import). It is NOT the same as two real,
+deterministic bugs this session found and fixed on these code paths,
+both invisible to every host test because they only reproduce on
+MicroPython's builtins, not CPython's:
+  1. page_settings_content.py called MicroPython's ``__import__`` with a
+     ``fromlist=`` keyword argument, which CPython accepts and
+     MicroPython's built-in does not (TypeError). Fixed with plain
+     ``from ... import ...`` statements.
+  2. alert_route.py's edit_alert used ``next(generator, None)``;
+     MicroPython's built-in ``next()`` does not accept the two-argument
+     default form CPython's does (TypeError). Fixed with an explicit loop.
+Both fixes are verified correct via mpremote exec, before and after, and
+the full host suite (648) still passes. The MemoryError that remains is
+the open hardware issue, not these fixes; expect occasional failures
+here until that is resolved, and do not re-attempt the same
 already-ruled-out mitigations (see the attempts log) without new data.
+
+Because a MemoryError can strike *after* a mutation has already committed
+but *before* the response finishes rendering (observed live: an add
+persisted while the client only ever saw a 503 for it), retrying a
+"failed" mutating request is not safe here -- this API isn't idempotent,
+and the add might have actually succeeded. This suite does not auto-retry
+mutating calls; instead a module-scoped `_sweep_stray_alerts` fixture
+deletes whatever alerts the device reports at teardown, regardless of
+which test (if any) is credited with creating them, so a mid-run failure
+here can't leave stray state for the next run.
 """
 
 import os
@@ -100,6 +117,46 @@ def _delete_alert(session, alert_id):
         data={"alert_action": "delete", "alert_id": alert_id},
         timeout=TIMEOUT,
     )
+
+
+def _all_alert_ids(page_text):
+    ids = []
+    marker = 'href="/settings/edit/'
+    pos = 0
+    while True:
+        start = page_text.find(marker, pos)
+        if start == -1:
+            break
+        end = page_text.index('"', start + len(marker))
+        ids.append(page_text[start + len(marker):end])
+        pos = end
+    return ids
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _sweep_stray_alerts(auth_session):
+    """Unconditionally delete any alert left over at module teardown.
+
+    A MemoryError can strike *after* a mutation has already committed but
+    *before* the response finishes rendering (observed live: an add
+    persisted while the client only ever saw a 503 for it), so a failed
+    request is not proof nothing changed. Retrying mutating requests isn't
+    safe here either -- this API isn't idempotent, and a "failed" add that
+    actually committed would duplicate on retry. Sweeping at the end,
+    keyed off whatever the device says currently exists rather than what
+    tests think they created, is the only reliable way to leave the
+    device in the state this suite found it.
+    """
+    yield
+    try:
+        page = auth_session.get(_url("/settings"), timeout=TIMEOUT).text
+    except requests.exceptions.RequestException:
+        return
+    for alert_id in _all_alert_ids(page):
+        try:
+            _delete_alert(auth_session, alert_id)
+        except requests.exceptions.RequestException:
+            pass
 
 
 # --- Time validation --------------------------------------------------

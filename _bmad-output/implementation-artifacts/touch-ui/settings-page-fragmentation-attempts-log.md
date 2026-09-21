@@ -154,12 +154,38 @@ missing since the alert feature was added.
 The `__import__` bug was 100% deterministic and is now fixed and verified
 gone (confirmed via `mpremote exec` reproducing the exact render call
 directly). The `MemoryError` on the same request is the pre-existing,
-still-unresolved fragmentation issue described above, now confirmed to
-also affect the alert-editor import specifically, not just `session.py`.
-Precompiling `page_alert_editor.py` to `.mpy` did not resolve it on its
-own. `tests_e2e/test_alerts_business_e2e.py` documents this and is
-expected to keep failing on the alert-editor-touching cases until this
-underlying issue is resolved.
+still-unresolved fragmentation issue described above.
+
+**Follow-up same session, broader finding:** after fixing the
+`__import__` bug, found a second, unrelated, equally deterministic
+MicroPython/CPython builtin gap on the very next request in this flow:
+`alert_route.py`'s `edit_alert` used
+`next((i for i, alert in enumerate(alerts) if ...), None)` --
+MicroPython's built-in `next()` does not accept the CPython two-argument
+default form (`TypeError: function takes 1 positional arguments but 2
+were given`). Fixed with an explicit loop; verified via `mpremote exec`.
+No other `next(iter, default)` or `__import__(..., fromlist=...)` call
+sites exist anywhere in `src/` (grepped project-wide).
+
+With *both* of those real bugs fixed, retesting still showed MemoryError
+on early station requests -- but not narrowly scoped to the alert-editor
+import as first suspected. Repeated clean-boot trials showed a plain
+`add` (no editor render at all) fail on one boot and succeed on another;
+retrying the exact same `edit` request that MemoryError'd on one boot
+sometimes MemoryError'd again and sometimes didn't on the next boot. This
+reframes the issue: it is not "importing module X always fails," it's
+"the first few station HTTP requests after boot have some probability of
+MemoryError, regardless of which handler they hit" -- consistent with a
+genuinely fragmented heap rather than one under-provisioned import.
+Precompiling `page_alert_editor.py`, `alert_route.py`,
+`alert_validation.py`, `postpone_route.py`, and `settings_post.py` to
+`.mpy` (they were missing from `tools/deploy.py`'s `PRECOMPILE` list
+since the alert feature was added) did not resolve it.
+`tests_e2e/test_alerts_business_e2e.py` documents this and sweeps any
+stray alerts a mid-run MemoryError leaves behind at teardown, since a
+"failed" mutating request is not proof nothing was persisted (a
+MemoryError can strike after `store.commit()` but before the response
+finishes rendering).
 
 ## Repo state at end of session
 
