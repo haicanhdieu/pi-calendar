@@ -39,6 +39,13 @@ def test_network_proof_mode_defaults_off():
     assert config.NETWORK_PROOF_MODE is False
 
 
+def test_buzzer_defaults_match_hw508_cadence():
+    assert config.BUZZER_SIGNAL_PIN == 15
+    assert config.BUZZER_ACTIVE_HIGH is True
+    assert config.BUZZER_HIGH_MS == 180
+    assert config.BUZZER_LOW_MS == 220
+
+
 def test_station_recovery_budgets():
     assert config.STATION_FAILURE_LIMIT == 3
     assert config.STATION_IP_DISPLAY_MS is None

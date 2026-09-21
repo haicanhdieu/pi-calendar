@@ -173,6 +173,11 @@ BOOT_CHECKPOINT_DWELL_MS = 1_200
 CLOCK_DWELL_MS = 30_000
 CALENDAR_DWELL_MS = 8_000
 CLOCK_REDRAW_MS = 1000
+# HW-508 buzzer (Story 2.1): GP15, active-high, cooperative tut cadence.
+BUZZER_SIGNAL_PIN = 15
+BUZZER_ACTIVE_HIGH = True
+BUZZER_HIGH_MS = 180
+BUZZER_LOW_MS = 220
 # Production App NTP retry cadence after each terminal sync consume (v1 = 1 h).
 NTP_RETRY_MS = 3_600_000
 

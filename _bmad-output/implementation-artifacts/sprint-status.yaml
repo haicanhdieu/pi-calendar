@@ -44,7 +44,7 @@ development_status:
   epic-1-retrospective: optional
 
   epic-2: backlog
-  2-1-sound-a-bounded-tut-cadence-through-the-buzzer-port: backlog
+  2-1-sound-a-bounded-tut-cadence-through-the-buzzer-port: review
   2-2-a-due-alert-takes-over-the-screen-sounds-and-auto-stops: backlog
   2-3-stop-an-active-alert-with-one-tap: backlog
   2-4-postpone-an-active-alert-and-see-its-new-due-time: backlog

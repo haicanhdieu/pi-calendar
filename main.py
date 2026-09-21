@@ -73,6 +73,18 @@ def main():
     calendar_view = CalendarView(display_port)
     compositor = UiCompositor(display_port)
     clock_port = RtcClockPort()
+    # Keep buzzer adapter out of module-scope boot imports; construct it only
+    # after display/network prerequisites are ready.
+    from src.device.buzzer_port import BuzzerPort, INIT_OK
+
+    buzzer_port = BuzzerPort(
+        config.BUZZER_SIGNAL_PIN,
+        config.BUZZER_HIGH_MS,
+        config.BUZZER_LOW_MS,
+        active_high=config.BUZZER_ACTIVE_HIGH,
+    )
+    if buzzer_port.init_result != INIT_OK:
+        print("Buzzer init failed:", buzzer_port.init_result)
 
     mailbox = Mailbox()
     settings_store = SettingsStore(path=config.SETTINGS_BASENAME)
