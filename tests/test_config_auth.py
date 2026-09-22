@@ -68,6 +68,8 @@ def test_login_and_settings_pages_tokens():
     assert "Admin Password" in login
     assert "username" not in login.lower() or 'name="username"' not in login
     assert 'name="password"' in login
+    assert 'href="/exit"' in login
+    assert "Cancel" in login
     assert "water.css" in login
     assert "fetch(" not in login
     assert "Incorrect password" in pages.login_page_html(incorrect=True)
@@ -740,16 +742,16 @@ def test_coordinator_authenticated_add_page_returns_complete_editor_response():
     assert b"name=weekday_0" in client.sent
 
 
-def test_exit_route_requires_a_session_and_never_arms_the_reset():
+def test_exit_route_without_a_session_arms_the_reset():
     coordinator, http, sockets, _ticks, _store = _online_coordinator()
     client = FakeStreamSocket()
     sockets.listen.enqueue(client)
     client.push_client_bytes(_http_get("/exit"))
 
-    assert _pump(coordinator, lambda: client.closed or b"302" in client.sent)
-    assert b"Location: /login" in client.sent
-    assert http.exit_requested is False
-    assert coordinator.web_exit_requested is False
+    assert _pump(coordinator, lambda: client.closed and client.sent)
+    assert client.sent.startswith(b"HTTP/1.0 200 OK")
+    assert b"Returning to the clock" in client.sent
+    assert coordinator.web_exit_requested is True
 
 
 def test_authenticated_exit_route_arms_the_return_to_clock_mode():

@@ -10,4 +10,6 @@ def login_page_html(incorrect=False):
         '<link rel="stylesheet" href="' + _CSS_HREF + '"><title>Pi Calendar Log In</title></head><body>'
         '<main><h1>Log In</h1>' + banner + '<form method="POST" action="/login">'
         '<label for="admin-password">Admin Password</label><input id="admin-password" name="password" type="password" autocomplete="current-password" required>'
-        '<button type="submit">Log In</button></form></main></body></html>')
+        '<button type="submit">Log In</button></form>'
+        '<p><a href="/exit" role="button">Cancel</a></p>'
+        '</main></body></html>')
