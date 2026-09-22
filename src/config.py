@@ -44,6 +44,7 @@ BAR_ANIMATION_FRAME_MS = 33
 BAR_HEIGHT_PX = 36
 TAP_TARGET_SIZE_PX = 48
 PRESS_FLASH_MS = 120
+ALERT_BUTTON_GAP_PX = 6
 
 # Alert Clock Story 2.2: monotonic safety exit for unanswered occurrences.
 ALERT_AUTO_STOP_MS = 5 * 60 * 1000
@@ -59,6 +60,9 @@ COLOR_PRIMARY_RGB = (0x3D, 0xFF, 0x7A)
 COLOR_SECONDARY_RGB = (0xFF, 0xB2, 0x38)
 COLOR_UNSYNCED_RGB = (0xFF, 0x4D, 0x4D)
 COLOR_WHITE_RGB = (0xFF, 0xFF, 0xFF)
+# Active-alert headline: bright yellow remains distinct from green actions,
+# blue time, and amber postpone text used elsewhere in the instrument panel.
+COLOR_ALERT_RGB = (0xFF, 0xE6, 0x4D)
 # Lunar corner string: a blue distinct from the amber Gregorian date/secondary
 # text, so the two corner strings read as separate fields even if they touch.
 COLOR_LUNAR_RGB = (0x4D, 0xB2, 0xFF)
@@ -74,7 +78,9 @@ COLOR_PRIMARY = rgb888_to_rgb565(*COLOR_PRIMARY_RGB)
 COLOR_SECONDARY = rgb888_to_rgb565(*COLOR_SECONDARY_RGB)
 COLOR_UNSYNCED = rgb888_to_rgb565(*COLOR_UNSYNCED_RGB)
 COLOR_WHITE = rgb888_to_rgb565(*COLOR_WHITE_RGB)
+COLOR_ALERT = rgb888_to_rgb565(*COLOR_ALERT_RGB)
 COLOR_LUNAR = rgb888_to_rgb565(*COLOR_LUNAR_RGB)
+COLOR_ALERT_TIME = COLOR_LUNAR
 COLOR_BAR_PANEL = rgb888_to_rgb565(0x14, 0x14, 0x14)
 COLOR_PRESS_FLASH = rgb888_to_rgb565(0xFF, 0xE9, 0xB8)
 

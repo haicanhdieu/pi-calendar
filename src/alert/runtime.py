@@ -173,8 +173,10 @@ def t(app, edge_down, y):
         return
     app.state.surface_deadline = -1
     display = app._view._display
+    from src.ui.alert_view import stop_hit
+
     top = display.height // 4
-    if y is not None and top <= y < top + display.height // 2:
+    if stop_hit(y, display.height):
         if not getattr(app, "_alert_touch_latched", False):
             active["stop"] = True
             app._alert_touch_latched = True

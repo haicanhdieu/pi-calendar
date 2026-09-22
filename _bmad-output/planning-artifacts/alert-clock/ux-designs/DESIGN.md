@@ -118,6 +118,13 @@ No visual color is specified for buzzer/control failure beyond preserved
 within inherited green/amber palette until hardware/render failure UX is
 specified.]
 
+Active-alert visual override: `ALERT` uses bright yellow, occurrence time uses
+blue, STOP uses existing green as a filled action band, and POSTPONE uses
+existing amber/orange as a filled action band. Both action labels use the
+near-black background color for contrast. Six pixels of background padding
+separate time from STOP and STOP from POSTPONE; touch hit regions match visible
+button rectangles.
+
 Alert Settings inherits Wi-Fi Config palette: `{colors.web-bg}` canvas,
 `{colors.web-surface}` rows/forms, `{colors.web-border}` dividers,
 `{colors.web-text-primary}` and `{colors.web-text-secondary}` copy,

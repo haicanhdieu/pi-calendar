@@ -450,9 +450,9 @@
     "semantic_hash": "b3db16ad8d7a891d3eff583b7ae12b7f"
   },
   "src/config.py": {
-    "mtime": 1790086431.4646053,
-    "seen": 1790089556.747413,
-    "ast_hash": "4dd63a0e678b56cf7846734e15ebbc1d",
+    "mtime": 1790092860.9647465,
+    "seen": 1790092969.74465,
+    "ast_hash": "f03e7b90b0fac615cac0cbae07408c91",
     "semantic_hash": ""
   },
   "src/credentials.py": {
@@ -12474,9 +12474,9 @@
     "semantic_hash": ""
   },
   "_bmad-output/planning-artifacts/alert-clock/ux-designs/DESIGN.md": {
-    "mtime": 1789971313.0896912,
-    "seen": 1789981042.86834,
-    "ast_hash": "b5d89122c3daf6266406516f5ca9c6c5",
+    "mtime": 1790092894.9513464,
+    "seen": 1790092969.7466822,
+    "ast_hash": "5f80928b55c49363c3a2add629b9674a",
     "semantic_hash": ""
   },
   "_bmad-output/planning-artifacts/alert-clock/ux-designs/EXPERIENCE.md": {
@@ -12594,9 +12594,9 @@
     "semantic_hash": ""
   },
   "src/alert/runtime.py": {
-    "mtime": 1789996402.0014622,
-    "seen": 1789996703.102211,
-    "ast_hash": "d0255a010936be4b8a046417b429d72d",
+    "mtime": 1790092861.0207665,
+    "seen": 1790092969.7446249,
+    "ast_hash": "7db12fe3c889883bc39609704dfc0482",
     "semantic_hash": ""
   },
   "src/alert/scheduler.py": {
@@ -12612,9 +12612,9 @@
     "semantic_hash": ""
   },
   "src/ui/alert_view.py": {
-    "mtime": 1789992660.3393724,
-    "seen": 1789992796.054894,
-    "ast_hash": "ceff59978f7b0cd850a7b3e3633cee43",
+    "mtime": 1790092860.9999936,
+    "seen": 1790092969.744698,
+    "ast_hash": "4105efea7faff37d56da2fc481a60dd9",
     "semantic_hash": ""
   },
   "tests/test_alert_app.py": {
@@ -12630,9 +12630,9 @@
     "semantic_hash": ""
   },
   "tests/test_alert_view.py": {
-    "mtime": 1789992605.2915523,
-    "seen": 1789992796.054903,
-    "ast_hash": "ae2f0a615325eab7b83d0b5c4e368858",
+    "mtime": 1790092861.0304527,
+    "seen": 1790092969.744707,
+    "ast_hash": "6ae6a2d9e3e387c8c7134b190882ee10",
     "semantic_hash": ""
   },
   "_bmad-output/implementation-artifacts/alert-clock/stories/2.2-a-due-alert-takes-over-the-screen-sounds-and-auto-stops.md": {
@@ -12753,6 +12753,12 @@
     "mtime": 1790090164.5088036,
     "seen": 1790091265.233057,
     "ast_hash": "c48f0e238c423d41c37d34a4c453b69a",
+    "semantic_hash": ""
+  },
+  "_bmad-output/implementation-artifacts/alert-clock/spec-active-alert-color-refresh.md": {
+    "mtime": 1790092894.955904,
+    "seen": 1790092969.746607,
+    "ast_hash": "d6a7e5be7d1c17552d0060bc28756190",
     "semantic_hash": ""
   }
 }

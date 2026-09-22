@@ -20,6 +20,30 @@ def test_active_alert_renders_exact_labels_and_fixed_bands():
     assert ("fill_rect", 0, 0, 320, 240, config.COLOR_BACKGROUND) in display.ops
 
 
+def test_active_alert_uses_requested_colors_and_high_contrast_action_bands():
+    display = FakeDisplayPort()
+    AlertView(display).render(_snapshot(TRUST_SYNCED), _snapshot(TRUST_SYNCED).local, 15)
+
+    assert any(
+        op[0] == "draw_text" and op[1] == "ALERT" and op[4:] == (config.FONT_SETTINGS_STATUS, config.COLOR_ALERT)
+        for op in display.ops
+    )
+    assert any(
+        op[0] == "draw_text" and op[1] == "07:00" and op[4:] == (config.FONT_TIME, config.COLOR_LUNAR)
+        for op in display.ops
+    )
+    assert ("fill_rect", 0, 66, 320, 108, config.COLOR_PRIMARY) in display.ops
+    assert ("fill_rect", 0, 186, 320, 54, config.COLOR_SECONDARY) in display.ops
+    assert any(
+        op[0] == "draw_text" and op[1] == "STOP" and op[5] == config.COLOR_BACKGROUND
+        for op in display.ops
+    )
+    assert any(
+        op[0] == "draw_text" and op[1] == "POSTPONE 15 MIN" and op[5] == config.COLOR_BACKGROUND
+        for op in display.ops
+    )
+
+
 def test_unsynced_badge_is_preserved_without_changing_alert_labels():
     display = FakeDisplayPort()
     AlertView(display).render(_snapshot(TRUST_UNSYNCED), _snapshot(TRUST_UNSYNCED).local, 10)
@@ -31,9 +55,18 @@ def test_unsynced_badge_is_preserved_without_changing_alert_labels():
 def test_postpone_hit_uses_only_the_lower_band():
     from src.ui.alert_view import postpone_hit
 
-    assert not postpone_hit(179, 240)
-    assert postpone_hit(180, 240)
+    assert not postpone_hit(185, 240)
+    assert postpone_hit(186, 240)
     assert postpone_hit(239, 240)
+
+
+def test_stop_hit_excludes_padding_gaps():
+    from src.ui.alert_view import stop_hit
+
+    assert not stop_hit(65, 240)
+    assert stop_hit(66, 240)
+    assert stop_hit(173, 240)
+    assert not stop_hit(174, 240)
 
 
 def test_postponed_confirmation_renders_exact_local_due_date_and_time():
