@@ -11,7 +11,11 @@ _START = (
     '<label><input name="alert_enabled" type=checkbox checked>Enabled</label>'
     '<fieldset><legend>Repeat on</legend>'
 )
-_END = '</fieldset><button>Save</button>{delete_control}</form></details>'
+_END = (
+    '</fieldset><button type="submit">Save</button>'
+    '<a href="/settings" role="button">Cancel</a>{delete_control}'
+    '</form></details>'
+)
 
 
 def alert_editor_html(alert=None):

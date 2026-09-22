@@ -411,6 +411,7 @@ def test_authenticated_edit_alert_preserves_id_and_updates_time_recurrence_and_e
     assert b'value="07:00"' in opened
     assert b'name=weekday_0 type=checkbox checked' in opened
     assert b'name=weekday_5 type=checkbox>' in opened
+    assert b'<a href="/settings" role="button">Cancel</a>' in opened
 
     body = b"alert_action=edit&alert_id=morning&alert_time=06%3A30"
     response = route_config_request(
@@ -424,6 +425,21 @@ def test_authenticated_edit_alert_preserves_id_and_updates_time_recurrence_and_e
     }]
     assert b"06:30" in response and b"One time" in response and b"Off" in response
     assert store.load()["postpone_delay_minutes"] == 15
+
+
+def test_add_alert_editor_has_cancel_button_without_submitting_alert():
+    ticks = FakeTicks(0)
+    table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x1e" * n)
+    sid = table.create(0)
+    store = _store(FakeFS({".settings-v1": _record_bytes()}))
+
+    response = route_config_request(
+        Req("GET", "/settings/add", {"cookie": "pc_session=" + sid}),
+        MODE_STATION_ONLINE, table, 0, False, settings_store=store,
+    ).response
+
+    assert b'<a href="/settings" role="button">Cancel</a>' in response
+    assert store.load()["alerts"] == []
 
 
 def test_delete_alert_requires_confirmation_markup_and_removes_exact_id_atomically():
