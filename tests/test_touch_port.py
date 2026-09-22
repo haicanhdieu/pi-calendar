@@ -48,6 +48,19 @@ def test_fresh_contact_emits_once_until_release_then_emits_again():
     assert port.read() == (True, 1400, 2200)
 
 
+def test_short_contact_released_during_final_sample_still_emits_one_edge():
+    port, _events = _port(
+        _stable()[: config.TOUCH_SAMPLE_COUNT - 1]
+        + [None]
+        + [None]
+        + _stable(1400, 2200)
+    )
+
+    assert port.read() == (True, 1234, 2345)
+    assert port.read() == (False, None, None)
+    assert port.read() == (True, 1400, 2200)
+
+
 def test_every_poll_hands_spi_to_touch_and_restores_tft():
     port, events = _port(_stable())
 

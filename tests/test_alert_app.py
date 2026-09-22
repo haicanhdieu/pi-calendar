@@ -4,6 +4,8 @@ from src.time.model import DateTime
 from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
 from src.ui.display_port import FakeDisplayPort
+from src.device.touch_port import TouchPort
+from src.ui.touch_calibration import CalibratedTouchPort
 from tests.test_app_loop import FakeClockPort, FakeTicks
 from tests.test_settings_store import FakeFS, _record_bytes, _store
 import json
@@ -38,6 +40,82 @@ class FaultBuzzer(FakeBuzzer):
                 raise failure
             return failure
         return super().tick(now, sounding)
+
+
+class _TouchSpi:
+    def init(self, **kwargs):
+        pass
+
+
+class _TouchPin:
+    def value(self, value):
+        pass
+
+
+def _real_short_tap_touch(screen_y):
+    raw_x = config.TOUCH_RAW_X_MIN + screen_y * (
+        config.TOUCH_RAW_X_MAX - config.TOUCH_RAW_X_MIN
+    ) // (config.SCREEN_HEIGHT - 1)
+    raw_y = (config.TOUCH_RAW_Y_MIN + config.TOUCH_RAW_Y_MAX) // 2
+    samples = iter(
+        [None, None]
+        + [(raw_x, raw_y, config.TOUCH_PRESSURE_MIN + 20)]
+        * (config.TOUCH_SAMPLE_COUNT - 1)
+        + [(raw_x, raw_y, config.TOUCH_PRESSURE_MIN - 1)]
+        + [None]
+    )
+    port = TouchPort(
+        _TouchSpi(), _TouchPin(), _TouchPin(), sampler=lambda: next(samples)
+    )
+    return CalibratedTouchPort(port)
+
+
+def _start_alert_with_touch(screen_y):
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    app, display = _app(clock, ticks, buzzer, [{
+        "id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2],
+    }])
+    app._touch_port = _real_short_tap_touch(screen_y)
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    return app, display, buzzer, ticks
+
+
+def test_real_short_stop_tap_resolves_in_same_step_and_does_not_replay():
+    app, _display, buzzer, ticks = _start_alert_with_touch(120)
+    ticks.advance(1000)
+    app.step()
+
+    assert app._active_alert is None
+    assert buzzer.silence_count == 1
+    assert buzzer.ticks == [(1000, True)]
+    assert app.state.active_surface == "rotation"
+
+    ticks.advance(1000)
+    app.step()
+    assert buzzer.silence_count == 1
+    assert app.state.active_surface == "rotation"
+
+
+def test_real_short_postpone_tap_resolves_in_same_step_and_does_not_replay():
+    app, display, buzzer, ticks = _start_alert_with_touch(220)
+    ticks.advance(1000)
+    app.step()
+
+    assert app._active_alert is None
+    assert app._postponed_alert["due"].minute == 10
+    assert buzzer.silence_count == 1
+    assert buzzer.ticks == [(1000, True)]
+    texts = [op[1] for op in display.ops if op[0] == "draw_text"]
+    assert "DUE 2026-09-09 14:10" in texts
+
+    ticks.advance(1000)
+    app.step()
+    assert buzzer.silence_count == 1
 
 
 def _due_app(buzzer, logs=None):
@@ -302,6 +380,28 @@ def test_stop_replay_before_release_cannot_open_normal_bar():
     ticks.advance(1000)
     app.step()
     assert app.state.active_surface == "rotation"
+
+
+def test_active_alert_touch_in_button_gap_does_not_resolve_occurrence():
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    touch = type("Touch", (), {"read": lambda self: (False, None, None)})()
+    app, _display = _app(clock, ticks, buzzer, [{
+        "id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2],
+    }])
+    app._touch_port = touch
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+
+    touch.read = lambda: (True, 160, 180)
+    ticks.advance(1000)
+    app.step()
+
+    assert app._active_alert is not None
+    assert buzzer.silence_count == 0
 
 
 def test_postpone_silences_before_tick_confirms_due_time_and_realerts_once():
