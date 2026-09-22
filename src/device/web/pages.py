@@ -143,6 +143,19 @@ def response_settings_page(password_changed=False, settings=None, alert_saved=Fa
     )
 
 
+def response_exit_config():
+    """Confirm the return to clock mode; the device resets right after this."""
+    return http_response(
+        200,
+        "OK",
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+        "<title>Pi Calendar</title></head><body>"
+        "<h1>Returning to the clock</h1>"
+        "<p>The device is restarting. Open this address again to come back "
+        "to settings.</p></body></html>",
+    )
+
+
 def response_login_success(session_id):
     return http_response(
         302,

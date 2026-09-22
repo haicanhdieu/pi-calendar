@@ -6,7 +6,13 @@ import subprocess
 import tempfile
 
 from tools.hostsim import budgets
-from tools.hostsim.graph import ROOT, boot_resident_modules, module_path, station_web_modules
+from tools.hostsim.graph import (
+    ROOT,
+    boot_resident_modules,
+    config_resident_modules,
+    module_path,
+    station_web_modules,
+)
 
 
 class MpyCrossMissing(Exception):
@@ -45,11 +51,14 @@ def report():
     """Measured sizes plus every budget breach, as a dict."""
     mpy_cross = find_mpy_cross()
     boot = boot_resident_modules()
-    web = station_web_modules()
+    resident = config_resident_modules()
+    web = station_web_modules(resident)
     boot_sizes = compiled_sizes(boot, mpy_cross)
+    config_sizes = compiled_sizes(resident, mpy_cross)
     web_sizes = compiled_sizes(web, mpy_cross)
 
     boot_total = sum(boot_sizes.values())
+    config_total = sum(config_sizes.values())
     web_total = sum(web_sizes.values())
     breaches = []
 
@@ -60,11 +69,22 @@ def report():
                 % (label, actual, budget, actual - budget)
             )
 
-    check("boot-resident .mpy total", boot_total, budgets.BOOT_RESIDENT_MPY_BYTES)
+    check("clock-mode resident .mpy total", boot_total, budgets.BOOT_RESIDENT_MPY_BYTES)
+    check(
+        "config-mode resident .mpy total",
+        config_total,
+        budgets.CONFIG_RESIDENT_MPY_BYTES,
+    )
     check("station-web .mpy total", web_total, budgets.STATION_WEB_MPY_BYTES)
-    check("combined .mpy total", boot_total + web_total, budgets.COMBINED_MPY_BYTES)
+    # Only config mode holds a resident set and the web chain at once.
+    check(
+        "config-mode + web .mpy total",
+        config_total + web_total,
+        budgets.COMBINED_MPY_BYTES,
+    )
 
     all_sizes = dict(boot_sizes)
+    all_sizes.update(config_sizes)
     all_sizes.update(web_sizes)
     for module, size in sorted(all_sizes.items()):
         ceiling = budgets.MODULE_MPY_BYTES_OVERRIDES.get(
@@ -74,32 +94,42 @@ def report():
 
     return {
         "boot_modules": boot,
+        "config_modules": resident,
         "web_modules": web,
         "boot_sizes": boot_sizes,
+        "config_sizes": config_sizes,
         "web_sizes": web_sizes,
         "boot_total": boot_total,
+        "config_total": config_total,
         "web_total": web_total,
-        "combined_total": boot_total + web_total,
+        "combined_total": config_total + web_total,
         "breaches": breaches,
     }
 
 
 def format_report(data):
     lines = [
-        "boot-resident modules : %3d   %6d bytes (budget %d)"
+        "clock-mode resident   : %3d   %6d bytes (budget %d)"
         % (
             len(data["boot_modules"]),
             data["boot_total"],
             budgets.BOOT_RESIDENT_MPY_BYTES,
         ),
+        "config-mode resident  : %3d   %6d bytes (budget %d)"
+        % (
+            len(data["config_modules"]),
+            data["config_total"],
+            budgets.CONFIG_RESIDENT_MPY_BYTES,
+        ),
         "station-web modules   : %3d   %6d bytes (budget %d)"
         % (len(data["web_modules"]), data["web_total"], budgets.STATION_WEB_MPY_BYTES),
-        "combined              :       %6d bytes (budget %d)"
+        "config-mode + web     :       %6d bytes (budget %d)"
         % (data["combined_total"], budgets.COMBINED_MPY_BYTES),
         "",
         "largest modules:",
     ]
     everything = dict(data["boot_sizes"])
+    everything.update(data["config_sizes"])
     everything.update(data["web_sizes"])
     for module, size in sorted(everything.items(), key=lambda kv: -kv[1])[:8]:
         lines.append("  %-44s %6d" % (module, size))

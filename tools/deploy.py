@@ -66,6 +66,13 @@ PRECOMPILE = [
     "src/device/display/bootstrap.py",
     "src/device/display/splash.py",
     "src/device/display/color.py",
+    "src/device/clock_mode.py",
+    "src/device/config_mode.py",
+    "src/device/knock.py",
+    "src/device/mode_flag.py",
+    "src/alert/runtime.py",
+    "src/alert/scheduler.py",
+    "src/alert/terminal.py",
 ]
 
 NATIVE_PRECOMPILE = {

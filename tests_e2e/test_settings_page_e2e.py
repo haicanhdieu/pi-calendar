@@ -52,6 +52,8 @@ import uuid
 import pytest
 import requests
 
+from tests_e2e.config_mode import DeviceUnreachable, ensure_config_mode
+
 BASE_URL = os.environ.get("PI_CALENDAR_URL", "http://192.168.1.32").rstrip("/")
 ADMIN_PASSWORD = os.environ.get("PI_CALENDAR_ADMIN_PASSWORD", "12345678")
 TIMEOUT = 8
@@ -78,9 +80,12 @@ def _url(path):
 
 @pytest.fixture(scope="module", autouse=True)
 def _require_device():
+    # The admin site exists only in config mode (issue #2); a device sitting
+    # on the clock face answers the first request with a knock interstitial
+    # and reboots into it.
     try:
-        requests.get(_url("/login"), timeout=TIMEOUT)
-    except requests.exceptions.RequestException as exc:
+        ensure_config_mode(BASE_URL, timeout=TIMEOUT)
+    except (requests.exceptions.RequestException, DeviceUnreachable) as exc:
         pytest.skip("Pi Calendar device not reachable at {}: {}".format(BASE_URL, exc))
 
 

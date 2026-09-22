@@ -16,7 +16,9 @@ _PAGE_END = (
     '<form method="POST" action="/settings"><label>New Password</label>'
     '<input name="new_password"><button>Save</button></form></details>'
     '<details aria-disabled="true"><summary>Color Scheme</summary>'
-    '<input disabled> Forest &amp; Amber</details></main></body></html>'
+    '<input disabled> Forest &amp; Amber</details>'
+    '<p><a href="/exit">Return to clock</a></p>'
+    '</main></body></html>'
 )
 
 

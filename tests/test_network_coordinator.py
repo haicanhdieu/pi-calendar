@@ -321,12 +321,18 @@ def test_production_tick_order_integrates_sync_result_with_app_rtc_write():
 def test_production_composition_has_no_threaded_network_worker():
     from pathlib import Path
 
-    main_source = (Path(__file__).resolve().parents[1] / "main.py").read_text()
-    assert "NetworkWorker" not in main_source
-    assert "_thread" not in main_source
-    assert main_source.index("coordinator.tick()") < main_source.index("app.step()")
+    root = Path(__file__).resolve().parents[1]
+    main_source = (root / "main.py").read_text()
+    # The clock loop moved into its own composition root when the boot modes
+    # were split (issue #2); the single-threaded rule follows it there.
+    clock_source = (root / "src" / "device" / "clock_mode.py").read_text()
+    for source in (main_source, clock_source):
+        assert "NetworkWorker" not in source
+        assert "_thread" not in source
+        assert "http_server=setup_http" not in source
+    assert clock_source.index("coordinator.tick()") < clock_source.index("app.step()")
     assert "SetupHttpServer" not in main_source
-    assert "http_server=setup_http" not in main_source
+    assert "SetupHttpServer" not in clock_source
 
 
 class ScanWlan(FakeWlan):

@@ -225,6 +225,15 @@ HTTP_SCAN_CACHE_MAX = 24
 # Opt-in serial checkpoints for flashed heap evidence only.
 WEB_HEAP_CHECKPOINTS = False
 
+# Config mode (issue #2).  Clock mode serves no admin site; a browser knocking
+# on port 80 sets this flag and the device resets into a web-only image, so the
+# clock stack and the web stack are never resident in the same heap.  The flag
+# is deleted on entry to config mode, never on exit, so a crash there returns
+# the device to the clock instead of wedging it in a reboot loop.
+CONFIG_MODE_FLAG_PATH = ".config_mode"
+# No request for this long ends the session and resets back to the clock.
+CONFIG_MODE_IDLE_MS = 300_000
+
 # Config auth / sessions (AD-5 / story 2.1)
 SESSION_IDLE_MS = 900_000
 SESSION_MAX = 4

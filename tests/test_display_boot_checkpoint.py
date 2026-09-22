@@ -67,15 +67,40 @@ def test_display_boot_checkpoint_precedes_app_dependencies():
     assert [event[0] for event in events] == ["construct", "log", "checkpoint", "dwell"]
     assert events[-1] == ("dwell", config.BOOT_CHECKPOINT_DWELL_MS)
 
+    # The composition root is split by boot mode (issue #2): main.py brings the
+    # panel up for both modes, then hands the display to exactly one mode
+    # module. The checkpoint still has to precede every App dependency, which
+    # now means it precedes the handover itself.
     main_tree = ast.parse((ROOT / "main.py").read_text(encoding="utf-8"))
-    calls = [node for node in ast.walk(main_tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)]
-    boot_call = next(call for call in calls if call.func.id == "initialize_display")
-    adapter_call = next(call for call in calls if call.func.id == "Ili9341DisplayPort")
-    touch_call = next(call for call in calls if call.func.id == "TouchPort")
-    reboot_call = next(call for call in calls if call.func.id == "RebootPort")
-    app_call = next(
+    main_calls = [
+        node
+        for node in ast.walk(main_tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    ]
+    boot_call = next(call for call in main_calls if call.func.id == "initialize_display")
+    reboot_call = next(call for call in main_calls if call.func.id == "RebootPort")
+    clock_handover = next(call for call in main_calls if call.func.id == "run_clock_mode")
+    config_handover = next(
+        call for call in main_calls if call.func.id == "run_config_mode"
+    )
+    assert boot_call.lineno < clock_handover.lineno
+    assert boot_call.lineno < config_handover.lineno
+    assert reboot_call.args[0].id == "reset"
+
+    clock_tree = ast.parse(
+        (ROOT / "src" / "device" / "clock_mode.py").read_text(encoding="utf-8")
+    )
+    clock_calls = [
+        node
+        for node in ast.walk(clock_tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    ]
+    touch_call = next(call for call in clock_calls if call.func.id == "TouchPort")
+    assert next(call for call in clock_calls if call.func.id == "Ili9341DisplayPort")
+    assert touch_call.args[2].attr == "cs"
+    assert next(
         call
-        for call in calls
+        for call in clock_calls
         if call.func.id == "App"
         and any(
             kw.arg == "reboot_port"
@@ -84,11 +109,6 @@ def test_display_boot_checkpoint_precedes_app_dependencies():
             for kw in call.keywords
         )
     )
-    assert boot_call.lineno < adapter_call.lineno
-    assert boot_call.lineno < touch_call.lineno
-    assert reboot_call.args[0].id == "reset"
-    assert touch_call.args[2].attr == "cs"
-    assert app_call is not None
 
 
 def test_display_adapter_remains_touch_unaware():

@@ -19,6 +19,9 @@ Two consequences drive every decision here:
    inside a function costs nothing until that function runs. That is why the
    station web surface (`src/device/web/*`, `src/provisioning/session.py`,
    `kdf_job.py`) is imported lazily — it only has to exist while serving.
+   Lazily, though, is not the same as *never*: a module imported inside a
+   route handler is resident from the first request that reaches it and is
+   never given back. See "The boot-mode split" below.
 2. **Data written as many small literals costs far more than the data.**
    `font.py` stored 41 glyphs as tuples of seven `"01010"` strings: roughly 400
    separate GC objects, 24,544 bytes, pinned from boot. The identical pixels as
@@ -30,6 +33,44 @@ are all *live*; there is nothing to collect. And MicroPython's collector is
 mark-and-sweep, not compacting, so a heap holding ~1,800 one-block objects has
 free bytes scattered between them and no contiguous run big enough to load
 another module.
+
+## The boot-mode split
+
+Trimming the resident set eventually ran out of room: the clock stack and the
+whole admin site simply do not both fit. Issue #2 was the proof — every
+`GET /settings/add` answered `503`, with about 2KB of device heap free at the
+moment the request needed to import the alert editor.
+
+So the device no longer tries. It boots into exactly one of two modes, and the
+two stacks are never live together:
+
+| | resident | HTTP presence |
+|---|---|---|
+| clock mode (`src/device/clock_mode.py`) | App, views, compositor, touch | `src/device/knock.py` only |
+| config mode (`src/device/config_mode.py`) | settings store, display, alert scheduler | the full admin site |
+
+`main.py` owns only the bring-up both modes need, then imports one of them.
+Clock mode's entire web surface is a listening socket that answers any
+connection with one fixed interstitial, writes `config.CONFIG_MODE_FLAG_PATH`
+and resets. Config mode deletes that flag **as its first action** — on entry,
+never on exit — so a crash there returns the device to the clock rather than
+wedging it in a reboot loop. The session ends on the settings page's "Return
+to clock" link, on `config.CONFIG_MODE_IDLE_MS` without a request, or when an
+alert comes due (clock mode owns the buzzer and the dismiss surface).
+
+Measured effect, in simulation, with the whole authenticated request path
+resident: free heap while serving went from 4,480 to 50,400 bytes, and the
+4096- and 8192-byte contiguous probes from `fail` to `ok`.
+
+Two traps found while building it, both worth knowing before touching this:
+
+- **`sys.modules.pop()` alone frees nothing.** The parent package still holds
+  an attribute reference to the submodule. Purging measured 5,056 → 5,024
+  bytes; adding `delattr(parent, leaf)` made the same purge 4,064 → 18,560.
+- **Do not import anything from `src/device/web/` in clock mode.** That
+  package's `__init__` exports `SetupHttpServer`, so a single import from
+  inside it drags the whole bounded HTTP server in — measured at 17,696 bytes
+  of simulated heap. That is why `knock.py` lives in `src/device/`.
 
 ## The gates
 
@@ -55,9 +96,18 @@ build.
 - `src/device/web/` importing `machine` or `network`, which would make the web
   surface untestable on the host.
 
-The boot-resident set is *derived*, not hardcoded: `tools/hostsim/graph.py`
-walks module-scope imports from `main.py`. Moving a lazy import to module scope
-therefore trips the gate on its own.
+Both resident sets are *derived*, not hardcoded: `tools/hostsim/graph.py` walks
+module-scope imports from `main.py` plus the mode entry module — `clock_mode.py`
+for a clock boot, `config_mode.py` for a config boot. Moving a lazy import to
+module scope therefore trips the gate on its own, and so does letting a clock
+module leak into config mode's closure or vice versa.
+
+`STATION_WEB_MODULES` lists what a browser makes resident. It must include the
+modules imported *inside route handlers* — `settings_post`, `alert_route`,
+`alert_validation`, `page_alert_editor`, `postpone_route`, `kdf_job`. Leaving
+them out is what let the gate pass green for months while the device answered
+503 to every `/settings/add`: the simulation was modelling a device that did
+not exist.
 
 ### 2. Compiled size (needs `mpy-cross`)
 
@@ -111,6 +161,7 @@ confirmed the fix, which is what it is for.
 | `font.py` glyph table → one `bytes` blob | 24,544 | 1,632 |
 | `clock_view.py` `_SS`/`_HH`/`_MON`/`_DOW` → packed strings | 16,448 | 9,536 |
 | `calendar_view.py` `_MONTHS`/`_WEEKDAYS` → packed strings | — | — |
+| boot-mode split (issue #2), free heap while serving | 4,480 | 50,400 |
 
 Boot-resident total fell from 164,992 to 134,656 bytes in simulation (−18%),
 one-block objects from 1,822 to 1,187, and the device went from `Empty reply

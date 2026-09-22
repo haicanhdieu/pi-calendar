@@ -28,6 +28,7 @@ from tools.hostsim.graph import (
     ROOT,
     STATION_WEB_MODULES,
     boot_resident_modules,
+    config_resident_modules,
     module_scope_imports,
 )
 
@@ -119,6 +120,56 @@ def test_boot_import_closure_is_derivable_and_non_trivial():
     assert len(resident) > 20
     assert "src.app" in resident and "src.config" in resident
     assert module_scope_imports(str(pathlib.Path(ROOT) / "main.py"))
+
+
+def test_config_mode_keeps_the_clock_stack_off_the_heap():
+    """The separation the fix rests on (issue #2).
+
+    Config mode exists so the admin site does not have to share a heap with
+    the clock.  If any of these reappear in its closure, the site is back to
+    serving requests on the scraps the clock left, which is what answered 503
+    to every ``GET /settings/add``.
+    """
+    resident = set(config_resident_modules())
+    for module in (
+        "src.app",
+        "src.ui.clock_view",
+        "src.ui.calendar_view",
+        "src.ui.settings_view",
+        "src.ui.compositor",
+        "src.ui.components",
+        "src.device.touch_port",
+        "src.calendar.lunar",
+    ):
+        assert module not in resident, (
+            "%s is resident in config mode; it belongs to the clock stack "
+            "and must stay in src/device/clock_mode.py" % module
+        )
+
+
+def test_clock_mode_keeps_the_whole_web_stack_off_the_heap():
+    """Clock mode's only HTTP presence is the knock listener.
+
+    ``src/device/knock.py`` deliberately lives outside ``src/device/web``:
+    that package's ``__init__`` exports ``SetupHttpServer``, so importing from
+    inside it would drag the bounded HTTP server into clock mode (measured at
+    17,696 bytes of simulated heap).
+    """
+    resident = set(boot_resident_modules())
+    assert "src.device.knock" in resident
+    for module in STATION_WEB_MODULES:
+        assert module not in resident
+    assert "src.device.web" not in resident
+    assert not any(m.startswith("src.device.web") for m in resident)
+
+
+def test_both_boot_modes_share_only_what_main_needs():
+    """main.py owns the bring-up both modes need and nothing mode-specific."""
+    main_only = set(boot_resident_modules(entry="main.py"))
+    assert "src.app" not in main_only
+    assert "src.device.knock" not in main_only
+    assert main_only.issubset(set(boot_resident_modules()))
+    assert main_only.issubset(set(config_resident_modules()))
 
 
 # --------------------------------------------------------------------------

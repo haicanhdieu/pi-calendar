@@ -17,9 +17,20 @@ import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Entry points whose module-scope imports define what each boot mode pins.
+# `main.py` holds only what both modes need; the clock stack and the config
+# stack each live behind their own entry module so neither pays for the other.
+CLOCK_MODE_ENTRY = os.path.join("src", "device", "clock_mode.py")
+CONFIG_MODE_ENTRY = os.path.join("src", "device", "config_mode.py")
+
 # Reaching the station admin site imports these on top of the resident set.
 # `coordinator` is included because a station-mode tick pulls it in and then
-# keeps it, even though `main.py` only names it lazily.
+# keeps it, even though the entry modules only name it lazily.
+#
+# The second group is the authenticated *request* path: lazily imported inside
+# route handlers, resident from the first request that touches them, and the
+# cause of issue #2.  Leaving them out modelled a device that does not exist --
+# a browser reaching /settings/add imports them and never gives them back.
 STATION_WEB_MODULES = (
     "src.device.network.coordinator",
     "src.device.web.http_parse",
@@ -30,6 +41,13 @@ STATION_WEB_MODULES = (
     "src.device.web.router",
     "src.provisioning.verifier",
     "src.provisioning.session",
+    # Authenticated request path (issue #2).
+    "src.provisioning.kdf_job",
+    "src.device.web.settings_post",
+    "src.device.web.alert_route",
+    "src.device.web.alert_validation",
+    "src.device.web.page_alert_editor",
+    "src.device.web.postpone_route",
 )
 
 
@@ -81,10 +99,10 @@ def module_scope_imports(path):
     return visitor.found
 
 
-def boot_resident_modules(entry="main.py"):
-    """Modules pinned on the heap from boot, as a sorted tuple."""
+def _closure(entries):
+    """Modules pinned on the heap once every entry module is imported."""
     resident = set()
-    pending = [os.path.join(ROOT, entry)]
+    pending = [os.path.join(ROOT, entry) for entry in entries]
     visited = set()
     while pending:
         path = pending.pop()
@@ -101,7 +119,31 @@ def boot_resident_modules(entry="main.py"):
     return tuple(sorted(resident))
 
 
-def station_web_modules():
-    """Modules added on top of the resident set to serve the admin site."""
-    resident = set(boot_resident_modules())
+def boot_resident_modules(entry=None):
+    """Modules pinned from a normal (clock) boot, as a sorted tuple.
+
+    ``entry`` overrides the default pair for callers that want one module's
+    closure in isolation; the default is the real clock-mode boot.
+    """
+    if entry is not None:
+        return _closure((entry,))
+    return _closure(("main.py", CLOCK_MODE_ENTRY))
+
+
+def config_resident_modules():
+    """Modules pinned from a config-mode boot, as a sorted tuple.
+
+    Config mode never constructs App, the clock/calendar/settings views, the
+    compositor or the touch stack, so none of them are resident while the
+    station web surface is live.  That separation is the entire point: the two
+    sets no longer have to fit in the same 179,328-byte heap at once.
+    """
+    return _closure(("main.py", CONFIG_MODE_ENTRY))
+
+
+def station_web_modules(resident=None):
+    """Modules added on top of a resident set to serve the admin site."""
+    if resident is None:
+        resident = config_resident_modules()
+    resident = set(resident)
     return tuple(m for m in STATION_WEB_MODULES if m not in resident)

@@ -198,3 +198,59 @@ finishes rendering).
   `close_clients()` fix; `WEB_HEAP_CHECKPOINTS` is back to `False` on the
   committed source (the device itself may still be running whatever was
   last flashed -- reflash to sync if needed).
+
+---
+
+## Attempt: heap ballast (issue #2, phase 1) — FAILED, reverted
+
+Reserve a contiguous `bytearray(16384)` at boot while the heap is still
+unfragmented, release it just before the station web imports, on the theory
+that the failure was a heap with free bytes but no contiguous run.
+
+It changed nothing on the device, and the simulation says exactly why: with
+the alert request path resident, free heap is 4,128 bytes with the ballast and
+4,128 bytes without it — byte for byte identical, 4096-byte contiguous probe
+failing in both. A ballast relocates one run; it does not create heap. The
+shortfall here was **total free heap**, not contiguity alone, so this was
+aimed at the wrong quantity. Reverted in full.
+
+## Root cause, finally measured
+
+`GET /settings/add` failed 100% of the time on the bench unit, not
+intermittently — earlier runs looked probabilistic because `kdf_job` becomes
+resident at login and pushes the following request over the edge.
+
+Serial capture at the moment of failure: `web_request_memory` then `web_asset`,
+i.e. a real `MemoryError` inside `_read_client`'s dispatch, answered by
+`server.py`'s fixed `503 Service temporarily unavailable`.
+
+Simulated free heap, measured in stages (64-bit sim; device is roughly half):
+
+| resident | free | contiguous |
+|---|---|---|
+| boot + modelled web set | 21,472 | 8192 ok |
+| + `kdf_job` (after login) | 16,320 | 8192 ok |
+| + alert request path | **4,480** | **4096 fail** |
+
+The alert request path — `settings_post`, `alert_route`, `alert_validation`,
+`page_alert_editor`, `postpone_route` — was never in
+`tools/hostsim/graph.py`'s `STATION_WEB_MODULES`, so the gate had been
+modelling a device that does not exist. It is in there now.
+
+## Fix: boot-mode split (issue #2, phase 2) — WORKED
+
+The clock stack and the admin site never need to coexist, so they no longer
+do. See `docs/heap_budget.md`, "The boot-mode split". Free heap while serving:
+4,480 → 50,400 in simulation; on hardware, `GET /settings/add` went from 503 on
+every single attempt to 200 on every attempt, including repeated add/edit
+cycles after an alert exists — the exact sequence reported in the issue.
+`tests_e2e/test_alerts_business_e2e.py` passes 6/6.
+
+Two MicroPython traps worth not rediscovering:
+
+- `sys.modules.pop(name)` alone reclaims nothing; the parent package keeps an
+  attribute reference. With `delattr(parent, leaf)` the same purge went from
+  5,024 to 18,560 bytes free.
+- A socket accepted from a non-blocking listener is non-blocking too, and the
+  first `send` to a browser raises `EAGAIN`. Treating that as failure made the
+  knock listener reset the device with the interstitial never delivered.

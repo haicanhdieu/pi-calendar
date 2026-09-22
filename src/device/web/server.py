@@ -77,6 +77,8 @@ class SetupHttpServer:
         self._held_client = None
         self._page_state = None
         self.last_failure_phase = None
+        # Set by the config-mode exit route; the loop owner acts on it.
+        self.exit_requested = False
 
     @property
     def has_held_client(self):
@@ -431,7 +433,7 @@ class SetupHttpServer:
             ACTION_LOGIN_KDF, ACTION_PASSWORD_CHANGE_KDF, route_config_request,
         )
         if callable(session_table) and (
-            request.path in ("/", "/settings", "/settings/add")
+            request.path in ("/", "/settings", "/settings/add", "/exit")
             or request.path.startswith("/settings/edit/")
         ):
             session_table = session_table()
@@ -454,6 +456,9 @@ class SetupHttpServer:
                     session_table.renew(routed.renew_session_id, now_ticks)
                 except Exception:
                     pass
+            if routed.error_code == "exit_config":
+                # The owner of the loop resets once this response has drained.
+                self.exit_requested = True
             client.outbox = routed.response
             client.out_offset = 0
             client.closing = True

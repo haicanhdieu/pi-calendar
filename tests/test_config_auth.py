@@ -740,6 +740,77 @@ def test_coordinator_authenticated_add_page_returns_complete_editor_response():
     assert b"name=weekday_0" in client.sent
 
 
+def test_exit_route_requires_a_session_and_never_arms_the_reset():
+    coordinator, http, sockets, _ticks, _store = _online_coordinator()
+    client = FakeStreamSocket()
+    sockets.listen.enqueue(client)
+    client.push_client_bytes(_http_get("/exit"))
+
+    assert _pump(coordinator, lambda: client.closed or b"302" in client.sent)
+    assert b"Location: /login" in client.sent
+    assert http.exit_requested is False
+    assert coordinator.web_exit_requested is False
+
+
+def test_authenticated_exit_route_arms_the_return_to_clock_mode():
+    coordinator, http, sockets, _ticks, _store = _online_coordinator()
+    coordinator._get_sessions()
+    sid = coordinator._sessions.create(0)
+    client = FakeStreamSocket()
+    sockets.listen.enqueue(client)
+    client.push_client_bytes(_http_get("/exit", "pc_session=" + sid))
+
+    assert _pump(coordinator, lambda: client.closed and client.sent)
+    assert client.sent.startswith(b"HTTP/1.0 200 OK")
+    assert b"Returning to the clock" in client.sent
+    # The confirmation is queued first; config_mode drains it before resetting.
+    assert coordinator.web_exit_requested is True
+
+
+def test_settings_page_offers_the_way_back_to_the_clock():
+    coordinator, _http, sockets, _ticks, _store = _online_coordinator()
+    coordinator._get_sessions()
+    sid = coordinator._sessions.create(0)
+    client = FakeStreamSocket()
+    sockets.listen.enqueue(client)
+    client.push_client_bytes(_http_get("/settings", "pc_session=" + sid))
+
+    assert _pump(coordinator, lambda: client.closed and client.sent)
+    assert b'href="/exit"' in client.sent
+
+
+def test_clock_mode_coordinator_serves_no_admin_site():
+    """station_web=False is what keeps the web stack out of clock mode."""
+    salt, verifier = derive_admin_verifier("adminpass", salt=b"\x44" * 16)
+    fs = FakeFS({".settings-v1": _record_bytes(admin_salt=salt, admin_verifier=verifier)})
+    sockets = FakeTcpSocketModule()
+    coordinator = NetworkCoordinator(
+        Mailbox(),
+        wlan=FakeWlan(connected=True),
+        ap_wlan=FakeApWlan(),
+        settings_store=_store(fs),
+        ticks_module=FakeTicks(0),
+        socket_module=sockets,
+        station_web=False,
+    )
+    coordinator.tick()
+    coordinator.tick()
+    assert coordinator.mode == MODE_STATION_ONLINE
+
+    client = FakeStreamSocket()
+    sockets.listen.enqueue(client)
+    client.push_client_bytes(_http_get("/settings"))
+    for _ in range(50):
+        coordinator.tick()
+
+    # No listener was ever constructed, so nothing answered and none of the
+    # router/session/KDF modules were pulled onto the heap.
+    assert coordinator._http is None
+    assert client.sent == b""
+    assert coordinator.web_busy is False
+    assert coordinator.web_exit_requested is False
+
+
 def test_coordinator_authenticated_edit_page_uses_lazy_session_factory():
     coordinator, _http, sockets, _ticks, _store = _online_coordinator()
     coordinator._get_sessions()

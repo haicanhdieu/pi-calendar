@@ -1,8 +1,10 @@
 """Memory budgets for the Pico W build.
 
-The device has a 179,328-byte GC heap.  Serving the station admin site means
-the boot-resident module set and the whole station web chain have to be live
-simultaneously, so the budgets below cap both halves with headroom.
+The device has a 179,328-byte GC heap.  It boots into one of two modes and
+never both: clock mode runs the clock stack and no web stack, and config mode
+runs the web stack and no clock stack (see ``src/device/config_mode.py``).
+The budgets below therefore cap three things: each boot mode's resident set,
+and the web chain that config mode loads on top of its own.
 
 Numbers were set from measurements taken while fixing the settings-page
 ``MemoryError`` (see ``docs/heap_budget.md``).  Tightening one after a real
@@ -13,9 +15,16 @@ raise it deliberately and say why in the commit message.
 # Compiled-size budgets (``mpy-cross`` output, bytes).  A proxy for heap cost:
 # the heap holds the same bytecode plus per-object overhead, so growth here is
 # growth there.  Cheap to check and needs no MicroPython interpreter.
-BOOT_RESIDENT_MPY_BYTES = 47_150  # Story 2.5 pending-state schema headroom
-STATION_WEB_MPY_BYTES = 37_000  # measured 34,166
-COMBINED_MPY_BYTES = 84_000  # measured 78,019
+BOOT_RESIDENT_MPY_BYTES = 50_500  # clock mode; measured 49,600
+CONFIG_RESIDENT_MPY_BYTES = 26_000  # config mode; measured 24,836
+# The web chain now includes the authenticated request path (settings POST
+# handlers, alert editor, alert validation, postpone, KDF job).  Those were
+# lazily imported and unmodelled before issue #2, which is exactly why a gate
+# that passed could sit alongside a device that answered 503 to every
+# /settings/add.
+STATION_WEB_MPY_BYTES = 49_000  # measured 48,190
+# Only config mode ever holds resident + web at once.
+COMBINED_MPY_BYTES = 74_000  # measured 73,026
 
 # Single-module ceiling.  `coordinator.py` is the standing outlier and is
 # pinned separately so the general ceiling can stay meaningfully low.
@@ -42,13 +51,21 @@ MODULE_MPY_BYTES_OVERRIDES = {
 # everything is resident -- so that a real regression trips the gate rather
 # than being absorbed by slack.
 SIM_HEAP_SIZE = "200k"
-SIM_BOOT_RESIDENT_BYTES = 112_000  # measured 103,648
-SIM_MIN_FREE_AFTER_BOOT = 88_000  # measured 98,560
+SIM_BOOT_RESIDENT_BYTES = 115_000  # clock mode; measured 113,600
+SIM_MIN_FREE_AFTER_BOOT = 85_000  # clock mode; measured 88,608
+
+# Config mode's own resident set, and the floor on what is left once the whole
+# admin site -- request path included -- is resident on top of it.  That floor
+# is the number issue #2 was really about: the device was serving requests with
+# roughly 2KB of device heap left, so any page render tipped it into
+# MemoryError.
+SIM_CONFIG_RESIDENT_BYTES = 80_000  # measured 76,416
+SIM_MIN_FREE_SERVING = 40_000  # measured 50,272; was 4,480 before issue #2
 
 # Every probe size must succeed once all modules are resident.  The original
 # bug was a heap with free bytes but no contiguous run, so total-free checks
 # alone would not have caught it.
-SIM_REQUIRED_CONTIGUOUS = (512, 1024, 2048, 4096)
+SIM_REQUIRED_CONTIGUOUS = (512, 1024, 2048, 4096, 8192)
 
 # Guard against reintroducing the allocation pattern that caused the bug: a
 # module-level collection of many small string literals becomes one pinned GC

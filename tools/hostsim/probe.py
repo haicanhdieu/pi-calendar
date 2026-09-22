@@ -1,9 +1,22 @@
 """Runs inside MicroPython, inside the staged deploy tree.
 
-Imports the boot-resident module set, then the station web chain, the same way
-and in the same order the device does, and reports heap occupancy at each
-stage.  Output is one ``key=value`` line per fact so the host runner can parse
-it without depending on MicroPython's formatting.
+Imports one boot mode's module set the same way and in the same order the
+device does, and reports heap occupancy at each stage.  Output is one
+``key=value`` line per fact so the host runner can parse it without depending
+on MicroPython's formatting.
+
+The runner invokes this twice, because the device never holds both boot modes
+at once and neither can a faithful simulation:
+
+``PHASE == "clock"``
+    The clock-mode resident set on its own.  No web modules are loaded,
+    because clock mode serves no admin site.
+
+``PHASE == "config"``
+    The config-mode resident set, then the whole station web chain on top of
+    it -- including the authenticated request path, which is resident from the
+    first browser request that touches it.  The contiguous probe runs here,
+    where the device actually serves pages.
 
 The module lists are written to ``_modules.py`` by the runner, which derives
 them from the real import graph.
@@ -43,14 +56,21 @@ def _load(modules, stage):
 def main():
     gc.collect()
     _emit("heap_total", gc.mem_alloc() + gc.mem_free())
-    _load(_modules.BOOT, "boot")
+
+    if _modules.PHASE == "clock":
+        _load(_modules.BOOT, "boot")
+        gc.collect()
+        _emit("clock_final_free", gc.mem_free())
+        return
+
+    _load(_modules.CONFIG, "config")
     _load(_modules.WEB, "web")
 
-    # The first browser request needs a contiguous run for socket and parser
-    # buffers after every module is resident.  A heap that is merely "free
-    # enough" in total can still fail here, which is the failure this whole
-    # exercise was chasing.
-    for size in (512, 1024, 2048, 4096):
+    # A browser request needs a contiguous run for socket, parser and response
+    # buffers after every module it touches is resident.  A heap that is merely
+    # "free enough" in total can still fail here, which is the failure this
+    # whole exercise was chasing.
+    for size in _modules.CONTIGUOUS:
         try:
             buf = bytearray(size)
             del buf

@@ -111,6 +111,9 @@ def route_config_request(request, mode, session_table, now, kdf_busy, settings_s
             path.startswith("/settings/edit/")) and method == "GET":
         return _route_protected_get(request, session_table, now, settings_store)
 
+    if path == "/exit" and method == "GET":
+        return _route_exit(request, session_table, now)
+
     if path in ("/", "/settings") and method == "POST":
         from src.device.web.settings_post import route
         return route(request, session_table, now, kdf_busy, settings_store,
@@ -155,6 +158,16 @@ def _route_protected_get(request, session_table, now, settings_store=None):
                               if request.path.startswith("/settings/edit/") else None),
         ),
         renew_session_id=entry.encoded_id,
+    )
+
+
+def _route_exit(request, session_table, now):
+    """Authenticated request to leave config mode and return to the clock."""
+    entry, reject = _lookup_session(request, session_table, now)
+    if reject is not None:
+        return reject
+    return RouteResult(
+        ACTION_RESPOND, pages.response_exit_config(), error_code="exit_config"
     )
 
 

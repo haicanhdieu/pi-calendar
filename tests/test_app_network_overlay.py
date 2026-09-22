@@ -333,8 +333,9 @@ def test_shared_events_composition_coordinator_to_app_overlay():
         "kind": "station_ip", "ssid": "HomeNet", "ip": "192.168.1.88"
     }
 
-    main_source = (ROOT / "main.py").read_text()
-    assert "network_events=network_events" in main_source
-    assert "MODE_STATION_CONNECTING" in main_source
-    assert "settings_store.is_configured()" in main_source
-    assert "credentials_valid()" in main_source
+    # Clock mode owns this wiring since the boot modes were split (issue #2).
+    clock_source = (ROOT / "src" / "device" / "clock_mode.py").read_text()
+    assert "network_events=network_events" in clock_source
+    assert "MODE_STATION_CONNECTING" in clock_source
+    assert "settings_store.is_configured()" in clock_source
+    assert "credentials_valid()" in clock_source

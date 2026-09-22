@@ -60,7 +60,9 @@ class NetworkCoordinator:
         event_sink=None,
         http_server=None,
         http_factory=None,
+        station_web=True,
     ):
+        self._station_web = bool(station_web)
         self._mailbox = mailbox
         self._wlan = wlan
         self._ap_wlan = ap_wlan
@@ -227,6 +229,45 @@ class NetworkCoordinator:
     def scan_cache(self):
         return self._scan_cache
 
+    @property
+    def station_ip(self):
+        """Current station IPv4 address, or None when it cannot be read."""
+        try:
+            return self._station_ip()
+        except Exception:
+            return None
+
+    @property
+    def web_busy(self):
+        """Whether a browser or a KDF job is mid-flight on the admin site.
+
+        Config mode treats this as activity and re-arms its idle timeout, so a
+        session in use is never cut off mid-request.
+        """
+        if self._kdf_job is not None:
+            return True
+        http = self._http
+        if http is None:
+            return False
+        return bool(getattr(http, "has_clients", False)) or bool(
+            getattr(http, "has_held_client", False)
+        )
+
+    @property
+    def web_exit_requested(self):
+        """Whether an authenticated browser asked to return to clock mode."""
+        http = self._http
+        return http is not None and bool(getattr(http, "exit_requested", False))
+
+    def drain_web_writes(self):
+        """Flush pending admin-site responses (used before a mode reset)."""
+        http = self._http
+        if http is None:
+            return
+        drain = getattr(http, "drain_writes", None)
+        if callable(drain):
+            drain()
+
     def _emit(self, event):
         sink = self._event_sink
         if sink is None:
@@ -252,7 +293,10 @@ class NetworkCoordinator:
         if self._mode == MODE_STATION_ONLINE and self._settings_store is not None:
             if self._watch_station_drop(now):
                 return
-            if self._tick_station_config(now):
+            # Clock mode passes station_web=False: it serves no admin site, so
+            # the router, pages, sessions and KDF never become resident there.
+            # A browser reaches those only in config mode (issue #2).
+            if self._station_web and self._tick_station_config(now):
                 return
         if self._command is None:
             taken = self._mailbox.try_take_command()

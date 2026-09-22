@@ -2,27 +2,13 @@ from machine import Pin, SPI, reset
 from time import sleep_ms
 
 from src import config
-from src.app import App
-from src.credentials import credentials_valid
 from src.device.clock_port import RtcClockPort
+from src.device.mode_flag import consume_config_mode
 from src.device.reboot_port import RebootPort
 from src.device.display.bootstrap import initialize_display
-from src.device.display.adapter import Ili9341DisplayPort
 from src.device.display.ili9341 import ILI9341
 from src.device.display.splash import splash_screen
-from src.device.network.mailbox import Mailbox
-from src.device.network.models import (
-    MODE_SETUP_AP,
-    MODE_STATION_CONNECTING,
-    make_settings_coordinator,
-    ntp_sync_enabled,
-)
 from src.device.settings_store import SettingsStore
-from src.device.touch_port import TouchPort
-from src.ui.touch_calibration import CalibratedTouchPort
-from src.ui.calendar_view import CalendarView
-from src.ui.clock_view import ClockView
-from src.ui.compositor import UiCompositor
 
 
 def main():
@@ -37,6 +23,11 @@ def main():
 
         run_proof()
         return
+
+    # Read and clear the handoff flag before anything else can fail. Clearing
+    # on entry is what makes config mode self-healing: a crash below returns
+    # the device to the clock on the next reset (issue #2).
+    config_mode = consume_config_mode()
 
     print("Initializing SPI0 TFT + App loop")
     import gc
@@ -58,90 +49,44 @@ def main():
 
     display = initialize_display(spi, ILI9341, splash_screen, sleep_ms, print)
 
-    # Reuse the display-owned TFT CS; a second Pin would compete for SPI0.
-    touch_port = CalibratedTouchPort(TouchPort(spi, touch_cs, display.cs))
-    reboot_port = RebootPort(reset)
-
     # Splash rendering creates temporary command and pixel buffers. Release
-    # them before constructing the App, its views, and network coordinator;
-    # otherwise the Pico can fail a later contiguous allocation on first boot.
+    # them before constructing the mode stack; otherwise the Pico can fail a
+    # later contiguous allocation on first boot.
     gc.collect()
     print("TFT checkpoint complete; app construction")
 
-    display_port = Ili9341DisplayPort(display)
-    clock_view = ClockView(display_port)
-    calendar_view = CalendarView(display_port)
-    compositor = UiCompositor(display_port)
     clock_port = RtcClockPort()
-    # Keep buzzer adapter out of module-scope boot imports; construct it only
-    # after display/network prerequisites are ready.
-    from src.device.buzzer_port import BuzzerPort, INIT_OK
-
-    buzzer_port = BuzzerPort(
-        config.BUZZER_SIGNAL_PIN,
-        config.BUZZER_HIGH_MS,
-        config.BUZZER_LOW_MS,
-        active_high=config.BUZZER_ACTIVE_HIGH,
-    )
-    if buzzer_port.init_result != INIT_OK:
-        print("Buzzer init failed:", buzzer_port.init_result)
-
-    mailbox = Mailbox()
+    reboot_port = RebootPort(reset)
     settings_store = SettingsStore(path=config.SETTINGS_BASENAME)
-    network_events = []
-    coordinator = make_settings_coordinator(
-        mailbox,
+
+    # Exactly one of these two stacks is ever imported. That is the whole
+    # mitigation: the clock stack and the station web stack are never live in
+    # the same 179,328-byte heap (issue #2).
+    if config_mode:
+        from src.device.config_mode import run as run_config_mode
+
+        run_config_mode(
+            display,
+            settings_store,
+            clock_port,
+            reboot_port,
+            sleep_ms,
+            led=led,
+        )
+        return
+
+    from src.device.clock_mode import run as run_clock_mode
+
+    run_clock_mode(
+        display,
+        spi,
+        touch_cs,
         settings_store,
-        network_events,
-        ntp_address=config.NTP_SERVER_ADDRESS,
+        clock_port,
+        reboot_port,
+        sleep_ms,
+        led=led,
     )
-    # Store-owned Wi-Fi: hold NTP until App sees station online (story 1.3).
-    # Connecting/setup must not enqueue SyncCommands that expire mid-associate.
-    creds_ok = settings_store.is_configured() or credentials_valid()
-    if coordinator.mode in (MODE_SETUP_AP, MODE_STATION_CONNECTING):
-        sync_enabled = False
-    else:
-        sync_enabled = ntp_sync_enabled(coordinator.mode, creds_ok)
-
-    app = App(
-        clock_port=clock_port,
-        clock_view=clock_view,
-        calendar_view=calendar_view,
-        compositor=compositor,
-        mailbox=mailbox,
-        sync_enabled=sync_enabled,
-        network_events=network_events,
-        buzzer_port=buzzer_port,
-        settings_store=settings_store,
-        touch_port=touch_port,
-        reboot_port=reboot_port,
-        sleep_ms_fn=sleep_ms,
-    )
-
-    if not creds_ok and coordinator.mode != MODE_SETUP_AP:
-        app.report_time_source_failure("missing or empty Wi-Fi credentials")
-
-    led.value(0)
-    print("App loop starting (Clock view)")
-    app.boot()
-    while True:
-        try:
-            coordinator.tick()
-            app.step()
-        except MemoryError:
-            gc.collect()
-            print("App loop: MemoryError, recovered")
-            if hasattr(clock_view, "invalidate"):
-                clock_view.invalidate()
-            if hasattr(calendar_view, "invalidate"):
-                calendar_view.invalidate()
-        except Exception as exc:
-            print("App loop: transient error, recovered:", exc)
-            if hasattr(clock_view, "invalidate"):
-                clock_view.invalidate()
-            if hasattr(calendar_view, "invalidate"):
-                calendar_view.invalidate()
-        sleep_ms(10)
 
 
 try:
