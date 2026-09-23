@@ -167,6 +167,9 @@ def t(app, edge_down, y):
     if not edge_down:
         app.state.surface_deadline = None
         app._alert_touch_latched = False
+        app._alert_touch_release_pending = False
+        return
+    if getattr(app, "_alert_touch_release_pending", False):
         return
     active = getattr(app, "_active_alert", None)
     if active is None:
@@ -180,12 +183,14 @@ def t(app, edge_down, y):
         if not getattr(app, "_alert_touch_latched", False):
             active["stop"] = True
             app._alert_touch_latched = True
+            app._alert_touch_release_pending = True
     elif y is not None and y >= top + display.height // 2:
         from src.ui.alert_view import postpone_hit
 
         if not getattr(app, "_alert_touch_latched", False) and postpone_hit(y, display.height):
             active["postpone"] = True
             app._alert_touch_latched = True
+            app._alert_touch_release_pending = True
 
 
 def render(app, snapshot):
@@ -306,6 +311,8 @@ def evaluate(app, snapshot, now):
             app._postponed_alert = postponed
             app._active_alert = None
             app._alert_started_ticks = None
+            app.state.surface_deadline = None
+            app._alert_touch_latched = False
             app._alert_render_failed = False
             app._alert_render_failure_logged = False
             app.state.active_surface = "rotation"
@@ -363,6 +370,8 @@ def evaluate(app, snapshot, now):
         "postpone_minutes": normalize_postpone_minutes(settings.get("postpone_delay_minutes")),
     }
     app._alert_started_ticks = now
+    app.state.surface_deadline = None
+    app._alert_touch_latched = False
     app._alert_render_failed = False
     app._alert_render_failure_logged = False
     _prepare_buzzer(app, buzzer)

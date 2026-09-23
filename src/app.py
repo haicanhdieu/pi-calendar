@@ -129,6 +129,7 @@ class App:
         self._overlay_ssid = None
         self._overlay_ip = None
         self._overlay_clear_deadline = None
+        self._alert_touch_release_pending = False
         self._bar_reveal_started = None
         self._bar_retract_started = None
         self._bar_retract_start_height = None
@@ -230,7 +231,11 @@ class App:
                 except (IndexError, TypeError):
                     # A malformed sample is never a Bar target hit.
                     pass
-        if self._active_alert or self.state.surface_deadline == -1:
+        if (
+            self._active_alert
+            or self.state.surface_deadline == -1
+            or self._alert_touch_release_pending
+        ):
             from src.alert.runtime import t
 
             t(self, edge_down, y)

@@ -443,6 +443,119 @@ def test_postpone_silences_before_tick_confirms_due_time_and_realerts_once():
     assert buzzer.ticks[-1] == (603000, True)
 
 
+def test_postpone_realert_accepts_stop_after_release_boundary():
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    samples = [(False, None, None)]
+
+    class Touch:
+        def read(self):
+            return samples.pop(0) if samples else (False, None, None)
+
+    app, _display = _app(clock, ticks, buzzer, [{
+        "id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2],
+    }])
+    app._touch_port = Touch()
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+
+    samples.append((True, 160, 220))
+    ticks.advance(1000)
+    app.step()
+    assert app.state.surface_deadline is None
+    assert app._alert_touch_latched is False
+
+    samples.append((False, None, None))
+    ticks.advance(1000)
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 17, 0, 0)
+    ticks.advance(600000)
+    app.step()
+    assert app._active_alert is not None
+
+    samples.append((True, 160, 120))
+    ticks.advance(1000)
+    app.step()
+    assert app._active_alert is None
+    assert app.state.active_surface == "rotation"
+    assert buzzer.silence_count == 2
+
+
+def test_postpone_realert_accepts_postpone_after_release_boundary():
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    samples = [(False, None, None)]
+
+    class Touch:
+        def read(self):
+            return samples.pop(0) if samples else (False, None, None)
+
+    app, _display = _app(clock, ticks, buzzer, [{
+        "id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2],
+    }])
+    app._touch_port = Touch()
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+
+    samples.append((True, 160, 220))
+    ticks.advance(1000)
+    app.step()
+    samples.append((False, None, None))
+    ticks.advance(1000)
+    app.step()
+
+    clock._utc = DateTime(2026, 9, 9, 2, 17, 0, 0)
+    ticks.advance(600000)
+    app.step()
+    assert app._active_alert is not None
+
+    samples.append((True, 160, 220))
+    ticks.advance(1000)
+    app.step()
+
+    assert app._active_alert is None
+    assert app._postponed_alert is not None
+    assert app._postponed_alert["due"].minute == 20
+    assert app.state.active_surface == "rotation"
+    assert buzzer.silence_count == 2
+
+
+def test_postpone_realert_auto_stops_after_five_monotonic_minutes():
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    touch = type("Touch", (), {"read": lambda self: (False, None, None)})()
+    app, _display = _app(clock, ticks, buzzer, [{
+        "id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2],
+    }])
+    app._touch_port = touch
+    app.step()
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+
+    touch.read = lambda: (True, 160, 220)
+    ticks.advance(1000)
+    app.step()
+    touch.read = lambda: (False, None, None)
+    clock._utc = DateTime(2026, 9, 9, 2, 17, 0, 0)
+    ticks.advance(600000)
+    app.step()
+    assert app._active_alert is not None
+
+    ticks.advance(config.ALERT_AUTO_STOP_MS)
+    app.step()
+    assert app._active_alert is None
+    assert app.state.active_surface == "rotation"
+    assert buzzer.silence_count == 2
+
+
 def test_postpone_release_latch_prevents_replayed_edge_from_navigation():
     ticks = FakeTicks(0)
     clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
