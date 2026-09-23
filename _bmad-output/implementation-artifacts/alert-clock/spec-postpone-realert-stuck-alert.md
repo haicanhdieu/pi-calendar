@@ -121,4 +121,6 @@ Verification:
 - `git diff --check` — passed.
 - `graphify update .` — passed; generated graph refreshed.
 - Matrix audit — all four rows covered by passing tests: Postpone/re-alert, repeat STOP, auto-stop, and release boundary.
-- Device flashing and serial evidence — not performed; required before claiming on-device behavior.
+- Device behavior evidence — not performed; required before claiming on-device behavior.
+
+Deployment record (2026-09-23): `uv run tools/deploy.py --port /dev/cu.usbmodem1101` completed after memory gate passed. Matching MicroPython 1.20.0 / `mpy-cross` v6.1 used. Device identity and `src.alert.runtime` import verified over `mpremote`; alert behavior, touch response, buzzer silence, and auto-stop remain unobserved.
