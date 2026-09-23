@@ -1,6 +1,7 @@
 """Host tests for Config login, session gate, and cooperative KDF auth."""
 
 import ast
+from html.parser import HTMLParser
 from pathlib import Path
 
 from src import config
@@ -442,6 +443,25 @@ def test_add_alert_editor_has_cancel_button_without_submitting_alert():
     assert store.load()["alerts"] == []
 
 
+class _FormsParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.forms = []
+        self.current = None
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "form":
+            self.current = {"attrs": attrs, "html": []}
+        elif self.current is not None:
+            self.current["html"].append((tag, attrs))
+
+    def handle_endtag(self, tag):
+        if tag == "form" and self.current is not None:
+            self.forms.append(self.current)
+            self.current = None
+
+
 def test_delete_alert_requires_confirmation_markup_and_removes_exact_id_atomically():
     ticks = FakeTicks(0)
     table = SessionTable(ticks_module=ticks, urandom=lambda n: b"\x1a" * n)
@@ -461,9 +481,28 @@ def test_delete_alert_requires_confirmation_markup_and_removes_exact_id_atomical
         Req("GET", "/settings/edit/morning", {"cookie": cookie}),
         MODE_STATION_ONLINE, table, 0, False, settings_store=store,
     ).response
-    assert b'class="danger"' in editor
-    assert b'name="alert_action" value="delete"' in editor
-    assert b"confirm('Delete this alert?')" in editor
+    forms = _FormsParser()
+    forms.feed(editor.decode())
+    delete_form = next(form for form in forms.forms if any(
+        attrs.get("name") == "alert_action" and attrs.get("value") == "delete"
+        for tag, attrs in form["html"]
+    ))
+    edit_form = next(form for form in forms.forms if any(
+        attrs.get("name") == "alert_time" for tag, attrs in form["html"]
+    ))
+    assert edit_form["attrs"].get("method", "get").lower() == "post"
+    assert edit_form["attrs"].get("action") == "/settings"
+    assert delete_form["attrs"].get("method", "get").lower() == "post"
+    assert delete_form["attrs"].get("action") == "/settings"
+    edit_controls = [attrs for tag, attrs in edit_form["html"] if tag in ("input", "button")]
+    delete_controls = [attrs for tag, attrs in delete_form["html"] if tag in ("input", "button")]
+    assert any(c.get("name") == "alert_id" and c.get("value") == "morning" for c in edit_controls)
+    assert any(c.get("name") == "alert_id" and c.get("value") == "morning" for c in delete_controls)
+    assert any(c.get("name") == "alert_action" and c.get("value") == "delete" for c in delete_controls)
+    assert {c["name"] for c in delete_controls if c.get("name")} == {"alert_action", "alert_id"}
+    delete_button = next(c for c in delete_controls if c.get("class") == "danger")
+    assert delete_button.get("type") == "submit"
+    assert delete_button.get("onclick") == "return confirm('Delete this alert?')"
 
     prior = fs.files[".settings-v1"]
     response = route_config_request(

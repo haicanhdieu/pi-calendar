@@ -46,13 +46,81 @@ rather than chasing it as a suite bug.
 """
 
 import os
+import re
 import time
 import uuid
+from html.parser import HTMLParser
 
 import pytest
 import requests
 
 from tests_e2e.config_mode import DeviceUnreachable, ensure_config_mode
+
+
+class _DeleteFormParser(HTMLParser):
+    """Read forms and their successful named controls from rendered HTML."""
+
+    def __init__(self):
+        super().__init__()
+        self.forms = []
+        self.current = None
+        self.select = None
+        self.textarea = None
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "form":
+            self.current = {"method": attrs.get("method", "get").lower(),
+                            "action": attrs.get("action", ""), "fields": []}
+        elif self.current is not None and tag == "input" and attrs.get("name"):
+            kind = attrs.get("type", "text").lower()
+            if kind in ("checkbox", "radio") and "checked" not in attrs:
+                return
+            if kind not in ("submit", "button", "image", "reset", "file"):
+                self.current["fields"].append((
+                    attrs["name"], attrs.get("value", "on" if kind == "checkbox" else "")
+                ))
+        elif self.current is not None and tag == "select" and attrs.get("name"):
+            self.select = {"name": attrs["name"], "values": []}
+        elif self.current is not None and tag == "option" and self.select is not None:
+            if "selected" in attrs:
+                self.select["values"].append(attrs.get("value", ""))
+        elif self.current is not None and tag == "textarea" and attrs.get("name"):
+            self.textarea = {"name": attrs["name"], "value": ""}
+
+    def handle_data(self, data):
+        if self.textarea is not None:
+            self.textarea["value"] += data
+
+    def handle_endtag(self, tag):
+        if tag == "select" and self.select is not None:
+            if self.select["values"]:
+                self.current["fields"].extend(
+                    (self.select["name"], value) for value in self.select["values"]
+                )
+            self.select = None
+        elif tag == "textarea" and self.textarea is not None:
+            self.current["fields"].append((self.textarea["name"], self.textarea["value"]))
+            self.textarea = None
+        if tag == "form" and self.current is not None:
+            self.forms.append(self.current)
+            self.current = None
+
+
+def _rendered_delete_fields(page):
+    parser = _DeleteFormParser()
+    parser.feed(page)
+    for form in parser.forms:
+        fields = form["fields"]
+        if ("alert_action", "delete") in fields:
+            assert form["method"] == "post"
+            assert form["action"] == "/settings"
+            assert fields.count(("alert_action", "delete")) == 1
+            alert_ids = [value for name, value in fields if name == "alert_id"]
+            assert len(alert_ids) == 1
+            assert len(fields) == 2
+            return {"alert_action": "delete", "alert_id": alert_ids[0]}
+    raise AssertionError("Settings page has no rendered alert delete form")
 
 BASE_URL = os.environ.get("PI_CALENDAR_URL", "http://192.168.1.32").rstrip("/")
 ADMIN_PASSWORD = os.environ.get("PI_CALENDAR_ADMIN_PASSWORD", "12345678")
@@ -255,25 +323,32 @@ def test_postpone_save_unauthenticated_redirects_without_mutating(auth_session):
 # --- Alert lifecycle -------------------------------------------------------
 
 def test_alert_add_edit_delete_round_trip(auth_session):
-    resp = auth_session.post(
-        _url("/settings"),
-        data={
-            "alert_action": "add",
-            "alert_time": "07:15",
-            "alert_enabled": "on",
-            "weekday_0": "on",
-        },
-        timeout=TIMEOUT,
-    )
-    assert resp.status_code == 200
-    assert "Alert saved." in resp.text
-    assert "07:15" in resp.text
-
-    page = auth_session.get(_url("/settings"), timeout=TIMEOUT).text
-    start = page.index('href="/settings/edit/')
-    alert_id = page[start:].split('"')[1].rsplit("/", 1)[-1]
-
+    before = auth_session.get(_url("/settings"), timeout=TIMEOUT).text
+    prior_ids = set(re.findall(r'href="/settings/edit/([^"?#]+)', before))
+    alert_id = None
     try:
+        resp = auth_session.post(
+            _url("/settings"),
+            data={
+                "alert_action": "add",
+                "alert_time": "07:15",
+                "alert_enabled": "on",
+                "weekday_0": "on",
+            },
+            timeout=TIMEOUT,
+        )
+        assert resp.status_code == 200
+        assert "Alert saved." in resp.text
+        assert "07:15" in resp.text
+
+        page = auth_session.get(_url("/settings"), timeout=TIMEOUT).text
+        new_ids = set(re.findall(r'href="/settings/edit/([^"?#]+)', page)) - prior_ids
+        assert len(new_ids) == 1
+        alert_id = new_ids.pop()
+        editor = auth_session.get(_url("/settings/edit/" + alert_id), timeout=TIMEOUT).text
+        delete_fields = _rendered_delete_fields(editor)
+        assert delete_fields == {"alert_action": "delete", "alert_id": alert_id}
+
         edited = auth_session.post(
             _url("/settings"),
             data={
@@ -289,13 +364,19 @@ def test_alert_add_edit_delete_round_trip(auth_session):
         assert "Alert saved." in edited.text
         assert "08:30" in edited.text
     finally:
-        deleted = auth_session.post(
-            _url("/settings"),
-            data={"alert_action": "delete", "alert_id": alert_id},
-            timeout=TIMEOUT,
-        )
-        assert deleted.status_code == 200
-        assert "Alert deleted." in deleted.text
+        if alert_id is None:
+            page = auth_session.get(_url("/settings"), timeout=TIMEOUT).text
+            new_ids = set(re.findall(r'href="/settings/edit/([^"?#]+)', page)) - prior_ids
+            if len(new_ids) == 1:
+                alert_id = new_ids.pop()
+        if alert_id is not None:
+            deleted = auth_session.post(
+                _url("/settings"),
+                data={"alert_action": "delete", "alert_id": alert_id},
+                timeout=TIMEOUT,
+            )
+            assert deleted.status_code == 200
+            assert "Alert deleted." in deleted.text
 
     after = auth_session.get(_url("/settings"), timeout=TIMEOUT).text
     assert "No alerts stored." in after or alert_id not in after
