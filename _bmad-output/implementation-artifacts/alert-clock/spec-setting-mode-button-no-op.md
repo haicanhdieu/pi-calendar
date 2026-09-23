@@ -33,8 +33,8 @@ deferred: []
 - `src/ui/settings_view.py` -- owns Settings drawing and reboot hit/flash helpers; SETTING MODE label was added here but has no target helper.
 - `src/ui/components.py` -- defines `settings_reboot_rect()` and `settings_reboot_item_rect()`; add adjacent mode target geometry without overlap.
 - `src/ui/compositor.py` -- owns Settings hit tests; route both Settings targets before deciding outside-edge dismissal.
-- `src/ui/touch_state.py` -- pure `next_surface()` preserves Settings for REBOOT target; add equivalent mode target so its tap does not dismiss.
-- `src/app.py` -- `_poll_touch()` classifies Settings taps; `_handle_settings_reboot_tap()` defines Press Flash ordering. Add injected config-mode action and call only for mode target.
+- `src/ui/touch_state.py` -- pure `next_surface()` preserves Settings for the REBOOT target; mode taps are consumed before general surface transitions.
+- `src/app.py` -- `_poll_touch()` recognizes the mode control before outside-dismiss handling; press flash and the injected device port preserve flag-before-reset ordering.
 - `src/device/mode_flag.py` -- existing `request_config_mode()` writes handoff flag; reuse it through a device-side port.
 - `src/device/clock_mode.py` -- composition root creates device ports and injects them into `App`.
 - `main.py` and `src/device/config_mode.py` -- existing flag consumer and destination runtime; no boot-flow changes expected.
@@ -44,7 +44,7 @@ deferred: []
 
 **Execution:**
 - `src/ui/components.py`, `src/ui/settings_view.py`, `src/ui/compositor.py`, `src/ui/touch_state.py`, `src/app.py` -- define, draw, hit-test, and route distinct mode target -- prevent mode taps from falling through to outside-dismiss behavior.
-- `src/device/config_mode_port.py`, `src/device/clock_mode.py` -- add a device boundary that writes existing flag then resets; inject into App -- preserve pure UI/core boundaries and existing boot split.
+- `src/device/reboot_port.py`, `src/device/clock_mode.py` -- reuse reset boundary to write existing flag then reset; preserve pure UI/core boundaries and existing boot split.
 
 **Acceptance Criteria:**
 - Given Settings is open, when user touches within SETTING MODE target, then Device writes config-mode handoff flag and requests reset only after successful write.
@@ -53,6 +53,11 @@ deferred: []
 - Given flag is written and boot proceeds, when `main.py` consumes flag, then existing config-mode runtime starts and flag is cleared on entry.
 
 ## Spec Change Log
+
+### 2026-09-23 — Memory-gate reimplementation
+- Removed standalone ConfigModePort and mode target from the generic touch state machine; App consumes mode tap directly before dismissal routing.
+- Reused RebootPort for flag-before-reset handoff. Deploy and memory-size checks now use `mpy-cross -O3` for modules deployed as `.mpy`; simulator stages those same artifacts.
+- Verification: 687 host tests and artifact-aligned memory gate pass.
 
 ## Review Triage Log
 
@@ -82,13 +87,14 @@ Summary: SETTING MODE is now a separate touch target. It shows Press Flash, writ
 
 Files changed:
 - `src/ui/components.py`, `src/ui/settings_view.py`, `src/ui/compositor.py`, `src/ui/touch_state.py` — add and route distinct mode target.
-- `src/app.py`, `src/device/config_mode_port.py`, `src/device/clock_mode.py` — perform bounded flag-before-reset handoff from clock mode.
+- `src/app.py`, `src/device/reboot_port.py`, `src/device/clock_mode.py` — perform bounded flag-before-reset handoff from clock mode.
+- `tools/deploy.py`, `tools/hostsim/sizes.py`, `docs/heap_budget.md` — compile deployed `.mpy` modules with size optimization and make gate match deployed artifacts.
 - `tests/test_app_loop.py`, `tests/test_settings_view.py`, `tests/test_touch_state.py` — cover mode tap, request failure, target geometry, and surface retention.
 - `graphify-out/GRAPH_REPORT.md`, `graphify-out/graph.html`, `graphify-out/graph.json`, `graphify-out/manifest.json` — refresh required root Graphify outputs.
 
 Review findings: 4 medium findings were resolved in one grouped patch entry; 0 deferred; 10 rejected findings with evidence recorded in the dated Review Triage Log. Patched entries by verdict: medium 1, high 0. Follow-up review recommended: false.
 
-Verification: 70 tests passed across the three changed host-test modules; `git diff --check` passed; `graphify update .` completed. Pico flash check was not run in this environment.
+Verification: 687 host tests passed; `git diff --check` passed; artifact-aligned `tools.hostsim` gate passed (clock resident 48,647/50,500 bytes; simulated boot allocation 114,080/115,000 bytes; 88,128 bytes free); `graphify update .` completed. Device touch behavior still requires visual confirmation after deployment.
 
 Residual risk: the actual touchscreen-to-reboot-to-config-mode transition still needs confirmation on the Pico W after flashing.
 

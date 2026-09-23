@@ -420,9 +420,9 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "src/app.py": {
-    "mtime": 1790146373.220253,
-    "seen": 1790146444.930954,
-    "ast_hash": "8c4c7b6ef048b20c87a76b4d32e20299",
+    "mtime": 1790149933.3621252,
+    "seen": 1790150015.641479,
+    "ast_hash": "52811da7bf93ca0b49565cb7000e996d",
     "semantic_hash": ""
   },
   "src/calendar/__init__.py": {
@@ -558,10 +558,10 @@
     "semantic_hash": "33b5d0427acc80e0bf3810291b1108d4"
   },
   "src/device/reboot_port.py": {
-    "mtime": 1789294680.779864,
-    "seen": 1789399252.787306,
-    "ast_hash": "48fe850807ac97017a9c0f1353929314",
-    "semantic_hash": "48fe850807ac97017a9c0f1353929314"
+    "mtime": 1790149825.9231808,
+    "seen": 1790149899.321749,
+    "ast_hash": "eb94c9dcd93dd3b3f93087d198d0bc4d",
+    "semantic_hash": ""
   },
   "src/device/settings_store.py": {
     "mtime": 1789994034.5782354,
@@ -744,15 +744,15 @@
     "semantic_hash": ""
   },
   "src/ui/components.py": {
-    "mtime": 1790146100.7193618,
-    "seen": 1790146231.284417,
-    "ast_hash": "ca8d9cef046859c92dfbdf628311755d",
+    "mtime": 1790149408.8390288,
+    "seen": 1790149899.32178,
+    "ast_hash": "c23999c81f064476161cf1b367a1774e",
     "semantic_hash": ""
   },
   "src/ui/compositor.py": {
-    "mtime": 1790146100.7231002,
-    "seen": 1790146231.284418,
-    "ast_hash": "509033291d74e84f06fd7ea82e044a5b",
+    "mtime": 1790149479.8088539,
+    "seen": 1790149899.32178,
+    "ast_hash": "07dab05113b3fd7cf16fc22a5b49e2db",
     "semantic_hash": ""
   },
   "src/ui/display_port.py": {
@@ -762,9 +762,9 @@
     "semantic_hash": "08cfd322577be1cf260a4f83b1d349d7"
   },
   "src/ui/settings_view.py": {
-    "mtime": 1790146245.2048526,
-    "seen": 1790146444.9310179,
-    "ast_hash": "fa562459965dc177dd497315c22113cd",
+    "mtime": 1790149629.8152194,
+    "seen": 1790149899.321782,
+    "ast_hash": "263033fad9a692732605c3b6b1e4b820",
     "semantic_hash": ""
   },
   "src/ui/touch_calibration.py": {
@@ -774,9 +774,9 @@
     "semantic_hash": "98572b99b22be9c2dfcef4405177bd9c"
   },
   "src/ui/touch_state.py": {
-    "mtime": 1790146100.7244081,
-    "seen": 1790146231.2844212,
-    "ast_hash": "81ef98f367d517d7fca99f634bc274e3",
+    "mtime": 1790148865.8231928,
+    "seen": 1790149899.321783,
+    "ast_hash": "5053bdfcdd823c5222c31f30fa62b1b8",
     "semantic_hash": ""
   },
   "src/ui/view_state.py": {
@@ -786,9 +786,9 @@
     "semantic_hash": "7f9146f2d875ab929e0f1bcc01de04c2"
   },
   "tests/test_app_loop.py": {
-    "mtime": 1790146992.364533,
-    "seen": 1790147050.1207979,
-    "ast_hash": "dbb89e1b736b7e26ff1d675903a706fd",
+    "mtime": 1790148726.4404354,
+    "seen": 1790149899.3217869,
+    "ast_hash": "e0da00648b55a84417e761c0a33c9e20",
     "semantic_hash": ""
   },
   "tests/test_app_network_overlay.py": {
@@ -912,9 +912,9 @@
     "semantic_hash": ""
   },
   "tests/test_settings_view.py": {
-    "mtime": 1790146992.3657146,
-    "seen": 1790147050.120817,
-    "ast_hash": "58047e8ff2854a4f80681c760253281d",
+    "mtime": 1790149641.4106915,
+    "seen": 1790149899.321804,
+    "ast_hash": "2a0224c96b09166340796c21e7f4c1a4",
     "semantic_hash": ""
   },
   "tests/test_setup_ap_coordinator.py": {
@@ -966,9 +966,9 @@
     "semantic_hash": ""
   },
   "tests/test_touch_state.py": {
-    "mtime": 1790146992.366625,
-    "seen": 1790147050.120824,
-    "ast_hash": "4c08d5da4aa07062f8d70ac61e6a5e52",
+    "mtime": 1790148874.176113,
+    "seen": 1790149899.321811,
+    "ast_hash": "e4d2c80b454f2362bfe94979c926421f",
     "semantic_hash": ""
   },
   "tests/test_view_state.py": {
@@ -984,9 +984,9 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "tools/deploy.py": {
-    "mtime": 1790086740.6105185,
-    "seen": 1790089556.7475169,
-    "ast_hash": "32107e75a43e3e0b9c8b64426698f05d",
+    "mtime": 1790149762.9389222,
+    "seen": 1790149899.321815,
+    "ast_hash": "98f3c6aaf6176e47d7cb050fe220ba31",
     "semantic_hash": ""
   },
   "tools/hostsim/__init__.py": {
@@ -1032,9 +1032,9 @@
     "semantic_hash": ""
   },
   "tools/hostsim/sizes.py": {
-    "mtime": 1790086581.2567613,
-    "seen": 1790089556.747523,
-    "ast_hash": "a51f6dbcba39c9e3d0e3a9ae27c15f04",
+    "mtime": 1790149771.0081701,
+    "seen": 1790149899.321821,
+    "ast_hash": "f4a3568cdf01ba7ac640f59a345dfa07",
     "semantic_hash": ""
   },
   "tools/hostsim/stubs/machine.py": {
@@ -12330,9 +12330,9 @@
     "semantic_hash": ""
   },
   "docs/heap_budget.md": {
-    "mtime": 1790088875.0592337,
-    "seen": 1790089556.7493849,
-    "ast_hash": "dbfeb5deca93419df4b7bd34220a226b",
+    "mtime": 1790149840.9927824,
+    "seen": 1790149899.3234181,
+    "ast_hash": "6d7e3f7072428df465c2d4ab42f9dec5",
     "semantic_hash": ""
   },
   "docs/pico_w_calendar_clock_handoff.md": {
@@ -12702,9 +12702,9 @@
     "semantic_hash": ""
   },
   "src/device/clock_mode.py": {
-    "mtime": 1790146115.069047,
-    "seen": 1790146231.2843368,
-    "ast_hash": "3377c42434c17671f88a9f0b65925855",
+    "mtime": 1790147829.53744,
+    "seen": 1790149899.321734,
+    "ast_hash": "df8a37af890fd2a2e79de9a9c07f3d62",
     "semantic_hash": ""
   },
   "src/device/config_mode.py": {
@@ -12726,9 +12726,9 @@
     "semantic_hash": ""
   },
   "tests/test_config_mode.py": {
-    "mtime": 1790146405.11078,
-    "seen": 1790146444.9310322,
-    "ast_hash": "6111da217a216b31e52a0c91e72a606c",
+    "mtime": 1790148729.832408,
+    "seen": 1790149899.321794,
+    "ast_hash": "3f90e86e058576c69a1ac51a8090169f",
     "semantic_hash": ""
   },
   "tests_e2e/config_mode.py": {
@@ -12773,16 +12773,10 @@
     "ast_hash": "191ad930fcc6d2e5068c9ddef26c4e4c",
     "semantic_hash": ""
   },
-  "src/device/config_mode_port.py": {
-    "mtime": 1790146373.2191908,
-    "seen": 1790146444.9309702,
-    "ast_hash": "aec038e34edc08d8b0f8480dfc7d0e3e",
-    "semantic_hash": ""
-  },
   "_bmad-output/implementation-artifacts/alert-clock/spec-setting-mode-button-no-op.md": {
-    "mtime": 1790146568.3119712,
-    "seen": 1790147050.122473,
-    "ast_hash": "9af229e4614701e4f3c258a94ccf8550",
+    "mtime": 1790149950.6841242,
+    "seen": 1790150015.643163,
+    "ast_hash": "72af66bde9903781ffb93aca2c0cc9b1",
     "semantic_hash": ""
   }
 }

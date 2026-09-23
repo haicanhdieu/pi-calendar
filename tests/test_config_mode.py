@@ -17,6 +17,7 @@ import pytest
 from src import config
 from src.device import config_mode, mode_flag
 from src.device.knock import ConfigModeKnock
+from src.device.reboot_port import RebootPort
 from src.device.network.models import MODE_STATION_ONLINE
 from src.time.model import DateTime
 
@@ -65,6 +66,25 @@ def test_request_config_mode_writes_the_flag():
     fs = FakeFS()
     assert mode_flag.request_config_mode(path="/flag", open_fn=fs.open) is True
     assert fs.files["/flag"] == "1"
+
+
+def test_reboot_port_enters_config_mode_only_after_flag_request(monkeypatch):
+    from src.device import reboot_port as reboot_module
+
+    events = []
+    monkeypatch.setattr(
+        reboot_module,
+        "request_config_mode",
+        lambda: events.append("flag") or True,
+    )
+    port = RebootPort(lambda: events.append("reset"))
+    assert port.reset(True) is True
+    assert events == ["flag", "reset"]
+
+    events.clear()
+    monkeypatch.setattr(reboot_module, "request_config_mode", lambda: False)
+    assert port.reset(True) is False
+    assert events == []
 
 
 def test_consume_reports_the_flag_and_deletes_it_before_returning():

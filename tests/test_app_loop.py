@@ -133,17 +133,21 @@ def _utc(hour=7, minute=0, second=0):
 class FakeRebootPort:
     """Records reset invocations for host App wiring tests."""
 
-    def __init__(self, events=None, sleep=None):
+    def __init__(self, events=None, sleep=None, mode_requester=None):
         self.reset_count = 0
         self._events = events
         self._sleep = sleep
+        self._mode_requester = mode_requester
 
-    def reset(self):
+    def reset(self, config_mode=False):
         if self._sleep is not None:
             assert self._sleep.calls, "reset invoked before press-flash dwell"
+        if config_mode and (self._mode_requester is None or not self._mode_requester()):
+            return False
         if self._events is not None:
             self._events.append("reset")
         self.reset_count += 1
+        return True
 
 
 class RecordingSleepMs:
@@ -179,7 +183,6 @@ def _make_app(
     touch_port=None,
     mailbox=None,
     reboot_port=None,
-    config_mode_port=None,
     sleep_ms_fn=None,
 ):
     display = FakeDisplayPort()
@@ -197,7 +200,6 @@ def _make_app(
         touch_port=touch_port,
         mailbox=mailbox,
         reboot_port=reboot_port,
-        config_mode_port=config_mode_port,
         sleep_ms_fn=sleep_ms_fn,
     )
     return app, clock, view, display, ft, logs, calendar
@@ -516,7 +518,6 @@ def test_settings_reboot_tap_flashes_then_resets_once():
 
 
 def test_settings_mode_tap_flashes_writes_flag_then_resets():
-    from src.device.config_mode_port import ConfigModePort
     from src.ui.components import settings_mode_item_rect
 
     ft = FakeTicks(0)
@@ -527,15 +528,15 @@ def test_settings_mode_tap_flashes_writes_flag_then_resets():
     )
     events = []
     sleep = RecordingSleepMs(events)
-    reboot = FakeRebootPort(events, sleep=sleep)
-    config_mode = ConfigModePort(
-        reboot, request_fn=lambda: events.append("flag") or True
+    reboot = FakeRebootPort(
+        events,
+        sleep=sleep,
+        mode_requester=lambda: events.append("flag") or True,
     )
     app, _clock, _view, display, ft, _logs, _cal = _make_app(
         ticks_mod=ft,
         touch_port=touch,
         reboot_port=reboot,
-        config_mode_port=config_mode,
         sleep_ms_fn=sleep,
     )
     _enter_settings_via_gear(app, ft)
@@ -558,8 +559,6 @@ def test_settings_mode_tap_flashes_writes_flag_then_resets():
 
 
 def test_settings_mode_flag_failure_does_not_reset_or_dismiss():
-    from src.device.config_mode_port import ConfigModePort
-
     ft = FakeTicks(0)
     display = FakeDisplayPort()
     mode_x, mode_y = _settings_mode_center(display)
@@ -568,12 +567,10 @@ def test_settings_mode_flag_failure_does_not_reset_or_dismiss():
     )
     reboot = FakeRebootPort()
     sleep = RecordingSleepMs()
-    config_mode = ConfigModePort(reboot, request_fn=lambda: False)
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
         ticks_mod=ft,
         touch_port=touch,
         reboot_port=reboot,
-        config_mode_port=config_mode,
         sleep_ms_fn=sleep,
     )
     _enter_settings_via_gear(app, ft)

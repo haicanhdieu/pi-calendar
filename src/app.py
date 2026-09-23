@@ -10,7 +10,6 @@ from src.ui.touch_state import (
     BAR_TARGET_IN_PANEL,
     BAR_TARGET_OUTSIDE,
     SETTINGS_TARGET_REBOOT,
-    SETTINGS_TARGET_MODE,
     SURFACE_BAR,
     SURFACE_ROTATION,
     SURFACE_SETTINGS,
@@ -89,7 +88,6 @@ class App:
         network_events=None,
         touch_port=None,
         reboot_port=None,
-        config_mode_port=None,
         sleep_ms_fn=None,
         buzzer_port=None,
         settings_store=None,
@@ -112,7 +110,6 @@ class App:
         self._network_events = network_events
         self._touch_port = touch_port
         self._reboot_port = reboot_port
-        self._config_mode_port = config_mode_port
         self._alert_cfg = (buzzer_port, settings_store, alert_settings)
         if sleep_ms_fn is None:
             def sleep_ms_fn(ms):
@@ -252,13 +249,18 @@ class App:
                 bar_target = BAR_TARGET_IN_PANEL
             elif self._compositor.bar_outside_edge(x, y):
                 bar_target = BAR_TARGET_OUTSIDE
+        if (
+            previous == SURFACE_SETTINGS
+            and edge_down
+            and self._compositor.settings_mode_hit(x, y)
+        ):
+            self._handle_settings_tap(True)
+            return True
         settings_target = None
         surface_edge_down = edge_down
         if previous == SURFACE_SETTINGS and edge_down:
             if self._compositor.settings_reboot_hit(x, y):
                 settings_target = SETTINGS_TARGET_REBOOT
-            elif self._compositor.settings_mode_hit(x, y):
-                settings_target = SETTINGS_TARGET_MODE
             elif not self._compositor.settings_outside_edge(x, y):
                 surface_edge_down = False
         surface, deadline = next_surface(
@@ -269,22 +271,10 @@ class App:
             bar_target,
             settings_target,
         )
-        reboot_tap = (
-            previous == SURFACE_SETTINGS
-            and edge_down
-            and settings_target == SETTINGS_TARGET_REBOOT
-        )
         self.state.active_surface = surface
         self.state.surface_deadline = deadline
-        if reboot_tap:
-            self._handle_settings_reboot_tap()
-        mode_tap = (
-            previous == SURFACE_SETTINGS
-            and edge_down
-            and settings_target == SETTINGS_TARGET_MODE
-        )
-        if mode_tap:
-            self._handle_settings_mode_tap()
+        if settings_target is not None:
+            self._handle_settings_tap()
         if surface != previous:
             if surface == SURFACE_BAR:
                 self._bar_reveal_started = now
@@ -305,22 +295,16 @@ class App:
                 self._bar_visible_height = 0
                 self._rearm_active_view_dwell(now)
             return True
-        return reboot_tap or mode_tap
+        return settings_target is not None
 
-    def _handle_settings_reboot_tap(self):
-        self._settings_view.draw_reboot_press_flash()
+    def _handle_settings_tap(self, config_mode=False):
+        self._settings_view.draw_press_flash(config_mode)
         self._sleep_ms_fn(config.PRESS_FLASH_MS)
         reboot_port = self._reboot_port
-        if reboot_port is not None:
-            reboot_port.reset()
-
-    def _handle_settings_mode_tap(self):
-        self._settings_view.draw_mode_press_flash()
-        self._sleep_ms_fn(config.PRESS_FLASH_MS)
-        config_mode_port = self._config_mode_port
-        if config_mode_port is None or not config_mode_port.enter():
-            self._log("config_mode request failed")
-            self._settings_view.draw_mode_control()
+        if reboot_port is None or not reboot_port.reset(config_mode):
+            if config_mode:
+                self._log("config_mode request failed")
+                self._settings_view.draw_mode_control()
 
     def _rearm_active_view_dwell(self, now):
         duration = (

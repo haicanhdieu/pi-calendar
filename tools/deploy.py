@@ -109,7 +109,7 @@ def stage_tree(mpy_cross):
             dest = (src_out / rel).with_suffix(".mpy")
             dest.parent.mkdir(parents=True, exist_ok=True)
             subprocess.run(
-                [mpy_cross, str(path), "-o", str(dest)], check=True
+                [mpy_cross, "-O3", str(path), "-o", str(dest)], check=True
             )
         elif str(path.relative_to(ROOT)) in NATIVE_PRECOMPILE:
             arch, emit = NATIVE_PRECOMPILE[str(path.relative_to(ROOT))]

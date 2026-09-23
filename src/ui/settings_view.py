@@ -5,7 +5,6 @@ from src.gfx import draw_spaced_text, measure_spaced_font_text
 from src.ui.components import (
     point_in_rect,
     settings_mode_item_rect,
-    settings_mode_rect,
     settings_reboot_item_rect,
     settings_reboot_rect,
 )
@@ -93,29 +92,19 @@ class SettingsView:
         """Return whether a point lies inside the reboot tap target."""
         return point_in_rect(x, y, self.reboot_item_rect())
 
-    def mode_item_rect(self):
-        return settings_mode_item_rect(self._display)
-
-    def mode_hit(self, x, y):
-        return point_in_rect(x, y, self.mode_item_rect())
-
-    def draw_reboot_press_flash(self):
-        """Render the mandatory Press Flash on the reboot control."""
-        _draw_reboot_label(self._display, fill_color=config.COLOR_PRESS_FLASH)
-
-    def draw_mode_press_flash(self):
-        """Render the mandatory Press Flash on the Setting Mode control."""
+    def draw_press_flash(self, mode=False):
+        label = config.SETTINGS_MODE_LABEL if mode else config.SETTINGS_REBOOT_LABEL
+        region = settings_mode_item_rect(self._display) if mode else None
         _draw_reboot_label(
             self._display,
             fill_color=config.COLOR_PRESS_FLASH,
-            label=config.SETTINGS_MODE_LABEL,
-            region=settings_mode_rect(self._display),
+            label=label,
+            region=region,
         )
 
-    def draw_mode_control(self):
-        """Restore the normal Setting Mode control after a failed request."""
-        region = settings_mode_rect(self._display)
-        self._display.fill_rect(*region, config.COLOR_BAR_PANEL)
+    def draw_mode_control(self, fill_color=config.COLOR_BAR_PANEL):
+        region = settings_mode_item_rect(self._display)
+        self._display.fill_rect(*region, fill_color)
         _draw_reboot_label(
             self._display,
             label=config.SETTINGS_MODE_LABEL,

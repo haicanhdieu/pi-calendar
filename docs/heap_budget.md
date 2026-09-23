@@ -115,6 +115,13 @@ Per-module and per-group ceilings on `mpy-cross` output. A proxy for heap cost
 — the heap holds that bytecode plus object overhead — that is cheap enough to
 run on every commit.
 
+`deploy.py` compiles its precompiled module set with `mpy-cross -O3`, which
+omits docstrings from deployed bytecode. The size report uses that same flag
+for those modules and default compilation for source files, matching the
+artifacts the device actually loads. Firmware behavior must not depend on
+runtime `__doc__` values; the source tree contains no runtime assertions that
+optimization would remove.
+
 ### 3. Heap simulation (needs a MicroPython interpreter)
 
 The real fix for the diagnosis problem. It stages exactly what `deploy.py`

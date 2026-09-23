@@ -181,16 +181,6 @@ def test_settings_reboot_edge_stays_on_settings_without_renewing_deadline():
     ) == (SURFACE_SETTINGS, deadline)
 
 
-def test_settings_mode_edge_stays_on_settings_without_renewing_deadline():
-    from src.ui.touch_state import SETTINGS_TARGET_MODE
-
-    now = 12_345
-    deadline = ticks.ticks_add(now, TOUCH_IDLE_TIMEOUT_MS)
-    assert next_surface(
-        SURFACE_SETTINGS, deadline, True, now, settings_target=SETTINGS_TARGET_MODE
-    ) == (SURFACE_SETTINGS, deadline)
-
-
 def test_settings_retains_its_exact_future_deadline_without_an_edge():
     now = 12_345
     deadline = ticks.ticks_add(now, TOUCH_IDLE_TIMEOUT_MS)

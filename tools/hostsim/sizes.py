@@ -13,6 +13,9 @@ from tools.hostsim.graph import (
     module_path,
     station_web_modules,
 )
+from tools.deploy import PRECOMPILE
+
+PRECOMPILED_MODULES = {path[:-3].replace("/", ".") for path in PRECOMPILE}
 
 
 class MpyCrossMissing(Exception):
@@ -40,7 +43,11 @@ def compiled_sizes(modules, mpy_cross=None):
             if source is None:
                 continue
             target = os.path.join(staging, module + ".mpy")
-            subprocess.run([mpy_cross, source, "-o", target], check=True)
+            command = [mpy_cross]
+            if module in PRECOMPILED_MODULES:
+                command.append("-O3")
+            command.extend((source, "-o", target))
+            subprocess.run(command, check=True)
             out[module] = os.path.getsize(target)
     finally:
         shutil.rmtree(staging, ignore_errors=True)

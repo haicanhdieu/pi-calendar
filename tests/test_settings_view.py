@@ -162,7 +162,7 @@ def test_draw_reboot_press_flash_uses_press_flash_color():
     view = SettingsView(display)
     view.render(None)
     display.clear_ops()
-    view.draw_reboot_press_flash()
+    view.draw_press_flash()
 
     item_x, item_y, item_w, item_h = settings_reboot_item_rect(display)
     assert (
