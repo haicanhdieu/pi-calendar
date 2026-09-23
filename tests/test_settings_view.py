@@ -129,7 +129,11 @@ def test_reboot_label_uses_specified_typography_and_tap_target():
 
 
 def test_setting_mode_label_is_above_reboot():
-    from src.ui.components import settings_reboot_rect
+    from src.ui.components import (
+        settings_mode_item_rect,
+        settings_reboot_item_rect,
+        settings_reboot_rect,
+    )
 
     display = FakeDisplayPort()
     SettingsView(display).render(None)
@@ -140,6 +144,13 @@ def test_setting_mode_label_is_above_reboot():
         and op[3] < settings_reboot_rect(display)[1]
     ]
     reboot_y = settings_reboot_rect(display)[1]
+    mode_rect = settings_mode_item_rect(display)
+    reboot_rect = settings_reboot_item_rect(display)
+    mode_x, mode_y, mode_w, mode_h = mode_rect
+    assert mode_x >= 0 and mode_y >= 0
+    assert mode_x + mode_w <= display.width
+    assert mode_y + mode_h <= display.height
+    assert mode_y + mode_h < reboot_rect[1]
     assert len(mode_chars) == len(config.SETTINGS_MODE_LABEL)
     assert max(op[3] for op in mode_chars) < reboot_y
 

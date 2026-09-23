@@ -9,6 +9,7 @@ from src.ui.components import (
     draw_unsynced_badge,
     point_in_rect,
     settings_reboot_item_rect,
+    settings_mode_item_rect,
 )
 from src.ui.touch_state import SURFACE_BAR, SURFACE_SETTINGS
 
@@ -50,9 +51,13 @@ class UiCompositor:
         """Test a sampled point against the Settings reboot tap geometry."""
         return point_in_rect(x, y, settings_reboot_item_rect(self._display))
 
+    def settings_mode_hit(self, x, y):
+        """Test a sampled point against the Settings mode tap geometry."""
+        return point_in_rect(x, y, settings_mode_item_rect(self._display))
+
     def settings_outside_edge(self, x, y):
-        """True when coords are valid integers outside the reboot tap target."""
-        if self.settings_reboot_hit(x, y):
+        """True when coords are valid integers outside both Settings targets."""
+        if self.settings_reboot_hit(x, y) or self.settings_mode_hit(x, y):
             return False
         try:
             int(x)

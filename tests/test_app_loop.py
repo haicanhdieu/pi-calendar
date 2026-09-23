@@ -166,12 +166,20 @@ def _settings_reboot_center(display):
     return x + w // 2, y + h // 2
 
 
+def _settings_mode_center(display):
+    from src.ui.components import settings_mode_item_rect
+
+    x, y, w, h = settings_mode_item_rect(display)
+    return x + w // 2, y + h // 2
+
+
 def _make_app(
     utc=_utc(),
     ticks_mod=None,
     touch_port=None,
     mailbox=None,
     reboot_port=None,
+    config_mode_port=None,
     sleep_ms_fn=None,
 ):
     display = FakeDisplayPort()
@@ -189,6 +197,7 @@ def _make_app(
         touch_port=touch_port,
         mailbox=mailbox,
         reboot_port=reboot_port,
+        config_mode_port=config_mode_port,
         sleep_ms_fn=sleep_ms_fn,
     )
     return app, clock, view, display, ft, logs, calendar
@@ -504,6 +513,76 @@ def test_settings_reboot_tap_flashes_then_resets_once():
     assert sleep.calls == [config.PRESS_FLASH_MS]
     assert reboot.reset_count == 1
     assert events == ["sleep", "reset"]
+
+
+def test_settings_mode_tap_flashes_writes_flag_then_resets():
+    from src.device.config_mode_port import ConfigModePort
+    from src.ui.components import settings_mode_item_rect
+
+    ft = FakeTicks(0)
+    display = FakeDisplayPort()
+    mode_x, mode_y = _settings_mode_center(display)
+    touch = FakeTouchPort(
+        [(True, 0, 0), (True, 160, 222), (True, mode_x, mode_y)]
+    )
+    events = []
+    sleep = RecordingSleepMs(events)
+    reboot = FakeRebootPort(events, sleep=sleep)
+    config_mode = ConfigModePort(
+        reboot, request_fn=lambda: events.append("flag") or True
+    )
+    app, _clock, _view, display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft,
+        touch_port=touch,
+        reboot_port=reboot,
+        config_mode_port=config_mode,
+        sleep_ms_fn=sleep,
+    )
+    _enter_settings_via_gear(app, ft)
+    item_x, item_y, item_w, item_h = settings_mode_item_rect(display)
+    display.clear_ops()
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+
+    assert (
+        "fill_rect",
+        item_x,
+        item_y,
+        item_w,
+        item_h,
+        config.COLOR_PRESS_FLASH,
+    ) in display.ops
+    assert sleep.calls == [config.PRESS_FLASH_MS]
+    assert reboot.reset_count == 1
+    assert events == ["sleep", "flag", "reset"]
+
+
+def test_settings_mode_flag_failure_does_not_reset_or_dismiss():
+    from src.device.config_mode_port import ConfigModePort
+
+    ft = FakeTicks(0)
+    display = FakeDisplayPort()
+    mode_x, mode_y = _settings_mode_center(display)
+    touch = FakeTouchPort(
+        [(True, 0, 0), (True, 160, 222), (True, mode_x, mode_y)]
+    )
+    reboot = FakeRebootPort()
+    sleep = RecordingSleepMs()
+    config_mode = ConfigModePort(reboot, request_fn=lambda: False)
+    app, _clock, _view, _display, ft, _logs, _cal = _make_app(
+        ticks_mod=ft,
+        touch_port=touch,
+        reboot_port=reboot,
+        config_mode_port=config_mode,
+        sleep_ms_fn=sleep,
+    )
+    _enter_settings_via_gear(app, ft)
+    ft.advance(1)
+    app.step(now_ticks=ft.now)
+
+    assert sleep.calls == [config.PRESS_FLASH_MS]
+    assert reboot.reset_count == 0
+    assert app.state.active_surface == SURFACE_SETTINGS
 
 
 def test_settings_reboot_miss_dismisses_without_reset():

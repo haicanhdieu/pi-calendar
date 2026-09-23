@@ -10,6 +10,7 @@ from src.ui.touch_state import (
     BAR_TARGET_IN_PANEL,
     BAR_TARGET_OUTSIDE,
     SETTINGS_TARGET_REBOOT,
+    SETTINGS_TARGET_MODE,
     SURFACE_BAR,
     SURFACE_ROTATION,
     SURFACE_SETTINGS,
@@ -88,6 +89,7 @@ class App:
         network_events=None,
         touch_port=None,
         reboot_port=None,
+        config_mode_port=None,
         sleep_ms_fn=None,
         buzzer_port=None,
         settings_store=None,
@@ -110,6 +112,7 @@ class App:
         self._network_events = network_events
         self._touch_port = touch_port
         self._reboot_port = reboot_port
+        self._config_mode_port = config_mode_port
         self._alert_cfg = (buzzer_port, settings_store, alert_settings)
         if sleep_ms_fn is None:
             def sleep_ms_fn(ms):
@@ -254,6 +257,8 @@ class App:
         if previous == SURFACE_SETTINGS and edge_down:
             if self._compositor.settings_reboot_hit(x, y):
                 settings_target = SETTINGS_TARGET_REBOOT
+            elif self._compositor.settings_mode_hit(x, y):
+                settings_target = SETTINGS_TARGET_MODE
             elif not self._compositor.settings_outside_edge(x, y):
                 surface_edge_down = False
         surface, deadline = next_surface(
@@ -273,6 +278,13 @@ class App:
         self.state.surface_deadline = deadline
         if reboot_tap:
             self._handle_settings_reboot_tap()
+        mode_tap = (
+            previous == SURFACE_SETTINGS
+            and edge_down
+            and settings_target == SETTINGS_TARGET_MODE
+        )
+        if mode_tap:
+            self._handle_settings_mode_tap()
         if surface != previous:
             if surface == SURFACE_BAR:
                 self._bar_reveal_started = now
@@ -293,7 +305,7 @@ class App:
                 self._bar_visible_height = 0
                 self._rearm_active_view_dwell(now)
             return True
-        return reboot_tap
+        return reboot_tap or mode_tap
 
     def _handle_settings_reboot_tap(self):
         self._settings_view.draw_reboot_press_flash()
@@ -301,6 +313,14 @@ class App:
         reboot_port = self._reboot_port
         if reboot_port is not None:
             reboot_port.reset()
+
+    def _handle_settings_mode_tap(self):
+        self._settings_view.draw_mode_press_flash()
+        self._sleep_ms_fn(config.PRESS_FLASH_MS)
+        config_mode_port = self._config_mode_port
+        if config_mode_port is None or not config_mode_port.enter():
+            self._log("config_mode request failed")
+            self._settings_view.draw_mode_control()
 
     def _rearm_active_view_dwell(self, now):
         duration = (

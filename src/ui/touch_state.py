@@ -12,6 +12,7 @@ BAR_TARGET_IN_PANEL = "in_panel"
 BAR_TARGET_OUTSIDE = "outside"
 
 SETTINGS_TARGET_REBOOT = "reboot"
+SETTINGS_TARGET_MODE = "mode"
 
 
 def next_surface(
@@ -49,7 +50,10 @@ def next_surface(
         return SURFACE_BAR, surface_deadline
 
     if active_surface == SURFACE_SETTINGS:
-        if edge_down and settings_target == SETTINGS_TARGET_REBOOT:
+        if edge_down and settings_target in (
+            SETTINGS_TARGET_REBOOT,
+            SETTINGS_TARGET_MODE,
+        ):
             return SURFACE_SETTINGS, surface_deadline
         if surface_deadline is not None and ticks_diff(surface_deadline, now) <= 0:
             return SURFACE_ROTATION, None

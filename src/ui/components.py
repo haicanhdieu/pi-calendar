@@ -81,6 +81,18 @@ def settings_reboot_item_rect(display):
     return settings_reboot_rect(display)
 
 
+def settings_mode_rect(display):
+    """Return the Settings mode control region above the reboot control."""
+    _x, reboot_y, _w, _h = settings_reboot_rect(display)
+    y = reboot_y - config.SETTINGS_MODE_REBOOT_GAP_PX - config.TAP_TARGET_SIZE_PX
+    return (0, y, display.width, config.TAP_TARGET_SIZE_PX)
+
+
+def settings_mode_item_rect(display):
+    """Return generous hit geometry for the Settings mode control."""
+    return settings_mode_rect(display)
+
+
 def point_in_rect(x, y, rect):
     """Return whether an integer point lies in the rect's half-open bounds.
 

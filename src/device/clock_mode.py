@@ -23,6 +23,7 @@ from src.device.network.models import (
     ntp_sync_enabled,
 )
 from src.device.knock import ConfigModeKnock
+from src.device.config_mode_port import ConfigModePort
 from src.device.touch_port import TouchPort
 from src.app import App
 from src.ui.calendar_view import CalendarView
@@ -87,6 +88,7 @@ def run(display, spi, touch_cs, settings_store, clock_port, reboot_port,
         settings_store=settings_store,
         touch_port=touch_port,
         reboot_port=reboot_port,
+        config_mode_port=ConfigModePort(reboot_port),
         sleep_ms_fn=sleep_ms_fn,
     )
 

@@ -4,6 +4,8 @@ from src import config
 from src.gfx import draw_spaced_text, measure_spaced_font_text
 from src.ui.components import (
     point_in_rect,
+    settings_mode_item_rect,
+    settings_mode_rect,
     settings_reboot_item_rect,
     settings_reboot_rect,
 )
@@ -91,9 +93,34 @@ class SettingsView:
         """Return whether a point lies inside the reboot tap target."""
         return point_in_rect(x, y, self.reboot_item_rect())
 
+    def mode_item_rect(self):
+        return settings_mode_item_rect(self._display)
+
+    def mode_hit(self, x, y):
+        return point_in_rect(x, y, self.mode_item_rect())
+
     def draw_reboot_press_flash(self):
         """Render the mandatory Press Flash on the reboot control."""
         _draw_reboot_label(self._display, fill_color=config.COLOR_PRESS_FLASH)
+
+    def draw_mode_press_flash(self):
+        """Render the mandatory Press Flash on the Setting Mode control."""
+        _draw_reboot_label(
+            self._display,
+            fill_color=config.COLOR_PRESS_FLASH,
+            label=config.SETTINGS_MODE_LABEL,
+            region=settings_mode_rect(self._display),
+        )
+
+    def draw_mode_control(self):
+        """Restore the normal Setting Mode control after a failed request."""
+        region = settings_mode_rect(self._display)
+        self._display.fill_rect(*region, config.COLOR_BAR_PANEL)
+        _draw_reboot_label(
+            self._display,
+            label=config.SETTINGS_MODE_LABEL,
+            region=region,
+        )
 
     def render(self, status_snapshot):
         """Paint Settings; branch status/guideline copy on snapshot kind."""
@@ -117,17 +144,8 @@ class SettingsView:
                 if ip:
                     after_y = _draw_status_lines(display, [str(ip)])
                     _draw_guideline(display, f"Browse to http://{ip}", after_y)
+        self.draw_mode_control()
         _x, y, _w, h = settings_reboot_rect(display)
-        mode_x = 0
-        mode_y = y - config.SETTINGS_MODE_REBOOT_GAP_PX - config.TAP_TARGET_SIZE_PX
-        mode_w = display.width
-        mode_h = config.TAP_TARGET_SIZE_PX
-        display.fill_rect(mode_x, mode_y, mode_w, mode_h, config.COLOR_BAR_PANEL)
-        _draw_reboot_label(
-            display,
-            label=config.SETTINGS_MODE_LABEL,
-            region=(mode_x, mode_y, mode_w, mode_h),
-        )
         display.fill_rect(_x, y, _w, h, config.COLOR_BAR_PANEL)
         _draw_reboot_label(display)
         self._valid = True
