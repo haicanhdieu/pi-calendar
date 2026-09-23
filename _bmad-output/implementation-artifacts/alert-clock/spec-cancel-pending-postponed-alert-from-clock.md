@@ -125,4 +125,6 @@ Verification:
 - `uv run pytest tests/test_alert_app.py tests/test_clock_view.py tests/test_alert_scheduler.py` — 75 passed.
 - `git diff --check` — passed.
 - `graphify update .` — passed.
-- Device flashing — not performed; TFT legibility, touch calibration, and audible response need on-device verification.
+- Device behavior validation — not performed; TFT legibility, touch calibration, and audible response need on-device verification.
+
+Deployment record (2026-09-23): `uv run --with mpy-cross==1.20.0 tools/deploy.py --port /dev/cu.usbmodem1101` passed memory gate and deployment; Pico reports MicroPython 1.20.0 (`_mpy=4358`), matching `mpy-cross` v6.1 was used, and `src.alert.runtime` imported successfully over `mpremote`. Device was reset after import verification. Cancel-button rendering, physical touch response, and audible behavior remain unverified on hardware.
