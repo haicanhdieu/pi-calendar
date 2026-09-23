@@ -59,6 +59,11 @@ deferred: []
 - Reused RebootPort for flag-before-reset handoff. Deploy and memory-size checks now use `mpy-cross -O3` for modules deployed as `.mpy`; simulator stages those same artifacts.
 - Verification: 687 host tests and artifact-aligned memory gate pass.
 
+### 2026-09-23 — Pico deployment
+- Deployed commit `d16c458` to `/dev/cu.usbmodem1101` with MicroPython 1.20.0-compatible `mpy-cross`; deployment memory gate passed and device reset completed.
+- Read-only checks confirmed RP2040/MicroPython 1.20.0, deployed `app.mpy` and touch UI modules, plus preserved `.settings-v1` and `.settings-v1.bak` files.
+- Physical SETTING MODE touch and resulting config-mode screen were not observed; retain as manual verification.
+
 ## Review Triage Log
 
 ### 2026-09-23 — Review pass
@@ -94,7 +99,7 @@ Files changed:
 
 Review findings: 4 medium findings were resolved in one grouped patch entry; 0 deferred; 10 rejected findings with evidence recorded in the dated Review Triage Log. Patched entries by verdict: medium 1, high 0. Follow-up review recommended: false.
 
-Verification: 687 host tests passed; `git diff --check` passed; artifact-aligned `tools.hostsim` gate passed (clock resident 48,647/50,500 bytes; simulated boot allocation 114,080/115,000 bytes; 88,128 bytes free); `graphify update .` completed. Device touch behavior still requires visual confirmation after deployment.
+Verification: 687 host tests passed; `git diff --check` passed; artifact-aligned `tools.hostsim` gate passed (clock resident 48,647/50,500 bytes; simulated boot allocation 114,080/115,000 bytes; 88,128 bytes free); `graphify update .` completed. Commit `d16c458` deployed successfully. Device touch behavior still requires visual confirmation.
 
 Residual risk: the actual touchscreen-to-reboot-to-config-mode transition still needs confirmation on the Pico W after flashing.
 
