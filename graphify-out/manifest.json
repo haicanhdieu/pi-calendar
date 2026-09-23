@@ -594,9 +594,9 @@
     "semantic_hash": ""
   },
   "src/device/web/page_settings_content.py": {
-    "mtime": 1790086422.9769793,
-    "seen": 1790089556.74745,
-    "ast_hash": "39c75da66cbbd356a040a2fad3a64759",
+    "mtime": 1790159155.0521872,
+    "seen": 1790159193.3313222,
+    "ast_hash": "d67d211a7694d8b0580296aa58dc9483",
     "semantic_hash": ""
   },
   "src/device/web/page_setup_content.py": {
@@ -12789,6 +12789,12 @@
     "mtime": 1790158608.976061,
     "seen": 1790158649.05695,
     "ast_hash": "158095d3ccccbdab9a3c6d07ef62c544",
+    "semantic_hash": ""
+  },
+  "_bmad-output/implementation-artifacts/alert-clock/spec-mobile-settings-viewport.md": {
+    "mtime": 1790159117.9068964,
+    "seen": 1790159193.332835,
+    "ast_hash": "d3e5d8e05e865914670d7a72078e6ca4",
     "semantic_hash": ""
   }
 }

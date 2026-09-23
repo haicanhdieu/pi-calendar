@@ -6,6 +6,7 @@ _WEEKDAYS = "Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday"
 
 _PAGE_START = (
     '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+    '<meta name="viewport" content="width=device-width,initial-scale=1">'
     '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">'
     '</head><body><main><h1>Device Settings</h1>'
     '<section><h2>ALERTS</h2>'
