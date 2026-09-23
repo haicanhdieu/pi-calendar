@@ -130,6 +130,9 @@ class App:
         self._overlay_ip = None
         self._overlay_clear_deadline = None
         self._alert_touch_release_pending = False
+        self._alert_touch_latched = False
+        self._postponed_alert = None
+        self._alert_scheduler = None
         self._bar_reveal_started = None
         self._bar_retract_started = None
         self._bar_retract_start_height = None
@@ -210,6 +213,7 @@ class App:
         # 4. Handle view deadline.
         if (
             self.state.active_surface == SURFACE_ROTATION
+            and self._postponed_alert is None
             and t.ticks_diff(self.state.view_deadline, now) <= 0
         ):
             force_redraw = self._handle_view_deadline(snapshot, now) or force_redraw
@@ -238,8 +242,18 @@ class App:
         ):
             from src.alert.runtime import t
 
-            t(self, edge_down, y)
+            t(self, edge_down, x, y)
             return False
+        if (
+            self._postponed_alert is not None
+            and self.state.active_surface == SURFACE_ROTATION
+            and edge_down
+        ):
+            from src.alert.runtime import t
+
+            t(self, edge_down, x, y)
+            if self._alert_touch_release_pending:
+                return False
         previous = self.state.active_surface
         bar_target = None
         if previous == SURFACE_BAR and edge_down:
@@ -580,6 +594,7 @@ class App:
             self._compositor.render(
                 self._view,
                 snapshot,
+                pending_label=self._pending_button_label(snapshot),
                 active_surface=self.state.active_surface,
                 bar_elapsed_ms=bar_elapsed,
                 bar_retract_elapsed_ms=retract_elapsed,
@@ -593,3 +608,16 @@ class App:
             self._bar_retract_started = None
             self._bar_retract_start_height = None
             self._bar_visible_height = 0
+
+    def _pending_button_label(self, snapshot):
+        postponed = self._postponed_alert
+        if (
+            postponed is None
+            or postponed.get("confirmation")
+            or self.state.active_surface != SURFACE_ROTATION
+        ):
+            return None
+        from src.alert.scheduler import remaining_minutes
+
+        minutes = remaining_minutes(snapshot.local, postponed["due"])
+        return None if minutes is None else "CANCEL ALERT %dm" % minutes

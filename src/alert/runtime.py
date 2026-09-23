@@ -163,7 +163,7 @@ def _safe_base_render(app, snapshot, now):
         _log_failure_once(app, "render", "base_exception", "_alert_base_render_failure_logged")
 
 
-def t(app, edge_down, y):
+def t(app, edge_down, x, y):
     if not edge_down:
         app.state.surface_deadline = None
         app._alert_touch_latched = False
@@ -171,8 +171,28 @@ def t(app, edge_down, y):
         return
     if getattr(app, "_alert_touch_release_pending", False):
         return
+    try:
+        x = int(x)
+        y = int(y)
+    except (TypeError, ValueError, OverflowError):
+        return
     active = getattr(app, "_active_alert", None)
     if active is None:
+        postponed = getattr(app, "_postponed_alert", None)
+        if (
+            postponed is None
+            or postponed.get("confirmation")
+            or app.state.active_surface != "rotation"
+        ):
+            return
+        display = app._view._display
+        band_top = display.height - config.CLOCK_EVENTS_BAND_H_PX
+        if y < band_top or x < 0 or x >= display.width:
+            return
+        if not getattr(app, "_alert_touch_latched", False):
+            postponed["cancel"] = True
+            app._alert_touch_latched = True
+            app._alert_touch_release_pending = True
         return
     app.state.surface_deadline = -1
     display = app._view._display
@@ -228,6 +248,8 @@ def evaluate(app, snapshot, now):
         if not isinstance(settings, dict):
             settings = {"alerts": [], "postpone_delay_minutes": 10}
         app._alert_cfg = (buzzer, store, settings)
+    if getattr(app, "_alert_scheduler", None) is None:
+        app._alert_scheduler = AlertScheduler()
     active = getattr(app, "_active_alert", None)
     postponed = getattr(app, "_postponed_alert", None)
     if postponed is None:
@@ -257,9 +279,11 @@ def evaluate(app, snapshot, now):
                 # a same-minute base-alert raise.
                 app._postponed_alert = None
                 return True
-            if postponed.get("persisted"):
+            # Every pending occurrence was committed when Postpone was tapped;
+            # clear storage before re-alert so a reboot cannot replay it.
+            if store is not None:
                 cleared = _commit_alert_state(store, settings, None, app._log)
-                if cleared is None and store is not None:
+                if cleared is None:
                     return False
                 settings = cleared or settings
                 app._alert_cfg = (buzzer, store, settings)
@@ -278,8 +302,40 @@ def evaluate(app, snapshot, now):
             return True
         if postponed.get("confirmation"):
             postponed["confirmation"] = False
+            from src.ui.view_state import VIEW_CLOCK
+
+            if app.state.active_view != VIEW_CLOCK:
+                app.state.active_view = VIEW_CLOCK
+                if hasattr(app._view, "invalidate"):
+                    app._view.invalidate()
             return False
         postponed["restored"] = False
+        from src.ui.view_state import VIEW_CLOCK
+
+        if app.state.active_view != VIEW_CLOCK:
+            app.state.active_view = VIEW_CLOCK
+            if hasattr(app._view, "invalidate"):
+                app._view.invalidate()
+        if postponed.get("cancel"):
+            cleared = _commit_alert_state(store, settings, None, app._log)
+            if store is not None and cleared is None:
+                postponed["cancel"] = False
+                return False
+            settings = cleared or settings
+            app._alert_cfg = (buzzer, store, settings)
+            app._postponed_alert = None
+            app._active_alert = {
+                "alerts": postponed["alerts"],
+                "local": postponed["due"],
+                "postpone_minutes": postponed["delay"],
+            }
+            app._alert_started_ticks = now
+            app._alert_render_failed = False
+            app._alert_render_failure_logged = False
+            _prepare_buzzer(app, buzzer)
+            _buzzer_tick(app, buzzer, now, True)
+            render(app, snapshot)
+            return True
         return False
     if active is not None:
         # Admit later due alerts into same occurrence. Keep original start

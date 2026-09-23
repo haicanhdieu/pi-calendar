@@ -50,6 +50,25 @@ def due_reached(local, due):
     return local is not None and due is not None and minute_key(local) >= minute_key(due)
 
 
+def remaining_minutes(local, due):
+    """Whole minutes until the due minute; due-minute boundaries round up."""
+    if local is None or due is None:
+        return None
+
+    def ordinal_minutes(value):
+        previous_year = value.year - 1
+        days = (
+            365 * previous_year + previous_year // 4
+            - previous_year // 100 + previous_year // 400
+        )
+        for month in range(1, value.month):
+            days += days_in_month(value.year, month)
+        days += value.day - 1
+        return days * 1440 + value.hour * 60 + value.minute
+
+    return max(0, ordinal_minutes(due) - ordinal_minutes(local))
+
+
 class AlertScheduler:
     """Detect current-minute matches without retrofires or duplicate raises."""
 

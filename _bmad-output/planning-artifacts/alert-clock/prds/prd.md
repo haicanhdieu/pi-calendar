@@ -20,7 +20,7 @@ Minh can use Device as desk alarm clock without reflashing firmware. From authen
 Same single owner, Minh, as core PRD §2.
 
 - **UJ-1 (create weekday alert).** Minh opens authenticated Config page on phone, creates 07:00 alert, selects Monday through Friday, and saves. Device persists alert. At 07:00 on weekday, buzzer sounds and TFT replaces normal rotation with alert screen.
-- **UJ-2 (postpone active alert).** Alert sounds while Minh is not ready. He taps Postpone 10 min on TFT. Buzzer stops immediately; current scheduled occurrence is deferred once for ten minutes. At new due time, alert screen and buzzer return unless he stops it.
+- **UJ-2 (postpone active alert).** Alert sounds while Minh is not ready. He taps Postpone 10 min on TFT. Buzzer stops immediately; current scheduled occurrence is deferred once for ten minutes. Clock returns with `CANCEL ALERT ##m` showing remaining minutes. Tapping it cancels postponement and sounds same occurrence immediately; otherwise alert screen and buzzer return at due time.
 - **UJ-3 (stop active alert).** Minh taps Stop on TFT. Buzzer stops immediately, alert screen exits, and weekly alert remains scheduled for future matching days.
 - **UJ-4 (avoid unwanted alert).** Minh disables or deletes an alert from Config page. Disabled/deleted alert does not fire, including after reboot.
 
@@ -125,7 +125,9 @@ Tapping Stop immediately silences buzzer and ends current Occurrence.
 Tapping Postpone immediately silences buzzer, leaves base Alert configuration unchanged, and schedules current Occurrence once at action time plus configured Postpone delay.
 
 **Consequences (testable):**
-- Device displays confirmation of deferred due time before returning to normal Rotation. [ASSUMPTION: brief confirmation is enough; no persistent postpone indicator.]
+- Device displays confirmation of deferred due time, then returns to Clock view with a full-width amber `CANCEL ALERT ##m` button in the bottom band; button replaces upcoming-event rows and shows whole minutes remaining.
+- Clock view stays selected while postponed occurrence is pending so local cancel control remains visible. Normal touch menu may still be opened and returns to Clock on idle timeout.
+- A valid button tap clears persisted pending state before immediately raising the same Occurrence through normal Active-alert flow. If persistence fails, pending state remains and buzzer does not start.
 - Postponed Occurrence re-enters Active alert flow using same Stop, Postpone, and Auto-stop behavior.
 - Postpone can be used repeatedly; each use replaces pending postponed due time with new action time plus delay. [ASSUMPTION: unlimited repeats until base occurrence resolves.]
 - Pending postponed Occurrence survives reboot/power loss if its due time has not passed. [ASSUMPTION: persistence prevents missed user action after a short outage.]

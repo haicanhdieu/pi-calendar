@@ -74,6 +74,7 @@ class UiCompositor:
         bar_elapsed_ms=0,
         bar_retract_elapsed_ms=None,
         bar_retract_start_height=None,
+        pending_label=None,
     ):
         if active_surface == SURFACE_SETTINGS:
             if not self._prev_was_settings:
@@ -140,7 +141,10 @@ class UiCompositor:
             self._display.fill_rect(
                 0, restore_y, restore_w, restore_h, config.COLOR_BACKGROUND
             )
-        base_view.render(snapshot, *args)
+        if pending_label is None:
+            base_view.render(snapshot, *args)
+        else:
+            base_view.render(snapshot, *args, pending_label=pending_label)
         draw_unsynced_badge(self._display, show_badge)
         draw_bar(self._display, bar_height > 0, bar_height)
         self._prev_badge = show_badge

@@ -114,6 +114,7 @@ class ClockView:
             "lunar_w": 0,
             "lunar_h": 0,
             "events": None,
+            "pending_label": None,
             "valid": False,
         }
 
@@ -121,7 +122,7 @@ class ClockView:
         """Force full redraw on next render (view entry / badge base restore)."""
         self._cache["valid"] = False
 
-    def render(self, snapshot, events=None):
+    def render(self, snapshot, events=None, pending_label=None):
         cache = self._cache
         local = snapshot.local
 
@@ -132,13 +133,15 @@ class ClockView:
                 _format_date(local),
                 _format_lunar(local),
                 events,
+                pending_label,
             )
             self._remember_local(local)
             return
 
         # Identical content: no-op (avoids full redraw fallthrough).
         if local is None:
-            if not cache["has_local"] and cache["events"] == events:
+            if (not cache["has_local"] and cache["events"] == events
+                    and cache["pending_label"] == pending_label):
                 return
         elif (
             cache["has_local"]
@@ -150,6 +153,7 @@ class ClockView:
             and cache["day"] == local.day
             and cache["weekday"] == local.weekday
             and cache["events"] == events
+            and cache["pending_label"] == pending_label
         ):
             return
 
@@ -165,6 +169,7 @@ class ClockView:
             and cache["weekday"] == local.weekday
             and cache["second"] != local.second
             and cache["events"] == events
+            and cache["pending_label"] == pending_label
         ):
             ss = _two_digit(local.second)
             self._redraw_ss(ss)
@@ -178,6 +183,7 @@ class ClockView:
             _format_date(local),
             _format_lunar(local),
             events,
+            pending_label,
         )
         self._remember_local(local)
 
@@ -275,7 +281,7 @@ class ClockView:
             lunar_h,
         )
 
-    def _full_redraw(self, hhmm, ss, date, lunar, events=None):
+    def _full_redraw(self, hhmm, ss, date, lunar, events=None, pending_label=None):
         display = self._display
         cache = self._cache
         display.fill_rect(
@@ -322,7 +328,8 @@ class ClockView:
                 lunar, lunar_x, lunar_y, config.FONT_LUNAR, config.COLOR_LUNAR
             )
 
-        self._draw_events(events)
+        self._draw_events(events if pending_label is None else None)
+        self._draw_pending_button(pending_label)
 
         cache["hhmm"] = hhmm
         cache["ss"] = ss
@@ -343,7 +350,24 @@ class ClockView:
         cache["lunar_w"] = lunar_w
         cache["lunar_h"] = lunar_h
         cache["events"] = list(events) if events else events
+        cache["pending_label"] = pending_label
         cache["valid"] = True
+
+    def _draw_pending_button(self, label):
+        if label is None:
+            return
+        display = self._display
+        band_top = display.height - config.CLOCK_EVENTS_BAND_H_PX
+        display.fill_rect(
+            0, band_top, display.width, config.CLOCK_EVENTS_BAND_H_PX,
+            config.COLOR_SECONDARY,
+        )
+        width, height = display.measure_text(label, config.FONT_SETTINGS_STATUS)
+        display.draw_text(
+            label, (display.width - width) // 2,
+            band_top + (config.CLOCK_EVENTS_BAND_H_PX - height) // 2,
+            config.FONT_SETTINGS_STATUS, config.COLOR_BACKGROUND,
+        )
 
     def _events_row_text(self, hhmm, title):
         """hhmm + "  " + title, char-truncated with a "..." suffix so the

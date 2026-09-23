@@ -694,6 +694,171 @@ def test_overdue_pending_postpone_is_cleared_without_sound_and_base_alerts_remai
     assert buzzer.ticks == []
 
 
+def test_pending_cancel_clears_persisted_occurrence_before_same_occurrence_sounds():
+    ticks = FakeTicks(0)
+    alert = {"id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2]}
+    fs, store = _persisted_alert_store([alert], _pending(14, 10, [alert]))
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 7, 7, 25))
+    buzzer = FakeBuzzer()
+    display = FakeDisplayPort()
+    samples = [(False, None, None)]
+    class Touch:
+        def read(self):
+            return samples.pop(0) if samples else (False, None, None)
+    app = App(
+        clock_port=clock, clock_view=ClockView(display),
+        calendar_view=CalendarView(FakeDisplayPort()), ticks_module=ticks,
+        sync_enabled=False, buzzer_port=buzzer, settings_store=store,
+        touch_port=Touch(),
+    )
+
+    app.step()
+    assert app._postponed_alert is not None
+    assert "CANCEL ALERT 3m" in [op[1] for op in display.ops if op[0] == "draw_text"]
+    app.state.active_surface = "bar"
+    assert app._pending_button_label(None) is None
+    app.state.active_surface = "rotation"
+    samples.append((True, 160, 200))
+    ticks.advance(1000)
+    app.step()
+
+    saved = json.loads(fs.files[".settings-v1"])
+    assert saved["pending_postponed_occurrence"] is None
+    assert app._active_alert["alerts"] == [alert]
+    assert buzzer.ticks == [(1000, True)]
+    samples.append((True, 160, 200))
+    ticks.advance(1000)
+    app.step()
+    assert app._active_alert["alerts"] == [alert]
+    assert buzzer.ticks == [(1000, True), (2000, True)]
+
+
+def test_failed_pending_cancel_persistence_does_not_sound():
+    ticks = FakeTicks(0)
+    alert = {"id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2]}
+    _fs, store = _persisted_alert_store([alert], _pending(14, 10, [alert]))
+    original_commit = store.commit
+    def fail_commit(**kwargs):
+        raise OSError("disk")
+    store.commit = fail_commit
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 7, 7, 25))
+    buzzer = FakeBuzzer()
+    samples = [(False, None, None)]
+    class Touch:
+        def read(self):
+            return samples.pop(0) if samples else (False, None, None)
+    app = App(
+        clock_port=clock, clock_view=ClockView(FakeDisplayPort()),
+        calendar_view=CalendarView(FakeDisplayPort()), ticks_module=ticks,
+        sync_enabled=False, buzzer_port=buzzer, settings_store=store,
+        touch_port=Touch(), log=lambda _line: None,
+    )
+    app.step()
+    samples.append((True, 160, 200))
+    ticks.advance(1000)
+    app.step()
+    assert app._postponed_alert is not None
+    assert app._active_alert is None
+    assert buzzer.ticks == []
+    store.commit = original_commit
+
+
+def test_pending_cancel_hit_only_works_when_clock_button_is_visible():
+    from types import SimpleNamespace
+    from src.alert.runtime import t as alert_touch
+
+    display = FakeDisplayPort()
+    postponed = {"confirmation": True}
+    app = SimpleNamespace(
+        state=SimpleNamespace(active_surface="rotation", surface_deadline=None),
+        _postponed_alert=postponed,
+        _active_alert=None,
+        _alert_touch_latched=False,
+        _alert_touch_release_pending=False,
+        _view=SimpleNamespace(_display=display),
+    )
+
+    alert_touch(app, True, 160, display.height - 1)
+    assert "cancel" not in postponed
+
+    postponed["confirmation"] = False
+    app.state.active_surface = "bar"
+    alert_touch(app, True, 160, display.height - 1)
+    assert "cancel" not in postponed
+
+    app.state.active_surface = "rotation"
+    alert_touch(app, True, 160, display.height - 1)
+    assert postponed["cancel"] is True
+
+
+def test_pending_alert_does_not_disable_touch_menu_idle_timeout():
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 7, 0, 0))
+    app, display = _app(clock, ticks, FakeBuzzer(), [])
+    app.boot()
+    app._postponed_alert = {
+        "alerts": [],
+        "due": DateTime(2026, 9, 9, 14, 14, 10, 0),
+        "delay": 10,
+        "confirmation": False,
+    }
+    app.state.active_surface = "bar"
+    app.state.surface_deadline = ticks.ticks_add(
+        ticks.ticks_ms(), config.TOUCH_IDLE_TIMEOUT_MS
+    )
+
+    ticks.advance(config.TOUCH_IDLE_TIMEOUT_MS)
+    app.step()
+
+    assert app.state.active_surface == "rotation"
+    ticks.advance(config.CLOCK_REDRAW_MS)
+    app.step()
+    assert any(
+        op[0] == "draw_text" and op[1].startswith("CANCEL ALERT ")
+        for op in display.ops
+    ), display.ops
+
+
+def test_fresh_postpone_is_cleared_from_storage_before_scheduled_realert():
+    ticks = FakeTicks(0)
+    alert = {"id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2]}
+    fs, store = _persisted_alert_store([alert])
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 6, 59, 0))
+    buzzer = FakeBuzzer()
+    samples = [(False, None, None)]
+
+    class Touch:
+        def read(self):
+            return samples.pop(0) if samples else (False, None, None)
+
+    app = App(
+        clock_port=clock, clock_view=ClockView(FakeDisplayPort()),
+        calendar_view=CalendarView(FakeDisplayPort()), ticks_module=ticks,
+        sync_enabled=False, buzzer_port=buzzer, settings_store=store,
+        touch_port=Touch(),
+    )
+    app.step()  # Establish scheduler baseline.
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 0, 0)
+    ticks.advance(1000)
+    app.step()
+    assert app._active_alert is not None
+
+    samples.append((True, 160, 200))
+    ticks.advance(1000)
+    app.step()
+    assert app._postponed_alert is not None
+    assert json.loads(fs.files[".settings-v1"])["pending_postponed_occurrence"] is not None
+
+    ticks.advance(1000)
+    app.step()  # Release and complete postponed confirmation.
+    clock._utc = DateTime(2026, 9, 9, 2, 7, 10, 0)
+    ticks.advance(600000)
+    app.step()
+
+    assert app._active_alert is not None
+    assert json.loads(fs.files[".settings-v1"])["pending_postponed_occurrence"] is None
+
+
 def test_postpone_commit_captures_members_and_preserves_unrelated_settings():
     ticks = FakeTicks(0)
     alert = {"id": "wake", "hour": 14, "minute": 0, "enabled": True, "weekdays": [2]}

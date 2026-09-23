@@ -37,7 +37,7 @@ need require physical bench verification before GPIO assignment or deployment.
 | Authenticated Alert settings | Existing Config page | View, add, edit, enable/disable, delete up to ten persisted Alerts; set global Postpone delay |
 | Normal Clock / Calendar / touch-menu view | Boot, Rotation, normal navigation | Existing time/date experience; paused by active alert |
 | Active-alert TFT | Due or postponed Occurrence | Audible, full-screen attention state; local Stop or Postpone resolution |
-| Deferred confirmation | Valid Postpone | Confirm next due time, then return to normal Rotation |
+| Pending postponed alert | Valid Postpone | Brief due-time confirmation, then Clock view with persistent cancel control until due/resolved |
 | Bounded alert failure state | Buzzer or render failure | Secret-free recoverable user-facing state; later Alerts can retry |
 
 Active alert has priority over every normal TFT view. No local Device surface
@@ -81,7 +81,8 @@ Behavioral; visual specs live in `DESIGN.md.Components`.
 | Active-alert screen | TFT | Preempts normal views; fixed vertical 25% info / 50% Stop / 25% Postpone bands; holds until resolved. |
 | Stop target | TFT | Full-width middle 50% band. Valid tap resolves every joined current Occurrence and silences buzzer/exits screen within one second. Does not disable/delete repeating base Alert. |
 | Postpone target | TFT | Full-width bottom 25% band. Valid tap immediately silences buzzer, keeps base Alert unchanged, replaces pending postponed due time with action time + saved global delay, and defers every joined Occurrence to shared due time. |
-| Deferred confirmation | TFT | Shows deferred due time before normal Rotation. No persistent postpone indicator. [ASSUMPTION] |
+| Deferred confirmation | TFT | Shows deferred due time briefly, then returns to Clock view. |
+| Pending alert control | TFT Clock view | Full-width amber `CANCEL ALERT ##m` target occupies bottom upcoming-events band, shows whole minutes remaining, and replaces upcoming-event rows. Clock stays selected while pending; normal touch menu can open and idle-timeout returns to Clock. Tap cancels postponement and immediately starts same Occurrence through Active-alert flow. |
 
 ## State Patterns
 
@@ -92,7 +93,7 @@ Behavioral; visual specs live in `DESIGN.md.Components`.
 | Combined occurrence | Active-alert TFT | Alerts due same minute, or due while active alert unanswered, join one Active alert; explicit combined count shown. Stop and Auto-stop resolve all; Postpone defers all to shared due time. [ASSUMPTION: collision policy] |
 | Active / sounding | Active-alert TFT | Buzzer cadence continues; Stop/Postpone remain visible; normal Rotation, Bar, Settings, idle timeout cannot reclaim screen. Web, Wi-Fi recovery, timekeeping, touch remain responsive. |
 | Stop | Normal Rotation | Silence immediately; resolve current joined occurrence. Repeating base Alerts stay enabled; completed one-time base Alerts disable but remain stored. [ASSUMPTION: stored disabled one-time Alert] |
-| Postponed | Deferred confirmation → Normal Rotation | Silence immediately; show next due time, then return to normal Rotation. Pending postponement persists through reboot if due time has not passed. [ASSUMPTION] |
+| Postponed | Deferred confirmation → Clock view with cancel control | Silence immediately; briefly show next due time, then hold Clock view with `CANCEL ALERT ##m`. Tap clears pending state and sounds same Occurrence immediately. Pending postponement persists through reboot if due time has not passed. [ASSUMPTION] |
 | Re-alert | Active-alert TFT | At deferred time, re-enter full Active flow including Stop, Postpone, Auto-stop. Repeated Postpone allowed; newest action time + delay replaces prior postponed due time. [ASSUMPTION: unlimited repeats] |
 | Auto-stop | Normal Rotation | At five elapsed monotonic minutes since each Active/re-alert start, silence and resolve joined occurrence. NTP/time correction cannot alter timeout. Repeating bases remain enabled; one-time bases disable. |
 | Unsynced time | Active-alert TFT + normal views | Preserve existing `UNSYNCED` badge where layout permits; schedule retained local time rather than suppressing alerts. |
@@ -110,6 +111,9 @@ Behavioral; visual specs live in `DESIGN.md.Components`.
 - **Touch Postpone:** one valid debounced tap resolves current sounding phase and
   schedules same occurrence once at action time plus global delay. It may recur
   through later re-alerts.
+- **Touch Cancel Alert:** while postponed, one valid debounced tap inside the
+  bottom-band control clears pending state, then starts same Occurrence
+  immediately; failure to persist the clear leaves postponement intact.
 - **Automatic due detection:** evaluates local date/time and weekday boundary;
   works across date/month/year rollovers.
 - **Auto-stop:** automatic five-minute monotonic safety exit, no touch needed.
@@ -127,6 +131,9 @@ Behavioral; visual specs live in `DESIGN.md.Components`.
   never color alone. `UNSYNCED` remains labeled text, not red-only signal.
 - Alert demands attention through audible cadence plus visible `ALERT` state;
   design must not assume sound alone is noticed.
+- Pending control uses amber fill with near-black text, distinct from green
+  clock digits and red `UNSYNCED`; full-width target occupies reserved 56 px
+  upcoming-events band on 320×240 TFT.
 - Preserve inherited high-contrast, distance-legible treatment. Validate actual
   TFT legibility and touch calibration on device; host tests cannot prove either.
 - Motion is unnecessary: normal-to-alert and alert-to-normal changes are plain
@@ -152,8 +159,11 @@ Behavioral; visual specs live in `DESIGN.md.Components`.
 2. He taps `POSTPONE 10 MIN` once.
 3. Buzzer stops immediately; Device schedules same occurrence for now + ten
    minutes and shows explicit deferred due time.
-4. Device returns to normal Rotation.
-5. At deferred time, full Active alert returns unless Minh resolves it.
+4. Clock view returns with amber `CANCEL ALERT 10m`; upcoming-event rows are
+   replaced, and the remaining-minute count updates as time passes.
+5. If Minh is ready early, he taps the button; pending state clears and same
+   occurrence sounds immediately. Otherwise full Active alert returns at due
+   time.
 6. **Climax:** he taps `STOP`; buzzer stops, current occurrence ends, future
    weekday schedule remains intact.
 

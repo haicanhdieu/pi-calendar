@@ -377,6 +377,45 @@ def test_one_event_draws_one_row_in_band():
     assert color == config.COLOR_SECONDARY
 
 
+def test_pending_alert_replaces_event_rows_with_amber_full_width_button():
+    display = FakeDisplayPort()
+    view = ClockView(display)
+    view.render(
+        _snapshot(_local()), events=[("09:00", "Standup")],
+        pending_label="CANCEL ALERT 1m",
+    )
+    band_top = display.height - config.CLOCK_EVENTS_BAND_H_PX
+    assert not any(
+        op[1] == "09:00  Standup" for op in display.ops if op[0] == "draw_text"
+    )
+    assert ("fill_rect", 0, band_top, display.width,
+            config.CLOCK_EVENTS_BAND_H_PX, config.COLOR_SECONDARY) in display.ops
+    labels = [op for op in _texts(display.ops) if op[1] == "CANCEL ALERT 1m"]
+    assert len(labels) == 1
+    assert labels[0][5] == config.COLOR_BACKGROUND
+
+
+def test_pending_countdown_label_changes_with_minute_and_keeps_event_rows_hidden():
+    display = FakeDisplayPort()
+    view = ClockView(display)
+    events = [("09:00", "Standup")]
+    view.render(
+        _snapshot(_local(minute=7)), events=events,
+        pending_label="CANCEL ALERT 3m",
+    )
+
+    display.clear_ops()
+    view.render(
+        _snapshot(_local(minute=8)), events=events,
+        pending_label="CANCEL ALERT 2m",
+    )
+
+    texts = _texts(display.ops)
+    assert "CANCEL ALERT 2m" in [op[1] for op in texts]
+    assert "CANCEL ALERT 3m" not in [op[1] for op in texts]
+    assert "09:00  Standup" not in [op[1] for op in texts]
+
+
 def test_three_events_draw_three_rows_in_order():
     display = FakeDisplayPort()
     view = ClockView(display)

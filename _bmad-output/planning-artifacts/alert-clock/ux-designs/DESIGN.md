@@ -60,6 +60,11 @@ components:
   postpone-target:
     min-size: 120px 70px
     label: '{typography.action-label}'
+  pending-alert-control:
+    min-size: '320px × 56px'
+    fill: '{colors.digit-secondary}'
+    foreground: '{colors.bg}'
+    label: 'CANCEL ALERT ##m'
   unsynced-badge:
     background: '{colors.unsynced-bg}'
     text: '{colors.unsynced-text}'
@@ -124,6 +129,10 @@ existing amber/orange as a filled action band. Both action labels use the
 near-black background color for contrast. Six pixels of background padding
 separate time from STOP and STOP from POSTPONE; touch hit regions match visible
 button rectangles.
+
+Pending postponed-alert control uses the same amber/orange fill and near-black
+text. It spans the 320×56 px reserved bottom band on the Clock view, replacing
+upcoming-event rows while pending. Its exact label is `CANCEL ALERT ##m`.
 
 Alert Settings inherits Wi-Fi Config palette: `{colors.web-bg}` canvas,
 `{colors.web-surface}` rows/forms, `{colors.web-border}` dividers,
