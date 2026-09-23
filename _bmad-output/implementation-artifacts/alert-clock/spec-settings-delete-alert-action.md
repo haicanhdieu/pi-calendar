@@ -93,12 +93,20 @@ Files changed:
 - `graphify-out/` — refresh repository knowledge graph after source changes.
 - `_bmad-output/implementation-artifacts/alert-clock/spec-settings-delete-alert-action.md` — record plan, review, and result.
 
-Review findings: patched 8 medium findings; deferred 0; rejected 4 findings as recorded above. Patched counts by verdict: high 0, medium 8, low 0. Follow-up review recommended because live-device E2E remains unverified on updated firmware.
+Review findings: patched 8 medium findings; deferred 0; rejected 4 findings as recorded above. Patched counts by verdict: high 0, medium 8, low 0. Follow-up review not recommended; live-device E2E passed after deployment.
 
 Verification:
 - `uv run pytest tests/test_config_auth.py` — passed, 58 tests.
-- `uv run --with requests pytest tests_e2e/test_settings_page_e2e.py -k alert_add_edit_delete_round_trip -v` — live target first exposed old page markup (firmware predates fix); retry then returned HTTP 503 at login due device session-table exhaustion. Test now uses rendered form fields and cleanup. Flash updated firmware and reset device before live E2E rerun.
+- `uv run --with requests pytest tests_e2e/test_settings_page_e2e.py -k alert_add_edit_delete_round_trip -v` — passed against flashed Pi W; add, edit, and delete round trip succeeded.
+- `uv run --with mpy-cross==1.20.0 tools/deploy.py --port /dev/cu.usbmodem1101` — passed; deployment memory gate passed and board reset completed.
+- `mpremote connect /dev/cu.usbmodem1101 exec "import sys; print(sys.implementation)"` — confirmed MicroPython 1.20.0 on Raspberry Pi Pico W RP2040 before deployment.
 - `git diff --check` — passed.
 - `graphify update .` — completed.
 
-Residual risk: browser/device deletion behavior needs confirmation after flashing updated firmware; host tests cannot establish Pico behavior.
+## Deployment Record
+
+- Deployed commit `2f43f1a636dd83fd1e24b92d0927773375424cc7` to `/dev/cu.usbmodem1101` on 2026-09-23 using the repository deployment script and matching `mpy-cross==1.20.0`.
+- The memory gate passed: admin-site simulated peak allocation 149,536 bytes of 202,368; device reset completed.
+- Live-device E2E passed after deployment: the rendered Delete form submitted only its action and alert ID; selected alert disappeared and Settings returned deletion success.
+
+Residual risk: none known for this deletion regression; live-device flow passed after flash.
