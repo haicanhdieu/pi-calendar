@@ -94,17 +94,20 @@ def test_reboot_label_uses_specified_typography_and_tap_target():
     display = FakeDisplayPort()
     SettingsView(display).render(None)
 
+    reboot_x, reboot_y, reboot_w, reboot_h = settings_reboot_item_rect(display)
     reboot_chars = [
         op
         for op in display.ops
-        if op[0] == "draw_text" and op[1] in config.SETTINGS_REBOOT_LABEL
+        if op[0] == "draw_text"
+        and op[1] in config.SETTINGS_REBOOT_LABEL
+        and reboot_y <= op[3] < reboot_y + reboot_h
     ]
     assert len(reboot_chars) == len(config.SETTINGS_REBOOT_LABEL)
     for op in reboot_chars:
         assert op[4] == config.FONT_SETTINGS_REBOOT
         assert op[5] == config.COLOR_SECONDARY
 
-    item_x, item_y, item_w, item_h = settings_reboot_item_rect(display)
+    item_x, item_y, item_w, item_h = reboot_x, reboot_y, reboot_w, reboot_h
     label_ops = [op for op in reboot_chars]
     min_x = min(op[2] for op in label_ops)
     max_x = max(op[2] for op in label_ops)
@@ -123,6 +126,22 @@ def test_reboot_label_uses_specified_typography_and_tap_target():
     )
     for left, right in zip(reboot_chars, reboot_chars[1:]):
         assert right[2] - left[2] == step
+
+
+def test_setting_mode_label_is_above_reboot():
+    from src.ui.components import settings_reboot_rect
+
+    display = FakeDisplayPort()
+    SettingsView(display).render(None)
+    mode_chars = [
+        op
+        for op in display.ops
+        if op[0] == "draw_text" and op[1] in config.SETTINGS_MODE_LABEL
+        and op[3] < settings_reboot_rect(display)[1]
+    ]
+    reboot_y = settings_reboot_rect(display)[1]
+    assert len(mode_chars) == len(config.SETTINGS_MODE_LABEL)
+    assert max(op[3] for op in mode_chars) < reboot_y
 
 
 def test_draw_reboot_press_flash_uses_press_flash_color():

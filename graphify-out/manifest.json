@@ -390,8 +390,8 @@
     "semantic_hash": "fafd0d2058eed25e0ab4ef933f86aec4"
   },
   "main.py": {
-    "mtime": 1790086459.6495867,
-    "seen": 1790089556.7473972,
+    "mtime": 1790138572.4040482,
+    "seen": 1790138657.4187279,
     "ast_hash": "a3b8b1a87c9dbc2bd3c999216f3abfdb",
     "semantic_hash": ""
   },
@@ -420,8 +420,8 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "src/app.py": {
-    "mtime": 1790131888.4502983,
-    "seen": 1790132015.7612622,
+    "mtime": 1790138576.2311924,
+    "seen": 1790138657.4187362,
     "ast_hash": "8d95bba08551a98a59014f4eff41baf4",
     "semantic_hash": ""
   },
@@ -450,9 +450,9 @@
     "semantic_hash": "b3db16ad8d7a891d3eff583b7ae12b7f"
   },
   "src/config.py": {
-    "mtime": 1790092860.9647465,
-    "seen": 1790092969.74465,
-    "ast_hash": "f03e7b90b0fac615cac0cbae07408c91",
+    "mtime": 1790138419.9684613,
+    "seen": 1790138516.345217,
+    "ast_hash": "ba9da951d0b06da50bbd172e7e5c99e3",
     "semantic_hash": ""
   },
   "src/credentials.py": {
@@ -744,16 +744,16 @@
     "semantic_hash": ""
   },
   "src/ui/components.py": {
-    "mtime": 1789298742.9470289,
-    "seen": 1789399252.787325,
+    "mtime": 1790138595.8357735,
+    "seen": 1790138657.418785,
     "ast_hash": "f91cfe8b6dd168106ab76562d4d32699",
-    "semantic_hash": "f91cfe8b6dd168106ab76562d4d32699"
+    "semantic_hash": ""
   },
   "src/ui/compositor.py": {
-    "mtime": 1789313256.6900516,
-    "seen": 1789399252.787325,
+    "mtime": 1790138572.405071,
+    "seen": 1790138657.418785,
     "ast_hash": "cdcd0215724ed40a75ccc32ec7fdffb0",
-    "semantic_hash": "cdcd0215724ed40a75ccc32ec7fdffb0"
+    "semantic_hash": ""
   },
   "src/ui/display_port.py": {
     "mtime": 1788671389.034588,
@@ -762,10 +762,10 @@
     "semantic_hash": "08cfd322577be1cf260a4f83b1d349d7"
   },
   "src/ui/settings_view.py": {
-    "mtime": 1789298792.597178,
-    "seen": 1789399252.787327,
-    "ast_hash": "a1fb97899e1b51886a740576cb9dea34",
-    "semantic_hash": "a1fb97899e1b51886a740576cb9dea34"
+    "mtime": 1790138614.5851698,
+    "seen": 1790138657.418787,
+    "ast_hash": "0b717b2e7e3131af43b6dd00f42d83c0",
+    "semantic_hash": ""
   },
   "src/ui/touch_calibration.py": {
     "mtime": 1789312833.230755,
@@ -774,10 +774,10 @@
     "semantic_hash": "98572b99b22be9c2dfcef4405177bd9c"
   },
   "src/ui/touch_state.py": {
-    "mtime": 1789299004.3609366,
-    "seen": 1789399252.787328,
+    "mtime": 1790138595.8352838,
+    "seen": 1790138657.4187882,
     "ast_hash": "5053bdfcdd823c5222c31f30fa62b1b8",
-    "semantic_hash": "5053bdfcdd823c5222c31f30fa62b1b8"
+    "semantic_hash": ""
   },
   "src/ui/view_state.py": {
     "mtime": 1788675610.108999,
@@ -816,9 +816,9 @@
     "semantic_hash": "ec0e207588738df66db0cd0dbcb52428"
   },
   "tests/test_clock_view.py": {
-    "mtime": 1789465236.3798351,
-    "seen": 1789467078.916565,
-    "ast_hash": "09e7240353e6b768e3f850ab0dfb4658",
+    "mtime": 1790138510.3714855,
+    "seen": 1790138516.3454561,
+    "ast_hash": "d19818a3ae7ebd9ad7e0eb1412de9255",
     "semantic_hash": ""
   },
   "tests/test_config_auth.py": {
@@ -912,10 +912,10 @@
     "semantic_hash": ""
   },
   "tests/test_settings_view.py": {
-    "mtime": 1789298924.173269,
-    "seen": 1789399252.787341,
-    "ast_hash": "2da78bb5c41b6844b5779b995609127d",
-    "semantic_hash": "2da78bb5c41b6844b5779b995609127d"
+    "mtime": 1790138654.8805802,
+    "seen": 1790138657.4188092,
+    "ast_hash": "21f6add66e6bbbf018e437b301ba225c",
+    "semantic_hash": ""
   },
   "tests/test_setup_ap_coordinator.py": {
     "mtime": 1788799003.8788688,
@@ -12132,9 +12132,9 @@
     "semantic_hash": ""
   },
   "_bmad-output/planning-artifacts/touch-ui/ux-designs/mockups/settings-view.html": {
-    "mtime": 1789290203.9115524,
-    "seen": 1789399986.874399,
-    "ast_hash": "9f926f561636c5a7ab79f7cb007ccf3e",
+    "mtime": 1790138444.9076133,
+    "seen": 1790138516.347342,
+    "ast_hash": "e80e172c3236699a8ec7d954edcc87d5",
     "semantic_hash": ""
   },
   "_bmad-output/planning-artifacts/touch-ui/ux-designs/reconcile-prd.md": {
@@ -12702,8 +12702,8 @@
     "semantic_hash": ""
   },
   "src/device/clock_mode.py": {
-    "mtime": 1790087277.8021886,
-    "seen": 1790089556.7474182,
+    "mtime": 1790138572.403646,
+    "seen": 1790138657.4187431,
     "ast_hash": "df8a37af890fd2a2e79de9a9c07f3d62",
     "semantic_hash": ""
   },
@@ -12768,9 +12768,9 @@
     "semantic_hash": ""
   },
   "_bmad-output/implementation-artifacts/alert-clock/spec-postpone-realert-stuck-alert.md": {
-    "mtime": 1790132266.7307656,
-    "seen": 1790132332.3325179,
-    "ast_hash": "5cd9a1934464dd5670c3e09292bca911",
+    "mtime": 1790132705.3265543,
+    "seen": 1790138516.347223,
+    "ast_hash": "191ad930fcc6d2e5068c9ddef26c4e4c",
     "semantic_hash": ""
   }
 }

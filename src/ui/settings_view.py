@@ -2,7 +2,11 @@
 
 from src import config
 from src.gfx import draw_spaced_text, measure_spaced_font_text
-from src.ui.components import point_in_rect, settings_reboot_item_rect, settings_reboot_rect
+from src.ui.components import (
+    point_in_rect,
+    settings_reboot_item_rect,
+    settings_reboot_rect,
+)
 
 _KIND_SETUP = "setup"
 _KIND_STATION_IP = "station_ip"
@@ -43,13 +47,19 @@ def _draw_guideline(display, text, after_y):
     )
 
 
-def _draw_reboot_label(display, fill_color=None):
-    """Draw the reboot control label centered in its tap-target block."""
-    region_x, region_y, region_w, region_h = settings_reboot_item_rect(display)
+def _draw_reboot_label(
+    display,
+    fill_color=None,
+    label=config.SETTINGS_REBOOT_LABEL,
+    region=None,
+):
+    """Draw a Settings control label centered in its tap-target block."""
+    if region is None:
+        region = settings_reboot_item_rect(display)
+    region_x, region_y, region_w, region_h = region
     if fill_color is not None:
         display.fill_rect(region_x, region_y, region_w, region_h, fill_color)
     font = config.FONT_SETTINGS_REBOOT
-    label = config.SETTINGS_REBOOT_LABEL
     spacing = config.SETTINGS_REBOOT_LETTER_SPACING_PX
     text_w, text_h = measure_spaced_font_text(label, font, spacing)
     text_x = region_x + (region_w - text_w) // 2
@@ -63,8 +73,6 @@ def _draw_reboot_label(display, fill_color=None):
         config.COLOR_SECONDARY,
         spacing,
     )
-
-
 class SettingsView:
     """Settings surface: status/guideline copy plus reboot control."""
 
@@ -110,6 +118,16 @@ class SettingsView:
                     after_y = _draw_status_lines(display, [str(ip)])
                     _draw_guideline(display, f"Browse to http://{ip}", after_y)
         _x, y, _w, h = settings_reboot_rect(display)
+        mode_x = 0
+        mode_y = y - config.SETTINGS_MODE_REBOOT_GAP_PX - config.TAP_TARGET_SIZE_PX
+        mode_w = display.width
+        mode_h = config.TAP_TARGET_SIZE_PX
+        display.fill_rect(mode_x, mode_y, mode_w, mode_h, config.COLOR_BAR_PANEL)
+        _draw_reboot_label(
+            display,
+            label=config.SETTINGS_MODE_LABEL,
+            region=(mode_x, mode_y, mode_w, mode_h),
+        )
         display.fill_rect(_x, y, _w, h, config.COLOR_BAR_PANEL)
         _draw_reboot_label(display)
         self._valid = True

@@ -1,17 +1,17 @@
 # Graph Report - pi-calendar  (2026-09-23)
 
 ## Corpus Check
-- 2055 files · ~3,157,730 words
+- 2055 files · ~3,158,072 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 120 file(s) not represented in the graph (top: .toml 81, .csv 31, (none) 4)
 
 ## Summary
-- 30730 nodes · 33703 edges · 2109 communities (1971 shown, 106 thin omitted)
+- 30731 nodes · 33704 edges · 2104 communities (1966 shown, 105 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 166 edges (avg confidence: 0.88)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `86eaf968`
+- Built from commit: `80a0096e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -26,13 +26,13 @@
 - .claude/skills/bmad-retrospective/scripts/tests/test_git_evidence.py
 - FakeDisplayPort
 - build_month_grid
-- test_font.py
-- ticks_add
+- config.py
+- proof.py
 - .agents/skills/bmad-sprint-planning/scripts/tests/test_sprint_plan.py
 - .claude/skills/bmad-sprint-planning/scripts/tests/test_sprint_plan.py
 - NFR Evidence Audit - {FEATURE_NAME}
 - CalendarView
-- pages.py
+- ticks_add
 - .agents/skills/bmad-brainstorming/scripts/tests/test_brain.py
 - .claude/skills/bmad-brainstorming/scripts/tests/test_brain.py
 - test_app_network_overlay.py
@@ -43,7 +43,7 @@
 - .claude/skills/bmad-testarch-framework/resources/hooks/tea-enforce.cjs
 - .agents/skills/bmad-brainstorming/scripts/brain.py
 - .claude/skills/bmad-brainstorming/scripts/brain.py
-- FakeDefaultHttpListen
+- test_setup_ap_coordinator.py
 - .agents/skills/bmad-deep-recon/scripts/recon_kit.py
 - .claude/skills/bmad-deep-recon/scripts/recon_kit.py
 - SettingsView
@@ -56,7 +56,7 @@
 - .agents/skills/bmad-party-mode/scripts/tests/test_resolve_party.py
 - .claude/skills/bmad-architecture/scripts/tests/test_lint_spine.py
 - .claude/skills/bmad-party-mode/scripts/tests/test_resolve_party.py
-- test_station_recover.py
+- SyncCommand
 - test_settings_page_e2e.py
 - .claude/skills/bmad-retrospective/scripts/sprint_status.py
 - NFR Evidence Audit: Bulk Invoice Export
@@ -67,10 +67,10 @@
 - .claude/skills/bmad-advanced-elicitation/scripts/tests/test_pick_methods.py
 - TestBuildPool
 - DateTime
+- _fake_socket
+- Test Design: Epic {epic_num} - {epic_title}
+- Test Design: Epic {epic_num} - {epic_title}
 - test_setup_http.py
-- Test Design: Epic {epic_num} - {epic_title}
-- Test Design: Epic {epic_num} - {epic_title}
-- setup_pages.py
 - Detailed Mapping
 - Detailed Mapping
 - TouchPort
@@ -94,7 +94,7 @@
 - CI/CD Pipeline Setup - Validation Checklist
 - .agents/skills/bmad-advanced-elicitation/scripts/pick_methods.py
 - .claude/skills/bmad-advanced-elicitation/scripts/pick_methods.py
-- SettingsCommitError
+- SettingsStore
 - ATDD Checklist - Epic {epic_num}, Story {story_num}: {story_title}
 - ATDD Checklist - Epic {epic_num}, Story {story_num}: {story_title}
 - .agents/skills/bmad-architecture/scripts/lint_spine.py
@@ -116,7 +116,7 @@
 - .claude/skills/bmad-retrospective/scripts/git_evidence.py
 - 2.7-configuration-changes-never-disrupt-an-alert-already-ringing.md
 - Clock Screen Upcoming Events
-- validation.py
+- NtpOps
 - bmad_loop_hook.py
 - Pattern Examples
 - Pact MCP Server (SmartBear)
@@ -124,7 +124,7 @@
 - Pact MCP Server (SmartBear)
 - Pattern Examples
 - Pact MCP Server (SmartBear)
-- device/config_mode.py
+- NetworkWorker
 - Pattern Examples
 - probe.py
 - Pact MCP Server (SmartBear)
@@ -2031,7 +2031,7 @@
 - .claude/skills/graphify/references/extraction-spec.md
 - _ModuleScopeImports
 - 2.5-a-pending-postpone-survives-a-reboot.md
-- test_display_boot_checkpoint.py
+- Pbkdf2Job
 - 2.1-sound-a-bounded-tut-cadence-through-the-buzzer-port.md
 - IncrementalHttpParser
 - SetupHttpServer
@@ -2052,7 +2052,7 @@
 - Epic 1 Context: Browser-Managed Alert Configuration
 - 1-2-add-an-alert-with-a-time-and-recurrence.md
 - app.py
-- clock_mode.py
+- credentials_valid
 - Epic 2 Context: Audible Alert Occurrence and Resolution
 - Alert Clock Spine — Direct-GPIO `tut` Seam Review
 - Reconcile — Alert Clock PRD
@@ -2060,7 +2060,7 @@
 - Alert Clock — Technical Addendum
 - 1-3-edit-an-alert-and-toggle-enabled-state.md
 - test_buzzer_port.py
-- server.py
+- test_ticks.py
 - 1.4-delete-an-alert-with-explicit-confirmation.md
 - 1.5-set-the-global-postpone-delay.md
 - runtime.py
@@ -2074,25 +2074,19 @@
 - CalibratedTouchPort
 - alert/__init__.py
 - 2.4-postpone-an-active-alert-and-see-its-new-due-time.md
-- _run_config_mode
-- FakeDefaultHttpClient
+- WLAN
+- test_config_hardware_defaults.py
 - 2.8-a-buzzer-or-render-failure-stays-bounded-and-recoverable.md
-- machine.py
+- ILI9341
 - App
 - test_setup_candidate.py
 - clock_view.py
 - Story 2.9 Flashed-Device Evidence
 - Story 2.9 Host Evidence
-- main.py
-- config.py
-- main
-- WLAN
 - spec-postpone-realert-stuck-alert.md
 - spec-login-cancel-button.md
-- RebootPort
 - spec-active-alert-touch-immediate-response.md
 - test_clock_port.py
-- BuzzerPort
 
 ## God Nodes (most connected - your core abstractions)
 1. `NetworkCoordinator` - 100 edges
@@ -2109,19 +2103,19 @@
 ## Surprising Connections (you probably didn't know these)
 - `test_app_and_ticks_import_under_cpython()` --uses--> `App`  [INFERRED]
   tests/test_app_loop.py → src/app.py
-- `main()` --indirect_call--> `splash_screen()`  [INFERRED]
-  main.py → src/device/display/splash.py
+- `main()` --uses--> `ILI9341`  [INFERRED]
+  main.py → src/device/display/ili9341.py
+- `main()` --indirect_call--> `sleep_ms()`  [INFERRED]
+  main.py → tests/test_config_mode.py
+- `main()` --uses--> `Pin`  [INFERRED]
+  main.py → tools/hostsim/stubs/machine.py
 - `main()` --uses--> `SPI`  [INFERRED]
   main.py → tools/hostsim/stubs/machine.py
-- `BuzzerPort` --uses--> `Pin`  [INFERRED]
-  src/device/buzzer_port.py → tools/hostsim/stubs/machine.py
-- `test_saturation_preserves_prior_result()` --uses--> `MailboxSaturationError`  [INFERRED]
-  tests/test_app_sync.py → src/device/network/mailbox.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (2109 total, 106 thin omitted)
+## Communities (2104 total, 105 thin omitted)
 
 ### Community 0 - ".agents/skills/bmad-retrospective/scripts/tests/test_sprint_status.py"
 Cohesion: 0.07
@@ -2163,13 +2157,13 @@ Nodes (77): ClockView, Force full redraw on next render (view entry / badge base
 Cohesion: 0.08
 Nodes (37): build_month_grid(), days_in_month(), _next_month(), _prev_month(), Pure Gregorian month-grid generation (Monday=0, no hardware imports)., Gregorian month length (%4 / %100 / %400 leap rule)., Civil weekday from (year, month, day). Returns Monday=0 … Sunday=6. Does not…, Build a Monday-first MonthGrid for ``local_year``/``local_month``. Adjacent-… (+29 more)
 
-### Community 10 - "test_font.py"
-Cohesion: 0.17
-Nodes (20): draw_glyph(), draw_text(), Draw one glyph cell at ``scale`` (int or float, e.g. 1.5). Each pixel's rect is…, Draw ``text`` at ``scale`` (int or float). Per-character/per-line offsets are…, text_width(), parametrize, Glyph-level regression guard for the packed 5x7 font. The lit-pixel coordinates…, RecordingDisplay (+12 more)
+### Community 10 - "config.py"
+Cohesion: 0.03
+Nodes (73): main(), Non-secret hardware and product defaults (AD-9)., Pack an RGB888 triple into a high-byte-first RGB565 integer., rgb888_to_rgb565(), Clock-mode composition root: the clock stack, and no web stack at all.…, Run the clock loop until a browser knocks and reboots into config., run(), _due_alerts() (+65 more)
 
-### Community 11 - "ticks_add"
-Cohesion: 0.07
-Nodes (70): Legacy blocking WLAN / DNS / UDP NTP ops for worker-proof tests. Owns blocking…, _allocate_lock(), _enqueue(), _is_clean(), _log(), _marker(), _mem_free(), Flashable AD-8 network mailbox proof harness (Story 1.4). Exercises… (+62 more)
+### Community 11 - "proof.py"
+Cohesion: 0.21
+Nodes (31): _allocate_lock(), _enqueue(), _is_clean(), _log(), _marker(), _mem_free(), Flashable AD-8 network mailbox proof harness (Story 1.4). Exercises…, Wait for idle + drain, or soft_reset, before the next scenario. (+23 more)
 
 ### Community 12 - ".agents/skills/bmad-sprint-planning/scripts/tests/test_sprint_plan.py"
 Cohesion: 0.11
@@ -2187,9 +2181,9 @@ Nodes (48): Alerting Thresholds, Authentication Strength, Authorization Controls
 Cohesion: 0.13
 Nodes (37): CalendarView, _format_hhmm(), _format_month_label(), _month_name(), Current-month Calendar view renderer (FR5 / UX calendar chrome)., MonthGrid Calendar renderer over DisplayPort only (no badge draw)., Force full redraw on next render (view entry / compositor restore)., Draw the Calendar chrome from an already-built MonthGrid. ``snapshot`` is… (+29 more)
 
-### Community 16 - "pages.py"
-Cohesion: 0.08
-Nodes (44): cookie_header_value(), Return the value of ``name`` from a raw ``Cookie`` header, or ``None``. Parses…, login_page_html(), Minimal station-online login page., http_response(), login_page_html(), HTTP response builders (pure). The three page-HTML builders…, Confirm the return to clock mode; the device resets right after this. (+36 more)
+### Community 16 - "ticks_add"
+Cohesion: 0.14
+Nodes (26): Wrap-safe millisecond tick helpers (AD-5). Pure add/diff are host-testable…, Return ``ticks + delta_ms`` modulo PERIOD (delta may be negative)., ticks_add(), next_surface(), Pure Rotation/Bar touch-surface transition decisions., Return ``(next_surface, next_deadline)`` for a touch-surface evaluation. A…, _imported_roots(), Path (+18 more)
 
 ### Community 17 - ".agents/skills/bmad-brainstorming/scripts/tests/test_brain.py"
 Cohesion: 0.05
@@ -2201,15 +2195,15 @@ Nodes (8): _cp1252_stream(), extra(), lib(), fixture, A text stream that behaves
 
 ### Community 19 - "test_app_network_overlay.py"
 Cohesion: 0.22
-Nodes (21): Golden SETUP_AP status event (SSID + gateway, no display calls)., Station online/connecting status without App/TFT mutation., setup_ap_status_event(), station_status_event(), _app(), _drawn_texts(), _fills(), Host tests for App-owned retained network status (story 1.1). (+13 more)
+Nodes (20): Cooperative, core-0 WLAN and NTP coordinator. Each :meth:`tick` performs at…, Golden SETUP_AP status event (SSID + gateway, no display calls)., Station online/connecting status without App/TFT mutation., setup_ap_status_event(), station_status_event(), _app(), _drawn_texts(), _fills() (+12 more)
 
 ### Community 20 - "test_config_mode.py"
-Cohesion: 0.08
-Nodes (18): FakeConn, FakeListen, FakeReboot, FakeSocketModule, _knock(), Exception, Host tests for the clock/config boot split (issue #2). The device answered…, The first send to a browser raises EAGAIN on MicroPython. Treating that as… (+10 more)
+Cohesion: 0.03
+Nodes (53): ConfigModeKnock, Release the listening socket so another owner can bind port 80., Bounded write of the one fixed response. A socket accepted from a non-blocking…, Poll once. True means: flag written, reboot into config mode now., Non-blocking listener whose only answer is 'rebooting into config'., Bind the listening socket once; False means try again later., clear_config_mode(), consume_config_mode() (+45 more)
 
 ### Community 21 - "FakeTicks"
-Cohesion: 0.06
-Nodes (73): Route Config login/settings requests (``STATION_ONLINE`` only).…, route_config_request(), decode_session_id(), encode_session_id(), Bounded in-memory session table (AD-5). Opaque 16-byte IDs encoded as unpadded…, Drop entries whose idle deadline has passed (wrap-safe)., Create a session after expiry sweep. Returns the encoded id, or ``None`` when…, Return the matching live entry, or ``None`` if absent/expired/malformed. (+65 more)
+Cohesion: 0.05
+Nodes (82): Exception, Sole FS boundary for the ignored version-1 device settings record (AD-3)., Named failure during atomic settings commit (no plaintext Admin)., SettingsCommitError, Route Config login/settings requests (``STATION_ONLINE`` only).…, route_config_request(), decode_session_id(), encode_session_id() (+74 more)
 
 ### Community 22 - "NFR Evidence Audit - {FEATURE_NAME}"
 Cohesion: 0.04
@@ -2231,6 +2225,10 @@ Nodes (36): _card(), categories(), category_style(), filter_cats(), find(), fmt_
 Cohesion: 0.10
 Nodes (36): _card(), categories(), category_style(), filter_cats(), find(), fmt_categories(), fmt_list(), fmt_show() (+28 more)
 
+### Community 27 - "test_setup_ap_coordinator.py"
+Cohesion: 0.06
+Nodes (21): Secrets, FakeApWlan, FakeDefaultHttpClient, FakeDefaultHttpListen, FakeDefaultHttpSockets, FakeHttp, Host tests for SETUP_AP boot ownership on NetworkCoordinator., test_absent_settings_enters_setup_ap_without_crash() (+13 more)
+
 ### Community 28 - ".agents/skills/bmad-deep-recon/scripts/recon_kit.py"
 Cohesion: 0.12
 Nodes (28): add_months(), appendix_rows(), cell_html(), cmd_citations(), cmd_escape_sources(), cmd_slug(), cmd_staleness(), cmd_tally() (+20 more)
@@ -2241,15 +2239,15 @@ Nodes (28): add_months(), appendix_rows(), cell_html(), cmd_citations(), cmd_esc
 
 ### Community 30 - "SettingsView"
 Cohesion: 0.09
-Nodes (30): draw_spaced_text(), measure_spaced_font_text(), Neutral geometry helpers shared by UI and device display layers., Return (width, height) with extra pixel spacing between glyph cells., Draw text with fixed extra spacing between characters., Return generous hit geometry for the Settings reboot control., settings_reboot_item_rect(), _centered_text_x() (+22 more)
+Nodes (29): draw_spaced_text(), measure_spaced_font_text(), Return (width, height) with extra pixel spacing between glyph cells., Draw text with fixed extra spacing between characters., Return generous hit geometry for the Settings reboot control., settings_reboot_item_rect(), _centered_text_x(), _draw_guideline() (+21 more)
 
 ### Community 31 - "NetworkCoordinator"
-Cohesion: 0.03
-Nodes (59): NetworkCoordinator, Cooperative, core-0 WLAN and NTP coordinator. Each :meth:`tick` performs at…, Create the bounded web surface only when the active mode serves it., Validate an NTP response and convert its transmit timestamp to UTC., Record a secret-free web failure once and schedule a later retry., Re-arm reporting once a previously failed phase succeeds., Optional device-only heap evidence; never changes serving behavior., Allocate config-auth session state only after reaching station work. (+51 more)
+Cohesion: 0.04
+Nodes (36): NetworkCoordinator, Create the bounded web surface only when the active mode serves it., Validate an NTP response and convert its transmit timestamp to UTC., Record a secret-free web failure once and schedule a later retry., Re-arm reporting once a previously failed phase succeeds., Optional device-only heap evidence; never changes serving behavior., Allocate config-auth session state only after reaching station work., Compact setup scan state: ``empty``, ``ok``, or ``failed``. (+28 more)
 
 ### Community 32 - "test_provisioning_validation.py"
-Cohesion: 0.11
-Nodes (31): Lazy Add Alert form validator; no device imports., validate_alert_form_fields(), validate_alert_id(), ValidationResult, Return canonical whole-minute delay, or ``None`` when invalid., validate_postpone_delay(), Parse JSON text and validate as a whole record., Validate a decoded settings object. Returns a :class:`ValidationResult`.… (+23 more)
+Cohesion: 0.07
+Nodes (50): add_alert(), delete_alert(), edit_alert(), Lazy authenticated alert persistence paths., Lazy Add Alert form validator; no device imports., validate_alert_form_fields(), validate_alert_id(), ValidationResult (+42 more)
 
 ### Community 33 - ".agents/skills/bmad-retrospective/scripts/sprint_status.py"
 Cohesion: 0.13
@@ -2257,7 +2255,7 @@ Nodes (28): _atomic_write(), build_parser(), cmd_detect_epic(), cmd_update(), _f
 
 ### Community 34 - "test_config_auth.py"
 Cohesion: 0.08
-Nodes (40): _http_get(), _http_login_post(), _http_password_change_post(), _login_for_cookie(), _online_coordinator(), _pump(), Host tests for Config login, session gate, and cooperative KDF auth., Regression: a MemoryError/Exception while lazily importing the station web/page… (+32 more)
+Nodes (41): _http_get(), _http_login_post(), _http_password_change_post(), _login_for_cookie(), _online_coordinator(), _pump(), Host tests for Config login, session gate, and cooperative KDF auth., Regression: a MemoryError/Exception while lazily importing the station web/page… (+33 more)
 
 ### Community 35 - "NFR Evidence Audit: Bulk Invoice Export"
 Cohesion: 0.04
@@ -2279,9 +2277,9 @@ Nodes (13): cats(), Tests for lint_spine.py. Run: uv run --with pytest pytest…
 Cohesion: 0.07
 Nodes (10): The default room is installed agents only; pure customs stay in the pool., The wrapper knows the project root, so it must not let the resolver infer one…, Unit tests for resolve_party.py — merge, alias, override, group resolution., TestAlias, TestBuildCollective, TestGroupDetail, TestGroups, TestInstalledCodesIsDefaultRoom (+2 more)
 
-### Community 40 - "test_station_recover.py"
+### Community 40 - "SyncCommand"
 Cohesion: 0.05
-Nodes (57): FakeSocketModule, FakeWlan, make_coordinator(), ntp_payload(), Host proof for the tick-driven WLAN/NTP coordinator., ScanWlan, Secrets, terminal() (+49 more)
+Nodes (58): One bounded sync request from App to the network worker., SyncCommand, FakeSocketModule, FakeWlan, make_coordinator(), ntp_payload(), Host proof for the tick-driven WLAN/NTP coordinator., ScanWlan (+50 more)
 
 ### Community 41 - "test_settings_page_e2e.py"
 Cohesion: 0.07
@@ -2320,12 +2318,12 @@ Cohesion: 0.07
 Nodes (8): When party-mode isn't installed, user override TOMLs are read directly., The wrapper knows the project root, so it must not let the resolver infer one…, Unit tests for resolve_personas.py — pool merge, alias, party resolution., TestAlias, TestBuildPool, TestOverrideMergeFallback, TestResolveParties, TestResolverInvocation
 
 ### Community 50 - "DateTime"
-Cohesion: 0.09
-Nodes (41): DateTime, Named wall-clock fields shared by UTC and local snapshots., _app(), _due_app(), FakeBuzzer, FaultBuzzer, _pending(), _persisted_alert_store() (+33 more)
+Cohesion: 0.07
+Nodes (48): _days_in_month(), RTC-backed ClockPort (device layer only; AD-3)., Read/write UTC wall time through ``machine.RTC``. Only App should call this.…, Return a ``DateTime`` from the RTC, or ``None`` if cold/invalid., Write a ``DateTime`` into the RTC (UTC). Subseconds forced to 0., RtcClockPort, DateTime, Named wall-clock fields shared by UTC and local snapshots. (+40 more)
 
-### Community 51 - "test_setup_http.py"
-Cohesion: 0.11
-Nodes (19): setup_page_html(), decode_ssid(), Pure SSID decode and dedupe for WLAN scan results. No ``machine``, ``network``,…, Extract deduplicated SSIDs from MicroPython-style scan rows. Each row may be a…, Decode a scan SSID to a displayable UTF-8 string. Accepts ``str`` or…, ssids_from_scan_rows(), _feed_all(), Host tests for pure setup HTTP parse/route and scan decode policy. (+11 more)
+### Community 51 - "_fake_socket"
+Cohesion: 0.15
+Nodes (14): _Cmd, _connected_wlan(), _fake_socket(), getaddrinfo(), _ntp_payload(), _Secrets, test_ntp_ops_dns_fail(), test_ntp_ops_ntp_fail_on_kod_stratum_zero() (+6 more)
 
 ### Community 52 - "Test Design: Epic {epic_num} - {epic_title}"
 Cohesion: 0.05
@@ -2335,9 +2333,9 @@ Nodes (42): Appendix, Approval, Assumptions, Assumptions and Dependencies, Cover
 Cohesion: 0.05
 Nodes (42): Appendix, Approval, Assumptions, Assumptions and Dependencies, Coverage Targets, Dependencies, Entry Criteria, Execution Order (+34 more)
 
-### Community 54 - "setup_pages.py"
-Cohesion: 0.08
-Nodes (39): html_escape(), parse_form_urlencoded(), _percent_decode(), Bounded incremental HTTP/1.0–1.1 request parsing (pure; no sockets)., Escape text for safe inclusion in HTML text/attribute contexts., Parse ``application/x-www-form-urlencoded`` body to a string dict. Duplicate…, alert_editor_html(), Lazy inline alert editor. (+31 more)
+### Community 54 - "test_setup_http.py"
+Cohesion: 0.03
+Nodes (106): cookie_header_value(), html_escape(), parse_form_urlencoded(), _percent_decode(), Bounded incremental HTTP/1.0–1.1 request parsing (pure; no sockets)., Escape text for safe inclusion in HTML text/attribute contexts., Parse ``application/x-www-form-urlencoded`` body to a string dict. Duplicate…, Return the value of ``name`` from a raw ``Cookie`` header, or ``None``. Parses… (+98 more)
 
 ### Community 55 - "Detailed Mapping"
 Cohesion: 0.05
@@ -2348,8 +2346,8 @@ Cohesion: 0.05
 Nodes (41): AC-1: Administrator schedules a weekly report for their tenant, P0, AC-2: Cross-tenant schedule access is denied, P0, AC-3: Administrator pauses and resumes a schedule, P1, AC-4: Invalid or duplicate recipients receive field-level guidance, P1, AC-5: Delivery retries after provider failure and surfaces final failure, P1, AC-6: Next delivery respects the selected timezone across daylight-saving changes, P1, AC-7: Schedule changes emit a complete audit event, P1, AC-8: Administrator can set an optional safe filename prefix, P2 (+33 more)
 
 ### Community 57 - "TouchPort"
-Cohesion: 0.12
-Nodes (16): Bounded XPT2046-compatible touch polling over the TFT's shared SPI0 bus., Poll once, returning ``(edge_down, x, y)`` without blocking., Return one raw touch edge per contact while safely handing off SPI0. The port…, TouchPort, FakePin, FakeSpi, _port(), Host coverage for TouchPort's bounded sampling and SPI0 ownership. (+8 more)
+Cohesion: 0.13
+Nodes (15): Poll once, returning ``(edge_down, x, y)`` without blocking., Return one raw touch edge per contact while safely handing off SPI0. The port…, TouchPort, FakePin, FakeSpi, _port(), Host coverage for TouchPort's bounded sampling and SPI0 ownership., _stable() (+7 more)
 
 ### Community 58 - "ATDD Workflow Validation Checklist"
 Cohesion: 0.05
@@ -2431,9 +2429,9 @@ Nodes (18): categories(), exclude(), filter_cats(), find(), fmt_categories(), fm
 Cohesion: 0.18
 Nodes (18): categories(), exclude(), filter_cats(), find(), fmt_categories(), fmt_rows(), load(), load_extra() (+10 more)
 
-### Community 78 - "SettingsCommitError"
-Cohesion: 0.13
-Nodes (12): Exception, Boot-time load with AD-3 restore/quarantine. Returns the canonical settings…, True when boot load yields a valid complete record., Atomically persist a complete version-1 record. Accepts Admin plaintext…, Named failure during atomic settings commit (no plaintext Admin)., Read/validate/commit the device-local ``.settings-v1`` record. Inject…, SettingsCommitError, SettingsStore (+4 more)
+### Community 78 - "SettingsStore"
+Cohesion: 0.19
+Nodes (5): Boot-time load with AD-3 restore/quarantine. Returns the canonical settings…, True when boot load yields a valid complete record., Atomically persist a complete version-1 record. Accepts Admin plaintext…, Read/validate/commit the device-local ``.settings-v1`` record. Inject…, SettingsStore
 
 ### Community 79 - "ATDD Checklist - Epic {epic_num}, Story {story_num}: {story_title}"
 Cohesion: 0.06
@@ -2519,9 +2517,9 @@ Nodes (11): 2026-09-21 — Review pass, Auto Run Result, Boundaries & Constraint
 Cohesion: 0.22
 Nodes (8): Assumptions, Capabilities, Clock Screen Upcoming Events, Constraints, Non-goals, Open Questions, Success signal, Why
 
-### Community 100 - "validation.py"
-Cohesion: 0.14
-Nodes (18): add_alert(), delete_alert(), edit_alert(), Lazy authenticated alert persistence paths., Validate and atomically save delay while preserving complete settings., save_postpone_delay(), Lazy authenticated settings POST handlers., route() (+10 more)
+### Community 100 - "NtpOps"
+Cohesion: 0.16
+Nodes (10): NtpOps, _OpsError, Exception, Legacy blocking WLAN / DNS / UDP NTP ops for worker-proof tests. Owns blocking…, Clamp UDP recv timeout to remaining SyncCommand deadline., Internal soft-fail carrying a SyncResult error_code., Injectable worker ops: ``run(command) -> SyncResult``. Optional ``wlan`` /…, Execute one bounded sync attempt for ``command``. (+2 more)
 
 ### Community 101 - "bmad_loop_hook.py"
 Cohesion: 0.29
@@ -2551,9 +2549,9 @@ Nodes (27): Anti-Patterns, Breaking-Change Tolerant Branch Classification, Envir
 Cohesion: 0.07
 Nodes (27): Anti-Patterns, Available Tools, CLI shortcuts (Claude Code and Codex), Codex TOML config, Config file locations, Example 1: Fetching Provider States During Test Design, Example 2: Reviewing Pact Tests, Example 3: Can I Deploy Check in CI (+19 more)
 
-### Community 108 - "device/config_mode.py"
-Cohesion: 0.16
-Nodes (15): _due_alerts(), _leave(), _paint(), Config-mode composition root: the web stack, and no clock stack at all. The…, Flush any pending response, then reset back into clock mode. The config-mode…, Draw the whole static config-mode screen (no partial redraw logic)., Enabled alerts due in the current local minute, or an empty list., Serve the admin site until config mode ends, then reset. (+7 more)
+### Community 108 - "NetworkWorker"
+Cohesion: 0.17
+Nodes (5): NetworkWorker, One background thread that consumes SyncCommands and publishes SyncResults.…, Start the worker thread. Idempotent if already running., Request the worker loop to exit (best-effort; no join on MP)., Replace injectable network ops (proof scenario switching).
 
 ### Community 109 - "Pattern Examples"
 Cohesion: 0.07
@@ -9775,9 +9773,9 @@ Nodes (9): Guards the analysis itself; an empty closure would silence every gate
 Cohesion: 0.20
 Nodes (9): Boundaries & Constraints, Code Map, Design Notes, I/O & Edge-Case Matrix, Implementation Result, Intent, Spec Change Log, Tasks & Acceptance (+1 more)
 
-### Community 2043 - "test_display_boot_checkpoint.py"
-Cohesion: 0.14
-Nodes (10): initialize_display(), Host-testable display boot boundary for the composition root., Initialize the panel, render its checkpoint, and wait briefly., Render the brief post-init checkpoint through the ILI9341 driver., splash_screen(), Host regression tests for the TFT boot checkpoint boundary., RecordingDisplay, test_display_boot_checkpoint_precedes_app_dependencies() (+2 more)
+### Community 2043 - "Pbkdf2Job"
+Cohesion: 0.24
+Nodes (7): _hmac_sha256(), pbkdf2_hmac_sha256(), Pbkdf2Job, Native-emitted PBKDF2-HMAC-SHA256 fast path for MicroPython. This module keeps…, Incremental native-emitted PBKDF2 job for one 32-byte block., Run at most max_rounds and return the digest only at completion., Return PBKDF2-HMAC-SHA256 output for one 32-byte block.
 
 ### Community 2045 - "2.1-sound-a-bounded-tut-cadence-through-the-buzzer-port.md"
 Cohesion: 0.25
@@ -9788,8 +9786,8 @@ Cohesion: 0.17
 Nodes (7): HttpRequest, IncrementalHttpParser, Completed HTTP request (method/path/headers/body)., Feed recv bytes until one request completes or a fixed error fires., Release request-owned buffers after routing transfers ownership., Consume ``data`` bytes. Returns ``(request_or_None, error_or_None, consumed)``., _Client
 
 ### Community 2047 - "SetupHttpServer"
-Cohesion: 0.09
-Nodes (12): Whether a browser or a KDF job is mid-flight on the admin site. Config mode…, Flush pending admin-site responses (used before a mode reset)., Drop every client connection but leave the listen socket bound., Drop a failed request without losing the setup candidate reply., Advance one bounded unit of HTTP work. Setup mode may return ``(\"connect\",…, Flush a terminal response to the held Connect/login client., Advance pending response writes without accepting new work., Release held Connect/login slot when the peer closes mid-work. (+4 more)
+Cohesion: 0.05
+Nodes (24): Whether a browser or a KDF job is mid-flight on the admin site. Config mode…, Flush pending admin-site responses (used before a mode reset)., Bounded local HTTP setup surface (parse/route/pages are host-pure)., _json_string(), Forward-only, bounded HTTP response sources., Return and consume at most ``max_bytes`` encoded response bytes., A response made of immutable segments with one advancing cursor., Keep byte-response inspection helpers working on host tests. (+16 more)
 
 ### Community 2048 - "Epic 2: Audible Alert Occurrence and Resolution"
 Cohesion: 0.07
@@ -9840,8 +9838,8 @@ Cohesion: 0.20
 Nodes (9): Alert Clock Architecture Spine — `tut` Cadence Rubric Review, Confirmed Cadence Fit, Findings, Good-Spine Checklist, High — Alert AD-4 contradicts inherited Wi-Fi settings authority, High — Hardware source of truth still says buzzer validation is pending, Mechanical Gate, Sources Checked (+1 more)
 
 ### Community 2060 - "test_app_sync.py"
-Cohesion: 0.06
-Nodes (43): NtpOps, _OpsError, Exception, Clamp UDP recv timeout to remaining SyncCommand deadline., Internal soft-fail carrying a SyncResult error_code., Injectable worker ops: ``run(command) -> SyncResult``. Optional ``wlan`` /…, Execute one bounded sync attempt for ``command``., _Cmd (+35 more)
+Cohesion: 0.13
+Nodes (20): FakeClockPort, FakeLock, FakeTicks, _imported_roots(), _make_sync_app(), Path, Host tests for App↔mailbox sync wiring (Story 1.5 / AD-8)., App enqueue path: occupied result → reject; retry_deadline stays due. (+12 more)
 
 ### Community 2061 - "alert-clock/ux-designs/DESIGN.md"
 Cohesion: 0.22
@@ -9859,9 +9857,9 @@ Nodes (9): 2026-09-21 — Review pass, Auto Run Result, Boundaries & Constraints
 Cohesion: 0.07
 Nodes (40): calendar_entry_allowed(), Pure time domain types and calendar-entry gate., Glanceable time state for renderers and view gating., Calendar may be entered only when a local DateTime exists., TimeSnapshot, _days_in_month(), make_snapshot(), Pure UTC→local conversion and snapshot construction (no device imports). (+32 more)
 
-### Community 2065 - "clock_mode.py"
-Cohesion: 0.07
-Nodes (28): credentials_valid(), Host-safe Wi-Fi credential soft-check (no secrets in config)., Return True only when device-local secrets expose non-empty SSID and password.…, Clock-mode composition root: the clock stack, and no web stack at all.…, Run the clock loop until a browser knocks and reboots into config., run(), Ili9341DisplayPort, DisplayPort adapter over the existing ILI9341 driver (device layer only). (+20 more)
+### Community 2065 - "credentials_valid"
+Cohesion: 0.30
+Nodes (11): credentials_valid(), Host-safe Wi-Fi credential soft-check (no secrets in config)., Return True only when device-local secrets expose non-empty SSID and password.…, _clear_secrets(), _install_secrets(), Host tests for credentials soft-check., test_empty_ssid_is_invalid(), test_import_failure_other_than_import_error_is_invalid() (+3 more)
 
 ### Community 2066 - "Epic 2 Context: Audible Alert Occurrence and Resolution"
 Cohesion: 0.50
@@ -9888,12 +9886,12 @@ Cohesion: 0.20
 Nodes (9): 2026-09-21 — Review pass, Auto Run Result, Boundaries & Constraints, Code Map, I/O & Edge-Case Matrix, Intent, Review Triage Log, Tasks & Acceptance (+1 more)
 
 ### Community 2075 - "test_buzzer_port.py"
-Cohesion: 0.33
-Nodes (11): FakePin, FakeTicks, make_port(), test_active_low_configuration_inverts_levels(), test_cadence_switches_high_to_low_to_high(), test_failed_edge_marks_port_unavailable_until_reinitialized(), test_failed_initialization_returns_named_result_and_can_retry(), test_initializes_low_and_starts_high_immediately() (+3 more)
+Cohesion: 0.11
+Nodes (14): BuzzerPort, FakePin, FakeTicks, make_port(), test_active_low_configuration_inverts_levels(), test_cadence_switches_high_to_low_to_high(), test_failed_edge_marks_port_unavailable_until_reinitialized(), test_failed_initialization_returns_named_result_and_can_retry() (+6 more)
 
-### Community 2076 - "server.py"
-Cohesion: 0.09
-Nodes (16): Bounded local HTTP setup surface (parse/route/pages are host-pure)., _json_string(), Forward-only, bounded HTTP response sources., Return and consume at most ``max_bytes`` encoded response bytes., A response made of immutable segments with one advancing cursor., Keep byte-response inspection helpers working on host tests., _response_chunk(), ResponseSource (+8 more)
+### Community 2076 - "test_ticks.py"
+Cohesion: 0.22
+Nodes (10): _imported_roots(), Path, Host tests for wrap-safe tick helpers., Redraw/retry scheduling pattern: due when ticks_diff(deadline, now) <= 0., _remember_module(), test_deadline_pattern_uses_add_and_diff(), test_ticks_add_wraps_at_period(), test_ticks_diff_signed_and_wrap_safe() (+2 more)
 
 ### Community 2077 - "1.4-delete-an-alert-with-explicit-confirmation.md"
 Cohesion: 0.18
@@ -9904,12 +9902,12 @@ Cohesion: 0.17
 Nodes (11): 2026-09-21 — Review pass, Auto Run Result, Boundaries & Constraints, Code Map, Design Notes, I/O & Edge-Case Matrix, Intent, Review Triage Log (+3 more)
 
 ### Community 2079 - "runtime.py"
-Cohesion: 0.10
-Nodes (39): _buzzer_fault(), _buzzer_silence(), _buzzer_tick(), _commit_alert_state(), evaluate(), _failure_code(), _is_buzzer_failure(), _log_failure_once() (+31 more)
+Cohesion: 0.06
+Nodes (56): _buzzer_fault(), _buzzer_silence(), _buzzer_tick(), _commit_alert_state(), evaluate(), _failure_code(), _is_buzzer_failure(), _log_failure_once() (+48 more)
 
 ### Community 2080 - "KdfJob"
 Cohesion: 0.04
-Nodes (54): Sole FS boundary for the ignored version-1 device settings record (AD-3)., Small shared provisioning constants. This module intentionally has no crypto or…, KdfJob, Cooperative PBKDF2 job stepper (≤N HMAC rounds per tick). Host-testable: no…, Fresh salt hex after a successful derive (``None`` otherwise)., Derived verifier hex after a successful derive (``None`` otherwise)., Advance at most ``max_rounds`` HMAC rounds. Returns a terminal result code when…, Abandon the job and wipe secrets. (+46 more)
+Nodes (45): Small shared provisioning constants. This module intentionally has no crypto or…, KdfJob, Cooperative PBKDF2 job stepper (≤N HMAC rounds per tick). Host-testable: no…, Fresh salt hex after a successful derive (``None`` otherwise)., Derived verifier hex after a successful derive (``None`` otherwise)., Advance at most ``max_rounds`` HMAC rounds. Returns a terminal result code when…, Abandon the job and wipe secrets., Incremental PBKDF2-HMAC-SHA256 verify or derive for one Admin password. (+37 more)
 
 ### Community 2081 - "2.3-stop-an-active-alert-with-one-tap.md"
 Cohesion: 0.22
@@ -9925,7 +9923,7 @@ Nodes (8): Auto Run Result, Boundaries & Constraints, Code Map, Design Notes, I/
 
 ### Community 2084 - "Mailbox"
 Cohesion: 0.05
-Nodes (53): Package exports for the network boundary. Host-importable surface is limited to…, Mailbox, MailboxSaturationError, Exception, Pure capacity-one sync mailbox protocol (AD-8). Lock-free protocol object. App…, Accept a SyncCommand only while idle, command slot empty, and result slot empty…, Worker atomically takes the pending command, or None if empty. On take, returns…, Publish exactly one terminal SyncResult into an empty result slot. If… (+45 more)
+Nodes (48): Package exports for the network boundary. Host-importable surface is limited to…, Mailbox, MailboxSaturationError, Exception, Pure capacity-one sync mailbox protocol (AD-8). Lock-free protocol object. App…, Accept a SyncCommand only while idle, command slot empty, and result slot empty…, Worker atomically takes the pending command, or None if empty. On take, returns…, Publish exactly one terminal SyncResult into an empty result slot. If… (+40 more)
 
 ### Community 2085 - "2.2-a-due-alert-takes-over-the-screen-sounds-and-auto-stops.md"
 Cohesion: 0.18
@@ -9943,21 +9941,17 @@ Nodes (12): calibrate_touch_point(), CalibratedTouchPort, Map raw XPT2046 sample
 Cohesion: 0.22
 Nodes (8): Boundaries & Constraints, Code Map, Design Notes, I/O & Edge-Case Matrix, Implementation Result, Intent, Tasks & Acceptance, Verification
 
-### Community 2090 - "_run_config_mode"
-Cohesion: 0.09
-Nodes (14): FakeClock, FakeCoordinator, FakeDisplay, FakeStore, FakeTicks, Traffic re-arms the idle timeout, so a session in use is never cut., Clock mode owns the buzzer and the dismiss surface, so the alarm needs it., _run_config_mode() (+6 more)
-
 ### Community 2092 - "2.8-a-buzzer-or-render-failure-stays-bounded-and-recoverable.md"
 Cohesion: 0.22
 Nodes (8): Auto Run Result, Boundaries & Constraints, Code Map, Design Notes, I/O & Edge-Case Matrix, Intent, Tasks & Acceptance, Verification
 
-### Community 2093 - "machine.py"
-Cohesion: 0.09
-Nodes (9): _days_in_month(), RTC-backed ClockPort (device layer only; AD-3)., Read/write UTC wall time through ``machine.RTC``. Only App should call this.…, Return a ``DateTime`` from the RTC, or ``None`` if cold/invalid., Write a ``DateTime`` into the RTC (UTC). Subseconds forced to 0., RtcClockPort, Host stand-in for the Pico's ``machine`` module. Only enough surface for the…, RTC (+1 more)
+### Community 2093 - "ILI9341"
+Cohesion: 0.20
+Nodes (3): ILI9341, sleep_ms(), Pin
 
 ### Community 2095 - "test_setup_candidate.py"
 Cohesion: 0.12
-Nodes (22): _activate(), FakeListenSocket, FakeTcpSocketModule, _http_connect(), _http_get(), _make(), _pump_until(), Host tests for setup candidate join/persist ordering on NetworkCoordinator. (+14 more)
+Nodes (23): _activate(), FakeListenSocket, FakeTcpSocketModule, _http_connect(), _http_get(), _make(), _pump_until(), Host tests for setup candidate join/persist ordering on NetworkCoordinator. (+15 more)
 
 ### Community 2096 - "clock_view.py"
 Cohesion: 0.27
@@ -9971,33 +9965,13 @@ Nodes (4): Not observed, Observed, Status, Story 2.9 Flashed-Device Evidence
 Cohesion: 0.50
 Nodes (3): Results, Scope limit, Story 2.9 Host Evidence
 
-### Community 2099 - "main.py"
-Cohesion: 0.11
-Nodes (15): clear_config_mode(), consume_config_mode(), _path(), Config-mode handoff flag: one small file on the device filesystem. Clock mode…, Write the flag. Returns True when the caller may reboot into config., Whether config mode was requested; the flag is cleared either way. Clearing…, Delete the flag if present; a missing flag is not an error., request_config_mode() (+7 more)
-
-### Community 2100 - "config.py"
-Cohesion: 0.09
-Nodes (22): t(), Non-secret hardware and product defaults (AD-9)., Pack an RGB888 triple into a high-byte-first RGB565 integer., rgb888_to_rgb565(), AlertView, _center(), postpone_hit(), Full-frame active-alert DisplayPort renderer. (+14 more)
-
-### Community 2101 - "main"
-Cohesion: 0.19
-Nodes (4): main(), ILI9341, sleep_ms(), Pin
-
-### Community 2103 - "WLAN"
-Cohesion: 0.14
-Nodes (3): Current station IPv4 address, or None when it cannot be read., Host stand-in for the Pico's ``network`` module. The real CYW43 driver…, WLAN
-
 ### Community 2104 - "spec-postpone-realert-stuck-alert.md"
-Cohesion: 0.18
-Nodes (10): 2026-09-23 — Review pass, Boundaries & Constraints, Code Map, Design Notes, I/O & Edge-Case Matrix, Intent, Review Triage Log, Spec Change Log (+2 more)
+Cohesion: 0.17
+Nodes (11): 2026-09-23 — Review pass, Auto Run Result, Boundaries & Constraints, Code Map, Design Notes, I/O & Edge-Case Matrix, Intent, Review Triage Log (+3 more)
 
 ### Community 2106 - "spec-login-cancel-button.md"
 Cohesion: 0.50
 Nodes (3): Implementation Notes, Intent, Review Triage Log
-
-### Community 2107 - "RebootPort"
-Cohesion: 0.24
-Nodes (6): Device boundary for resetting the Pico without exposing ``machine`` to App., Request exactly one device reset., Invoke an injected reset callback; host tests can provide a harmless fake., RebootPort, Host coverage for the reset device boundary., test_reset_invokes_injected_callback_once()
 
 ### Community 2108 - "spec-active-alert-touch-immediate-response.md"
 Cohesion: 0.18
@@ -10008,21 +9982,21 @@ Cohesion: 0.40
 Nodes (7): _cleanup_device_stub(), _install_fake_machine(), _load_clock_port(), Host tests for RtcClockPort with a stubbed machine.RTC., test_cold_and_invalid_rtc_map_to_none(), test_set_utc_writes_rtc_tuple(), test_valid_rtc_tuple_maps_to_datetime()
 
 ## Knowledge Gaps
-- **20693 isolated node(s):** `crypto`, `fs`, `path`, `DEFAULT_CONFIG`, `SKIP_DIRECTORIES` (+20688 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 23655 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **106 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **20694 isolated node(s):** `crypto`, `fs`, `path`, `DEFAULT_CONFIG`, `SKIP_DIRECTORIES` (+20689 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 23656 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **105 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `App` connect `App` to `test_app_loop.py`, `FakeDisplayPort`, `test_station_recover.py`, `test_app_sync.py`, `app.py`, `clock_mode.py`, `DateTime`, `test_app_network_overlay.py`, `SettingsView`?**
+- **Why does `App` connect `App` to `test_app_loop.py`, `FakeDisplayPort`, `SyncCommand`, `config.py`, `test_app_sync.py`, `app.py`, `DateTime`, `test_app_network_overlay.py`, `SettingsView`?**
   _High betweenness centrality (0.001) - this node is a cross-community bridge._
 - **Are the 6 inferred relationships involving `NetworkCoordinator` (e.g. with `MailboxSaturationError` and `SyncResult`) actually correct?**
   _`NetworkCoordinator` has 6 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 5 inferred relationships involving `DateTime` (e.g. with `RtcClockPort` and `NetworkCoordinator`) actually correct?**
   _`DateTime` has 5 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `crypto`, `fs`, `path` to the rest of the system?**
-  _20693 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _20694 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `.agents/skills/bmad-retrospective/scripts/tests/test_sprint_status.py` be split into smaller, more focused modules?**
   _Cohesion score 0.07441860465116279 - nodes in this community are weakly interconnected._
 - **Should `.claude/skills/bmad-retrospective/scripts/tests/test_sprint_status.py` be split into smaller, more focused modules?**

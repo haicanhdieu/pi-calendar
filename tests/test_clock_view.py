@@ -641,7 +641,9 @@ def test_settings_surface_suppresses_badge_and_bar():
     reboot_labels = [
         op[1]
         for op in display.ops
-        if op[0] == "draw_text" and op[1] in config.SETTINGS_REBOOT_LABEL
+        if op[0] == "draw_text"
+        and op[1] in config.SETTINGS_REBOOT_LABEL
+        and reboot_y <= op[3] < reboot_y + reboot_h
     ]
     assert len(reboot_labels) == len(config.SETTINGS_REBOOT_LABEL)
 
