@@ -12,8 +12,8 @@ from src.ui.touch_state import (
     BAR_TARGET_GEAR,
     BAR_TARGET_IN_PANEL,
     BAR_TARGET_OUTSIDE,
-    SETTINGS_TARGET_REBOOT,
     SURFACE_BAR,
+    SURFACE_ALERTS,
     SURFACE_ROTATION,
     SURFACE_SETTINGS,
     next_surface,
@@ -105,6 +105,17 @@ def test_bar_routes_gear_edge_to_settings_and_outside_edges_to_rotation():
     )
 
 
+def test_bar_alerts_target_enters_alerts_and_shared_dismissal_exits():
+    now = 12345
+    deadline = ticks.ticks_add(now, TOUCH_IDLE_TIMEOUT_MS)
+    assert next_surface(SURFACE_BAR, deadline, True, now, SURFACE_ALERTS) == (
+        SURFACE_ALERTS, ticks.ticks_add(now, TOUCH_IDLE_TIMEOUT_MS)
+    )
+    assert next_surface(SURFACE_ALERTS, deadline, False, now) == (SURFACE_ALERTS, deadline)
+    assert next_surface(SURFACE_ALERTS, deadline, True, now) == (SURFACE_ROTATION, None)
+    assert next_surface(SURFACE_ALERTS, deadline, False, deadline) == (SURFACE_ROTATION, None)
+
+
 def test_bar_in_panel_edge_stays_on_bar():
     now = 12_345
     deadline = ticks.ticks_add(now, TOUCH_IDLE_TIMEOUT_MS)
@@ -164,20 +175,12 @@ def test_settings_outside_edge_returns_to_rotation():
     )
 
 
-def test_settings_reboot_edge_wins_when_settings_deadline_is_due():
-    now = 12_345
-
-    assert next_surface(
-        SURFACE_SETTINGS, now, True, now, settings_target=SETTINGS_TARGET_REBOOT
-    ) == (SURFACE_SETTINGS, now)
-
-
-def test_settings_reboot_edge_stays_on_settings_without_renewing_deadline():
+def test_settings_control_stays_open_without_renewing_deadline():
     now = 12_345
     deadline = ticks.ticks_add(now, TOUCH_IDLE_TIMEOUT_MS)
 
     assert next_surface(
-        SURFACE_SETTINGS, deadline, True, now, settings_target=SETTINGS_TARGET_REBOOT
+        SURFACE_SETTINGS, deadline, False, now
     ) == (SURFACE_SETTINGS, deadline)
 
 

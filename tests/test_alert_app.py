@@ -4,11 +4,156 @@ from src.time.model import DateTime
 from src.ui.calendar_view import CalendarView
 from src.ui.clock_view import ClockView
 from src.ui.display_port import FakeDisplayPort
+from src.ui.touch_state import SURFACE_ALERTS
 from src.device.touch_port import TouchPort
 from src.ui.touch_calibration import CalibratedTouchPort
-from tests.test_app_loop import FakeClockPort, FakeTicks
+from tests.test_app_loop import FakeClockPort, FakeTicks, FakeTouchPort
 from tests.test_settings_store import FakeFS, _record_bytes, _store
 import json
+
+
+def test_alert_surface_toggle_commits_only_selected_enabled_value():
+    alerts = [
+        {"id": "morning", "hour": 6, "minute": 30, "enabled": True, "weekdays": [0, 1]},
+        {"id": "weekend", "hour": 8, "minute": 0, "enabled": False, "weekdays": [5, 6]},
+    ]
+    pending = {
+        "due": {"year": 2026, "month": 9, "day": 10, "weekday": 3, "hour": 9, "minute": 0},
+        "alerts": [dict(alerts[0], weekdays=list(alerts[0]["weekdays"]))],
+        "delay": 12,
+    }
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2,
+        alerts=alerts,
+        postpone_delay_minutes=12,
+        pending_postponed_occurrence=pending,
+        color_scheme="forest-amber",
+    )})
+    store = _store(fs)
+    settings = store.load()
+    ticks = FakeTicks(0)
+    clock = FakeClockPort(DateTime(2026, 9, 9, 2, 0, 0, 0))
+    display = FakeDisplayPort()
+    touch = FakeTouchPort([(True, 0, 0), (True, 240, 222)])
+    app = App(
+        clock_port=clock,
+        clock_view=ClockView(display),
+        calendar_view=CalendarView(display),
+        ticks_module=ticks,
+        sync_enabled=False,
+        touch_port=touch,
+        settings_store=store,
+        alert_settings=settings,
+    )
+
+    app.step()
+    ticks.advance(1)
+    app.step()
+    assert app.state.active_surface == SURFACE_ALERTS
+    ticks.advance(config.PRESS_FLASH_MS)
+    app.step()
+    touch.samples.append((True, 288, 54))
+    ticks.advance(1)
+    app.step()
+
+    saved = store.load()
+    assert saved["alerts"][0]["enabled"] is True
+    assert saved["alerts"][1]["enabled"] is True
+    assert saved["wifi_ssid"] == "ssid"
+    assert saved["wifi_password"] == "password1"
+    assert saved["color_scheme"] == "forest-amber"
+    assert saved["postpone_delay_minutes"] == 12
+    assert saved["pending_postponed_occurrence"] == pending
+
+
+def test_alert_toggle_follows_displayed_id_after_settings_reorder():
+    from types import SimpleNamespace
+    from src.alert.runtime import toggle_enabled
+
+    displayed = [
+        {"id": "morning", "hour": 6, "minute": 30, "enabled": False, "weekdays": [0]},
+        {"id": "weekend", "hour": 8, "minute": 0, "enabled": False, "weekdays": [5]},
+    ]
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2, alerts=displayed, postpone_delay_minutes=10,
+        pending_postponed_occurrence=None,
+    )})
+    store = _store(fs)
+    latest = list(reversed(displayed))
+    fs.files[".settings-v1"] = _record_bytes(
+        settings_version=2, alerts=latest, postpone_delay_minutes=10,
+        pending_postponed_occurrence=None,
+    )
+    app = SimpleNamespace(_alert_cfg=(None, store, {"alerts": displayed}), _log=lambda message: None)
+
+    assert toggle_enabled(app, "weekend") is True
+    assert [item["id"] for item in store.load()["alerts"]] == ["weekend", "morning"]
+    assert store.load()["alerts"][0]["enabled"] is True
+    assert store.load()["alerts"][1]["enabled"] is False
+
+    committed = store.load()
+    assert toggle_enabled(app, "removed") is False
+    assert store.load() == committed
+
+
+def test_alert_surface_toggle_commit_failure_keeps_saved_display_and_recovers():
+    alerts = [
+        {"id": "morning", "hour": 6, "minute": 30, "enabled": False, "weekdays": [0, 1]},
+    ]
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2,
+        alerts=alerts,
+        postpone_delay_minutes=10,
+        pending_postponed_occurrence=None,
+    )})
+    store = _store(fs)
+    settings = store.load()
+    ticks = FakeTicks(0)
+    display = FakeDisplayPort()
+    touch = FakeTouchPort([(True, 0, 0), (True, 240, 222)])
+    logs = []
+    app = App(
+        clock_port=FakeClockPort(DateTime(2026, 9, 9, 2, 0, 0, 0)),
+        clock_view=ClockView(display),
+        calendar_view=CalendarView(display),
+        ticks_module=ticks,
+        log=logs.append,
+        sync_enabled=False,
+        touch_port=touch,
+        settings_store=store,
+        alert_settings=settings,
+    )
+
+    app.step()
+    ticks.advance(1)
+    app.step()
+    ticks.advance(config.PRESS_FLASH_MS)
+    app.step()
+    displayed_before = list(display.ops)
+    saved_before = store.load()
+
+    fs.fail_write_path = ".settings-v1.tmp"
+    touch.samples.append((True, 288, 33))
+    ticks.advance(1)
+    app.step()
+
+    assert app.state.active_surface == SURFACE_ALERTS
+    assert store.load() == saved_before
+    assert app._alert_cfg[2] == saved_before
+    assert display.ops == displayed_before
+    assert "alert_fail persist write_fail" in logs
+    assert not any(
+        secret in line
+        for line in logs
+        for secret in ("password1", "admin-pass", saved_before["admin_salt"], saved_before["admin_verifier"])
+    )
+
+    fs.fail_write_path = None
+    touch.samples.append((True, 288, 33))
+    ticks.advance(1)
+    app.step()
+    assert store.load()["alerts"][0]["enabled"] is True
+    assert app.state.active_surface == SURFACE_ALERTS
 
 
 class FakeBuzzer:

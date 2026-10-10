@@ -10,6 +10,46 @@ from src.alert.scheduler import (
 from src.alert.terminal import disable_one_time_alerts
 
 
+def toggle_enabled(app, alert_id):
+    """Commit one copied alert change; App state advances only on success."""
+    buzzer, store, _settings = app._alert_cfg
+    if store is None:
+        app._log("alert_fail persist unavailable")
+        return False
+    try:
+        settings = store.load()
+        if not isinstance(settings, dict):
+            app._log("alert_fail persist unavailable")
+            return False
+        alerts = []
+        for alert in settings.get("alerts", []):
+            copied = dict(alert)
+            copied["weekdays"] = list(alert.get("weekdays", []))
+            alerts.append(copied)
+        index = next(
+            (i for i, alert in enumerate(alerts) if alert.get("id") == alert_id),
+            None,
+        )
+        if index is None:
+            return False
+        alerts[index]["enabled"] = not bool(alerts[index].get("enabled"))
+        committed = store.commit(
+            wifi_ssid=settings["wifi_ssid"],
+            wifi_password=settings["wifi_password"],
+            admin_salt_hex=settings["admin_salt"],
+            admin_verifier_hex=settings["admin_verifier"],
+            color_scheme=settings["color_scheme"],
+            alerts=alerts,
+            postpone_delay_minutes=settings.get("postpone_delay_minutes", 10),
+            pending_postponed_occurrence=settings.get("pending_postponed_occurrence"),
+        )
+    except Exception as exc:
+        app._log("alert_fail persist %s" % getattr(exc, "code", "commit"))
+        return False
+    app._alert_cfg = (buzzer, store, committed)
+    return True
+
+
 def _pending_payload(postponed):
     due = postponed["due"]
     return {

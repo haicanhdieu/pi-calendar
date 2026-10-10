@@ -323,8 +323,8 @@ def test_partial_bar_retracts_from_its_current_visible_height():
 
 def test_bar_gear_edge_enters_settings_without_rotation_dwell_rearm():
     ft = FakeTicks(0)
-    # The named 48px gear target is centered at (160, 222) on FakeDisplayPort.
-    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    # The named 48px gear target is centered at (80, 222) on FakeDisplayPort.
+    touch = FakeTouchPort([(True, 0, 0), (True, 80, 222)])
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
         ticks_mod=ft, touch_port=touch
     )
@@ -351,7 +351,7 @@ def test_bar_gear_entering_settings_captures_network_status_snapshot():
     from src.device.network.models import setup_ap_status_event
 
     ft = FakeTicks(0)
-    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    touch = FakeTouchPort([(True, 0, 0), (True, 80, 222)])
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
         ticks_mod=ft, touch_port=touch
     )
@@ -368,7 +368,7 @@ def test_bar_gear_entering_settings_captures_network_status_snapshot():
 
 def test_settings_entry_with_no_network_status_leaves_none_snapshot():
     ft = FakeTicks(0)
-    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    touch = FakeTouchPort([(True, 0, 0), (True, 80, 222)])
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
         ticks_mod=ft, touch_port=touch
     )
@@ -381,7 +381,7 @@ def test_settings_snapshot_is_not_refreshed_while_open():
     from src.device.network.models import setup_ap_status_event
 
     ft = FakeTicks(0)
-    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    touch = FakeTouchPort([(True, 0, 0), (True, 80, 222)])
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
         ticks_mod=ft, touch_port=touch
     )
@@ -403,7 +403,7 @@ def test_settings_reentry_overwrites_snapshot_from_current_network_state():
     from src.device.network.models import setup_ap_status_event
 
     ft = FakeTicks(0)
-    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    touch = FakeTouchPort([(True, 0, 0), (True, 80, 222)])
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
         ticks_mod=ft, touch_port=touch
     )
@@ -415,7 +415,7 @@ def test_settings_reentry_overwrites_snapshot_from_current_network_state():
     app._overlay_kind = "station_ip"
     app._overlay_ssid = "Home"
     app._overlay_ip = "192.168.1.50"
-    app._touch_port = FakeTouchPort([(True, 160, 222)])
+    app._touch_port = FakeTouchPort([(True, 80, 222)])
     ft.advance(1)
     app.step(now_ticks=ft.now)
 
@@ -428,7 +428,7 @@ def test_settings_reentry_overwrites_snapshot_from_current_network_state():
 
 def test_settings_render_suspends_calendar_and_hides_bar():
     ft = FakeTicks(0)
-    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    touch = FakeTouchPort([(True, 0, 0), (True, 80, 222)])
     app, _clock, _view, display, ft, _logs, _cal = _make_app(
         ticks_mod=ft, touch_port=touch
     )
@@ -455,11 +455,13 @@ def test_settings_render_suspends_calendar_and_hides_bar():
 
 def test_settings_render_suspends_clock_and_hides_bar():
     ft = FakeTicks(0)
-    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    touch = FakeTouchPort([(True, 0, 0), (True, 80, 222)])
     app, _clock, _view, display, ft, _logs, _cal = _make_app(
         ticks_mod=ft, touch_port=touch
     )
     _enter_settings_via_gear(app, ft)
+    ft.advance(config.PRESS_FLASH_MS)
+    app.step(now_ticks=ft.now)
     display.clear_ops()
     ft.advance(config.CLOCK_REDRAW_MS)
     app.step(now_ticks=ft.now)
@@ -486,7 +488,7 @@ def test_settings_reboot_tap_flashes_then_resets_once():
     display = FakeDisplayPort()
     reboot_x, reboot_y = _settings_reboot_center(display)
     touch = FakeTouchPort(
-        [(True, 0, 0), (True, 160, 222), (True, reboot_x, reboot_y)]
+        [(True, 0, 0), (True, 80, 222), (True, reboot_x, reboot_y)]
     )
     events = []
     sleep = RecordingSleepMs(events)
@@ -524,7 +526,7 @@ def test_settings_mode_tap_flashes_writes_flag_then_resets():
     display = FakeDisplayPort()
     mode_x, mode_y = _settings_mode_center(display)
     touch = FakeTouchPort(
-        [(True, 0, 0), (True, 160, 222), (True, mode_x, mode_y)]
+        [(True, 0, 0), (True, 80, 222), (True, mode_x, mode_y)]
     )
     events = []
     sleep = RecordingSleepMs(events)
@@ -563,7 +565,7 @@ def test_settings_mode_flag_failure_does_not_reset_or_dismiss():
     display = FakeDisplayPort()
     mode_x, mode_y = _settings_mode_center(display)
     touch = FakeTouchPort(
-        [(True, 0, 0), (True, 160, 222), (True, mode_x, mode_y)]
+        [(True, 0, 0), (True, 80, 222), (True, mode_x, mode_y)]
     )
     reboot = FakeRebootPort()
     sleep = RecordingSleepMs()
@@ -585,7 +587,7 @@ def test_settings_mode_flag_failure_does_not_reset_or_dismiss():
 def test_settings_reboot_miss_dismisses_without_reset():
     ft = FakeTicks(0)
     display = FakeDisplayPort()
-    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222), (True, 10, 10)])
+    touch = FakeTouchPort([(True, 0, 0), (True, 80, 222), (True, 10, 10)])
     reboot = FakeRebootPort()
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
         ticks_mod=ft, touch_port=touch, reboot_port=reboot
@@ -614,7 +616,7 @@ def test_settings_reboot_none_port_still_flashes_without_exception():
     display = FakeDisplayPort()
     reboot_x, reboot_y = _settings_reboot_center(display)
     touch = FakeTouchPort(
-        [(True, 0, 0), (True, 160, 222), (True, reboot_x, reboot_y)]
+        [(True, 0, 0), (True, 80, 222), (True, reboot_x, reboot_y)]
     )
     sleep = RecordingSleepMs()
     app, _clock, _view, display, ft, _logs, _cal = _make_app(
@@ -642,7 +644,7 @@ def test_settings_reboot_none_port_still_flashes_without_exception():
 
 def test_settings_idle_timeout_returns_to_rotation_and_rearms_clock_dwell():
     ft = FakeTicks(0)
-    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    touch = FakeTouchPort([(True, 0, 0), (True, 80, 222)])
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
         ticks_mod=ft, touch_port=touch
     )
@@ -657,7 +659,7 @@ def test_settings_idle_timeout_returns_to_rotation_and_rearms_clock_dwell():
 
 def test_settings_outside_tap_returns_to_rotation_and_rearms_calendar_dwell():
     ft = FakeTicks(0)
-    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222), (True, 10, 10)])
+    touch = FakeTouchPort([(True, 0, 0), (True, 80, 222), (True, 10, 10)])
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
         ticks_mod=ft, touch_port=touch
     )
@@ -678,7 +680,7 @@ def test_settings_outside_tap_returns_to_rotation_and_rearms_calendar_dwell():
 
 def test_settings_malformed_edge_stays_on_settings_without_error():
     ft = FakeTicks(0)
-    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222), (True,)])
+    touch = FakeTouchPort([(True, 0, 0), (True, 80, 222), (True,)])
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
         ticks_mod=ft, touch_port=touch
     )
@@ -693,7 +695,7 @@ def test_settings_malformed_edge_stays_on_settings_without_error():
 
 def test_settings_idle_timeout_rearms_calendar_dwell():
     ft = FakeTicks(0)
-    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    touch = FakeTouchPort([(True, 0, 0), (True, 80, 222)])
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
         ticks_mod=ft, touch_port=touch
     )
@@ -711,7 +713,7 @@ def test_settings_idle_timeout_rearms_calendar_dwell():
 
 def test_settings_outside_tap_clears_bar_retract_state():
     ft = FakeTicks(0)
-    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222), (True, 10, 10)])
+    touch = FakeTouchPort([(True, 0, 0), (True, 80, 222), (True, 10, 10)])
     app, _clock, _view, display, ft, _logs, _cal = _make_app(
         ticks_mod=ft, touch_port=touch
     )
@@ -732,7 +734,7 @@ def test_settings_reboot_tap_preserves_settings_surface():
     display = FakeDisplayPort()
     reboot_x, reboot_y = _settings_reboot_center(display)
     touch = FakeTouchPort(
-        [(True, 0, 0), (True, 160, 222), (True, reboot_x, reboot_y)]
+        [(True, 0, 0), (True, 80, 222), (True, reboot_x, reboot_y)]
     )
     reboot = FakeRebootPort()
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
@@ -755,7 +757,7 @@ def test_settings_reboot_tap_wins_when_idle_deadline_is_due():
     display = FakeDisplayPort()
     reboot_x, reboot_y = _settings_reboot_center(display)
     touch = FakeTouchPort(
-        [(True, 0, 0), (True, 160, 222), (True, reboot_x, reboot_y)]
+        [(True, 0, 0), (True, 80, 222), (True, reboot_x, reboot_y)]
     )
     reboot = FakeRebootPort()
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
@@ -774,7 +776,7 @@ def test_settings_reboot_tap_wins_when_idle_deadline_is_due():
 
 def test_settings_retains_the_interrupted_view_after_its_dwell_is_due():
     ft = FakeTicks(0)
-    touch = FakeTouchPort([(True, 0, 0), (True, 160, 222)])
+    touch = FakeTouchPort([(True, 0, 0), (True, 80, 222)])
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
         ticks_mod=ft, touch_port=touch
     )
@@ -851,7 +853,7 @@ def test_bar_malformed_edge_stays_on_bar_without_error():
 
 def test_bar_in_panel_non_gear_edge_keeps_bar_revealed():
     ft = FakeTicks(0)
-    # Inside the 36px bottom strip, left of the centered 48px gear target.
+    # Inside the 36px bottom strip, left of the left-side 48px Settings target.
     touch = FakeTouchPort([(True, 0, 0), (True, 10, 220)])
     app, _clock, _view, _display, ft, _logs, _cal = _make_app(
         ticks_mod=ft, touch_port=touch

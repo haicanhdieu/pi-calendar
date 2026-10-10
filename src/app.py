@@ -6,10 +6,7 @@ from src.time.service import make_snapshot
 from src.ui.compositor import UiCompositor
 from src.ui.settings_view import SettingsView
 from src.ui.touch_state import (
-    BAR_TARGET_GEAR,
-    BAR_TARGET_IN_PANEL,
-    BAR_TARGET_OUTSIDE,
-    SETTINGS_TARGET_REBOOT,
+    SURFACE_ALERTS,
     SURFACE_BAR,
     SURFACE_ROTATION,
     SURFACE_SETTINGS,
@@ -256,13 +253,14 @@ class App:
                 return False
         previous = self.state.active_surface
         bar_target = None
-        if previous == SURFACE_BAR and edge_down:
-            if self._compositor.bar_gear_hit(x, y):
-                bar_target = BAR_TARGET_GEAR
-            elif self._compositor.bar_panel_hit(x, y):
-                bar_target = BAR_TARGET_IN_PANEL
-            elif self._compositor.bar_outside_edge(x, y):
-                bar_target = BAR_TARGET_OUTSIDE
+        surface_edge_down = edge_down
+        control_pressed = False
+        if previous == SURFACE_BAR or previous == SURFACE_ALERTS:
+            from src.ui.tap import touch
+
+            bar_target, surface_edge_down, control_pressed = touch(
+                self, previous, edge_down, x, y, now
+            )
         if (
             previous == SURFACE_SETTINGS
             and edge_down
@@ -270,24 +268,26 @@ class App:
         ):
             self._handle_settings_tap(True)
             return True
-        settings_target = None
-        surface_edge_down = edge_down
+        reboot_pressed = False
         if previous == SURFACE_SETTINGS and edge_down:
             if self._compositor.settings_reboot_hit(x, y):
-                settings_target = SETTINGS_TARGET_REBOOT
+                reboot_pressed = True
+                surface_edge_down = False
             elif not self._compositor.settings_outside_edge(x, y):
                 surface_edge_down = False
-        surface, deadline = next_surface(
-            previous,
-            self.state.surface_deadline,
-            surface_edge_down,
-            now,
-            bar_target,
-            settings_target,
-        )
+        if reboot_pressed or control_pressed:
+            surface, deadline = previous, self.state.surface_deadline
+        else:
+            surface, deadline = next_surface(
+                previous,
+                self.state.surface_deadline,
+                surface_edge_down,
+                now,
+                bar_target,
+            )
         self.state.active_surface = surface
         self.state.surface_deadline = deadline
-        if settings_target is not None:
+        if reboot_pressed:
             self._handle_settings_tap()
         if surface != previous:
             if surface == SURFACE_BAR:
@@ -302,14 +302,20 @@ class App:
                     self.state.settings_status_snapshot = self._network_status()
                 elif surface == SURFACE_ROTATION:
                     self._rearm_active_view_dwell(now)
-            elif previous == SURFACE_SETTINGS and surface == SURFACE_ROTATION:
+            elif (
+                previous == SURFACE_SETTINGS or previous == SURFACE_ALERTS
+            ) and surface == SURFACE_ROTATION:
                 self._bar_reveal_started = None
                 self._bar_retract_started = None
                 self._bar_retract_start_height = None
                 self._bar_visible_height = 0
                 self._rearm_active_view_dwell(now)
+            if previous == SURFACE_BAR and (
+                surface == SURFACE_SETTINGS or surface == SURFACE_ALERTS
+            ):
+                return False
             return True
-        return settings_target is not None
+        return reboot_pressed or control_pressed
 
     def _handle_settings_tap(self, config_mode=False):
         self._settings_view.draw_press_flash(config_mode)
@@ -540,6 +546,11 @@ class App:
             self._calendar_view.invalidate()
 
     def _render(self, snapshot, now):
+        if self.state.active_surface == SURFACE_ALERTS:
+            from src.ui.alerts import render
+
+            render(self)
+            return
         if self.state.active_surface == SURFACE_SETTINGS:
             self._compositor.render(
                 self._settings_view,

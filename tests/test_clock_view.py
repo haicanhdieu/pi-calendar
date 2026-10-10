@@ -722,7 +722,7 @@ def test_bar_is_a_bounded_draw_last_overlay_and_visibility_restores_base():
         for op in display.ops
     )
     ix, iy, iw, ih = bar_gear_item_rect(display)
-    assert ix == (display.width - config.TAP_TARGET_SIZE_PX) // 2
+    assert ix + iw // 2 == display.width // 4
     assert iy + ih // 2 == by + bh // 2
     assert iw == ih == config.TAP_TARGET_SIZE_PX
 
