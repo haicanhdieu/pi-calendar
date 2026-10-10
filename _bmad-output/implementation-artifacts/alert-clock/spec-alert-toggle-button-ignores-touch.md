@@ -110,3 +110,11 @@ Files changed:
 Review findings: 10 low findings patched; 0 deferred; 2 false findings rejected with evidence in Review Triage Log. Patched counts: high 0, medium 0, low 10. Follow-up review recommendation: false.
 
 Verification: `uv run pytest tests/test_alert_app.py tests/test_alert_list_view.py tests/test_touch_calibration.py tests/test_touch_state.py` passed (60 tests). `git diff --check` passed. `graphify update .` completed. Pico W physical touch, display, and reboot-persistence checks remain unverified; host tests cannot measure actual calibrated tap coordinates.
+
+## Deployment Record
+
+- Deployed revision `6c1995ba51926cfae79caf6cd4cfc1479b97e1c4` to `/dev/cu.usbmodem101` on 2026-10-10 using `uv run --with mpy-cross==1.20.0 tools/deploy.py --port /dev/cu.usbmodem101`.
+- Target reports MicroPython 1.20.0, Raspberry Pi Pico W RP2040, `_mpy=4358`; compiler reports MicroPython v1.20.0 / mpy v6.1.
+- Deployment memory gate passed: clock-mode boot allocation 114,880 bytes (115,000 budget); all contiguous probes passed.
+- Read-only import check passed for `src.app`, `src.alert.runtime`, `src.ui.alert_list_view`, `src.ui.alerts`, and `src.ui.tap`; board reset after check.
+- Actual touchscreen tap, display feedback, and reboot persistence remain for manual confirmation; host tests do not prove physical calibration.
