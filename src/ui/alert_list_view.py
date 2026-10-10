@@ -159,28 +159,33 @@ class AlertListView:
                 recurrence_text(alert), 72, y + 4,
                 config.FONT_WEEKDAY, config.COLOR_SECONDARY,
             )
-            enabled = bool(alert.get("enabled"))
-            rect = state_rect(display, index)
-            color = config.COLOR_PRIMARY if enabled else config.COLOR_SECONDARY
-            if (
-                alert.get("id") == self.feedback_alert_id
-                and self.feedback_color is not None
-            ):
-                color = self.feedback_color
-            label = "ON" if enabled else "OFF"
-            display.fill_rect(*rect, color)
-            text_w, text_h = display.measure_text(label, config.FONT_SETTINGS_STATUS)
-            display.draw_text(
-                label,
-                rect[0] + (rect[2] - text_w) // 2,
-                rect[1] + (rect[3] - text_h) // 2,
-                config.FONT_SETTINGS_STATUS,
-                config.COLOR_BACKGROUND,
-            )
+            self.render_state(alert, index)
         if self.page > 0:
             self._draw_page_button(PAGE_PREV_X, display.height - FOOTER_HEIGHT, "PREV")
         if self.page + 1 < page_count:
             self._draw_page_button(PAGE_NEXT_X, display.height - FOOTER_HEIGHT, "NEXT")
+
+    def render_state(self, alert, index):
+        """Redraw only one state control, including its current feedback."""
+        display = self._display
+        enabled = bool(alert.get("enabled"))
+        rect = state_rect(display, index)
+        color = config.COLOR_PRIMARY if enabled else config.COLOR_SECONDARY
+        if (
+            alert.get("id") == self.feedback_alert_id
+            and self.feedback_color is not None
+        ):
+            color = self.feedback_color
+        label = "ON" if enabled else "OFF"
+        display.fill_rect(*rect, color)
+        text_w, text_h = display.measure_text(label, config.FONT_SETTINGS_STATUS)
+        display.draw_text(
+            label,
+            rect[0] + (rect[2] - text_w) // 2,
+            rect[1] + (rect[3] - text_h) // 2,
+            config.FONT_SETTINGS_STATUS,
+            config.COLOR_BACKGROUND,
+        )
 
     def _draw_page_button(self, x, y, label):
         display = self._display

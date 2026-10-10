@@ -195,6 +195,16 @@ Residual risk: physical display legibility, touch calibration, persistence after
 
 ## Deployment Record
 
+### Alert toggle compatibility fix — 2026-10-10
+
+Follow-up: user confirmed toggles work on the device, but reported whole-screen repaint on each toggle. Split state-control drawing into `AlertListView.render_state`; cache prior render data per view and redraw only visible controls whose enabled state or press feedback changed. Page, list metadata, and surface-entry changes still redraw the full list. Removed redundant compositor clear before full list render. Focused alert tests passed (40), including exact button-only draw operations on toggle and feedback expiry, unchanged-frame suppression, metadata changes, and surface re-entry. Deployment memory gate passed; deployed updated working tree to `/dev/cu.usbmodem101` with matching mpy-cross 1.20.0. Physical flicker improvement remains a manual check.
+
+- Symptom: touching ON/OFF showed pale press feedback but retained the prior state.
+- Cause: `toggle_enabled` used `next(iterator, None)`. The matching MicroPython 1.20 host interpreter raises `TypeError: function takes 1 positional arguments but 2 were given`; this happens before `SettingsStore.commit`, so the attempted toggle changes neither App settings nor disk. The broad handler logs `alert_fail persist commit`, while the UI still acknowledges the press.
+- Fix: use an explicit ID lookup loop supported by MicroPython 1.20. Preserve commit-before-App-update ordering and missing-ID handling.
+- Verification: matching MicroPython 1.20 execution reaches a fake commit with enabled=True and updates App settings; missing-ID lookup returns False. `uv run pytest tests/test_alert_app.py tests/test_alert_list_view.py -q` passed (39 tests). Deployment memory gate passed; graph refreshed.
+- Deployed fixed working tree using `uv run --with mpy-cross==1.20.0 tools/deploy.py --port /dev/cu.usbmodem101`; command completed successfully and reset the board. Physical touch/redraw and persistence after reboot remain manual checks; no on-device toggle behavior observed.
+
 - Deployed revision `bf6d673a768f6d2c9718858a45f0f1739ac881f4` to `/dev/cu.usbmodem101` on 2026-10-10 with `uv run --with mpy-cross==1.20.0 tools/deploy.py --port /dev/cu.usbmodem101`.
 - Target reported MicroPython 1.20.0, Raspberry Pi Pico W RP2040, `_mpy=4358`; matching compiler reported MicroPython v1.20.0 / mpy v6.1.
 - Post-deploy read-only import check passed for `src.app`, `src.alert.runtime`, `src.ui.alert_list_view`, `src.ui.alerts`, `src.ui.bar_controls`, and `src.ui.tap`.

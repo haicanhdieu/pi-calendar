@@ -3,6 +3,48 @@ from src.ui.alert_list_view import AlertListView
 from src.ui.display_port import FakeDisplayPort
 
 
+def test_toggle_and_feedback_redraw_only_changed_controls():
+    from src.ui.alerts import render_alert_surface
+    from src.ui.compositor import UiCompositor
+
+    display = FakeDisplayPort()
+    view = AlertListView(display)
+    compositor = UiCompositor(display)
+    alerts = [
+        {"id": "a", "hour": 7, "minute": 5, "weekdays": [], "enabled": False},
+        {"id": "b", "hour": 8, "minute": 30, "weekdays": [], "enabled": False},
+    ]
+    render_alert_surface(compositor, view, alerts)
+    display.ops.clear()
+    alerts[0]["enabled"] = True
+    view.feedback_alert_id = "a"
+    view.feedback_color = config.COLOR_PRESS_FLASH
+    render_alert_surface(compositor, view, alerts)
+    assert [op for op in display.ops if op[0] == "fill_rect"] == [
+        ("fill_rect", 232, 27, 80, 30, config.COLOR_PRESS_FLASH),
+    ]
+    assert [op[1] for op in display.ops if op[0] == "draw_text"] == ["ON"]
+
+    display.ops.clear()
+    view.clear_feedback()
+    render_alert_surface(compositor, view, alerts)
+    assert [op for op in display.ops if op[0] == "fill_rect"] == [
+        ("fill_rect", 232, 27, 80, 30, config.COLOR_PRIMARY),
+    ]
+    display.ops.clear()
+    render_alert_surface(compositor, view, alerts)
+    assert display.ops == []
+
+    # Metadata changes and re-entry must repaint the list, not just controls.
+    alerts[0]["minute"] = 6
+    render_alert_surface(compositor, view, alerts)
+    assert ("fill_rect", 0, 0, 320, 240, config.COLOR_BACKGROUND) in display.ops
+    display.ops.clear()
+    compositor._prev_was_settings = False
+    render_alert_surface(compositor, view, alerts)
+    assert ("fill_rect", 0, 0, 320, 240, config.COLOR_BACKGROUND) in display.ops
+
+
 def test_alert_list_draws_recurrence_and_explicit_state_controls():
     display = FakeDisplayPort()
     view = AlertListView(display)

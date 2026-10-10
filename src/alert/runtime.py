@@ -26,10 +26,12 @@ def toggle_enabled(app, alert_id):
             copied = dict(alert)
             copied["weekdays"] = list(alert.get("weekdays", []))
             alerts.append(copied)
-        index = next(
-            (i for i, alert in enumerate(alerts) if alert.get("id") == alert_id),
-            None,
-        )
+        # MicroPython 1.20 only supports next(iterator), without a default.
+        index = None
+        for i, alert in enumerate(alerts):
+            if alert.get("id") == alert_id:
+                index = i
+                break
         if index is None:
             app._log("alert_fail persist missing_alert")
             return False
