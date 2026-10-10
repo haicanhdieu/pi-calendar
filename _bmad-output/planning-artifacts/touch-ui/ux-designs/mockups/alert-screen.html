@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pi Calendar — Touch Alert List</title>
+<style>
+/* Governs: touch-alert-controls SPEC; DESIGN.md Alert list view. */
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #333; font-family: Arial, sans-serif; }
+.frame { width: 320px; height: 240px; overflow: hidden; color: #3dff7a; background: #0a0a0a; border: 2px solid #222; }
+h1 { height: 23px; margin: 0; padding: 4px 8px 2px; border-bottom: 1px solid #242424; font-size: 12px; line-height: 16px; letter-spacing: 1.5px; }
+.row { height: 21px; display: grid; grid-template-columns: 58px 1fr 48px; align-items: center; column-gap: 5px; padding: 0 7px; border-bottom: 1px solid #191919; }
+.time { color: #3dff7a; font: 700 10px/1 Arial, sans-serif; font-variant-numeric: tabular-nums; }
+.recurrence { overflow: hidden; color: #ffb238; font: 9px/1 Arial, sans-serif; white-space: nowrap; text-overflow: ellipsis; }
+.state { width: 48px; height: 21px; border: 0; border-radius: 0; font: 700 8px/21px Arial, sans-serif; text-align: center; }
+.on { color: #0a0a0a; background: #3dff7a; }
+.off { color: #0a0a0a; background: #ffb238; }
+</style>
+</head>
+<body>
+<main class="frame" aria-label="Touch alert controls">
+  <h1>ALERTS</h1>
+  <div class="row"><span class="time">07:00</span><span class="recurrence">Daily</span><span class="state on">ON</span></div>
+  <div class="row"><span class="time">07:30</span><span class="recurrence">Weekdays</span><span class="state off">OFF</span></div>
+  <div class="row"><span class="time">08:15</span><span class="recurrence">Mon · Wed · Fri</span><span class="state on">ON</span></div>
+  <div class="row"><span class="time">09:00</span><span class="recurrence">Once</span><span class="state on">ON</span></div>
+  <div class="row"><span class="time">12:00</span><span class="recurrence">Weekends</span><span class="state off">OFF</span></div>
+  <div class="row"><span class="time">13:30</span><span class="recurrence">Daily</span><span class="state on">ON</span></div>
+  <div class="row"><span class="time">17:00</span><span class="recurrence">Tue · Thu</span><span class="state on">ON</span></div>
+  <div class="row"><span class="time">18:45</span><span class="recurrence">Once</span><span class="state off">OFF</span></div>
+  <div class="row"><span class="time">20:00</span><span class="recurrence">Daily</span><span class="state on">ON</span></div>
+  <div class="row"><span class="time">21:15</span><span class="recurrence">Weekends</span><span class="state off">OFF</span></div>
+</main>
+</body>
+</html>

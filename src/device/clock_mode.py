@@ -52,6 +52,7 @@ def run(display, spi, touch_cs, settings_store, clock_port, reboot_port,
         config.BUZZER_HIGH_MS,
         config.BUZZER_LOW_MS,
         active_high=config.BUZZER_ACTIVE_HIGH,
+        low_pattern_ms=config.BUZZER_LOW_PATTERN_MS,
     )
     if buzzer_port.init_result != INIT_OK:
         log("Buzzer init failed: {}".format(buzzer_port.init_result))

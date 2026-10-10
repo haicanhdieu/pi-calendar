@@ -89,6 +89,10 @@ Pico `VBUS`/5 V. Keep GP15 driven low before applying power. If validation
 fails, use a suitable driver/buffer circuit instead of direct GPIO drive and
 update this section.
 
+Alert cadence updated 2026-10-10 after user confirmed paired bench pattern
+audible: 180 ms high per pulse, successive low gaps 220, 650, 220, and
+1,400 ms (`tut.tut...tut.tut......`). GPIO wiring remains unchanged.
+
 ## SPI configuration
 
 ```text

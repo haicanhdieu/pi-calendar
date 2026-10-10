@@ -122,3 +122,39 @@ def test_active_low_configuration_inverts_levels():
     assert pin.values == [1]
     port.tick(0, True)
     assert pin.values[-1] == 0
+
+
+def test_alert_pattern_repeats_pairs_with_short_and_long_pauses_across_wrap():
+    from src import config
+
+    pin = FakePin()
+    port = BuzzerPort(
+        pin, config.BUZZER_HIGH_MS, config.BUZZER_LOW_MS,
+        ticks_module=FakeTicks, low_pattern_ms=config.BUZZER_LOW_PATTERN_MS,
+    )
+    now = 0xFFFFFFF0
+    assert port.tick(now, True) == HIGH_STARTED
+    for gap in (220, 650, 220, 1400) * 2:
+        assert port.tick(ticks.ticks_add(now, 179), True) == WAITING
+        now = ticks.ticks_add(now, 180)
+        assert port.tick(now, True) == LOW_ENDED
+        assert pin.values[-1] == 0
+        assert port.tick(ticks.ticks_add(now, gap - 1), True) == WAITING
+        now = ticks.ticks_add(now, gap)
+        assert port.tick(now, True) == HIGH_ENDED
+        assert pin.values[-1] == 1
+
+
+def test_dismiss_during_pair_pause_restarts_from_first_beep():
+    pin = FakePin()
+    port = BuzzerPort(pin, 180, 220, ticks_module=FakeTicks,
+                      low_pattern_ms=(220, 650, 220, 1400))
+    port.tick(0, True)
+    port.tick(180, True)
+    port.tick(400, True)
+    port.tick(580, True)
+    assert port._deadline == 1230
+    assert port.tick(600, False) == SILENCED
+    assert port.tick(2000, True) == HIGH_STARTED
+    assert port.tick(2180, True) == LOW_ENDED
+    assert port._deadline == 2400

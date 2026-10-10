@@ -39,7 +39,7 @@ flowchart TD
     App --> Buzzer[src/device/buzzer_port.py]
     UI --> Domain
     Store --> Record[.settings-v1\nversioned alert fields]
-    Buzzer --> GPIO[machine.Pin GP15\n180 ms high / 220 ms low]
+    Buzzer --> GPIO[machine.Pin GP15\n180 ms high / 220, 650, 220, 1400 ms successive low gaps]
 ```
 
 ## Inherited Invariants
@@ -80,7 +80,7 @@ flowchart TD
 
 - **Binds:** FR-2, FR-4, FR-5, FR-9, NFR-1, NFR-2
 - **Prevents:** NTP correction extending auto-stop/cadence or duplicate firing after repeated loop passes/backward clock adjustment.
-- **Rule:** pure scheduler keys base due detection by `(alert_id, local_date, hour, minute)` and records each raised key for current runtime. It evaluates only when `TimeSnapshot.local` exists, never retrofires a missed base minute after boot, and uses local Device Time only for recurrence and postponed due instants. App uses wrap-safe monotonic ticks only for five-minute auto-stop, postponed-confirmation dwell, and repeating 180 ms-sound / 220 ms-silence `tut` cadence.
+- **Rule:** pure scheduler keys base due detection by `(alert_id, local_date, hour, minute)` and records each raised key for current runtime. It evaluates only when `TimeSnapshot.local` exists, never retrofires a missed base minute after boot, and uses local Device Time only for recurrence and postponed due instants. App uses wrap-safe monotonic ticks only for five-minute auto-stop, postponed-confirmation dwell, and repeating 180 ms-sound / 220, 650, 220, 1400 ms successive silence gaps `tut` cadence.
 
 ### AD-6 — Alert surface exclusively owns attention and resolution
 
@@ -92,7 +92,7 @@ flowchart TD
 
 - **Binds:** FR-5, NFR-2, NFR-4, NFR-5
 - **Prevents:** hardware imports in pure code, blocking sound, and unsafe electrical drive.
-- **Rule:** pure alert logic emits desired sound state only. Main composition injects `BUZZER_SIGNAL_PIN=15`, `BUZZER_HIGH_MS=180`, `BUZZER_LOW_MS=220`, and active-high polarity into one device `BuzzerPort`; no other layer owns GPIO literals. Port construction first drives output low before exposure. App resolves Stop, Postpone, Auto-stop, and alert failure before its one bounded `tick(now, sounding)` call each loop; terminal transition calls idempotent `silence()` in same step and cannot reassert high. On sound start or re-alert, port drives high immediately, then uses wrap-safe phase deadlines for 180 ms high / 220 ms low repeating `tut` cadence; a late tick resynchronizes from `now` without replaying missed edges. Init, drive-high, drive-low, and silence return named secret-free results; a failed drive marks output unknown, attempts one best-effort low, and requires fresh low-first initialization before a later alert retry. Installed HW-508 `S`/`VCC`/`GND` pinout and audible direct 3.3 V drive are bench-confirmed and recorded in `docs/hardware_configuration.md`; measured current, polarity, and safe direct-drive validation remain required before deployment.
+- **Rule:** pure alert logic emits desired sound state only. Main composition injects `BUZZER_SIGNAL_PIN=15`, `BUZZER_HIGH_MS=180`, `BUZZER_LOW_MS=220`, `BUZZER_LOW_PATTERN_MS=(220, 650, 220, 1400)`, and active-high polarity into one device `BuzzerPort`; no other layer owns GPIO literals. Port construction first drives output low before exposure. App resolves Stop, Postpone, Auto-stop, and alert failure before its one bounded `tick(now, sounding)` call each loop; terminal transition calls idempotent `silence()` in same step and cannot reassert high. On sound start or re-alert, port drives high immediately, then uses wrap-safe phase deadlines for 180 ms high / 220, 650, 220, 1400 ms successive low gaps repeating `tut` cadence; a late tick resynchronizes from `now` without replaying missed edges. Init, drive-high, drive-low, and silence return named secret-free results; a failed drive marks output unknown, attempts one best-effort low, and requires fresh low-first initialization before a later alert retry. Installed HW-508 `S`/`VCC`/`GND` pinout and audible direct 3.3 V drive are bench-confirmed and recorded in `docs/hardware_configuration.md`; measured current, polarity, and safe direct-drive validation remain required before deployment.
 
 ### AD-8 — Explicit, recoverable alert failures
 
@@ -118,7 +118,7 @@ flowchart TD
 | --- | --- |
 | Raspberry Pi Pico W / RP2040 | existing physical target |
 | MicroPython Pico W firmware | 1.29.0 (current stable, verified 2026-09-21) |
-| Buzzer output | `machine.Pin` GP15; 180 ms high / 220 ms low `tut` cadence; electrical deployment validation still gated |
+| Buzzer output | `machine.Pin` GP15; 180 ms high / 220, 650, 220, 1400 ms successive low gaps `tut` cadence; electrical deployment validation still gated |
 
 ## Structural Seed
 

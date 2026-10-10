@@ -334,6 +334,19 @@ def test_day_change_full_redraws_lunar_line():
     assert "Sun · Sep 7 2026" in labels
 
 
+def test_vietnam_lunar_month_rollover_october_2026():
+    display = FakeDisplayPort()
+    view = ClockView(display)
+    view.render(_snapshot(_local(month=10, day=9, weekday=4), TRUST_SYNCED))
+    assert "AL · 29/8" in [t[1] for t in _texts(display.ops)]
+
+    display.clear_ops()
+    view.render(_snapshot(_local(month=10, day=10, weekday=5), TRUST_SYNCED))
+    labels = [t[1] for t in _texts(display.ops)]
+    assert "AL · 1/9" in labels
+    assert "AL · 29/8" not in labels
+
+
 def test_no_events_draws_nothing_in_band():
     display = FakeDisplayPort()
     view = ClockView(display)

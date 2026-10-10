@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import struct
 import sys
 from pathlib import Path
 
@@ -86,3 +87,56 @@ def test_gregorian_to_lunar_rejects_out_of_range_years():
         gregorian_to_lunar(1899, 12, 31)
     with pytest.raises(ValueError):
         gregorian_to_lunar(2101, 1, 1)
+
+
+def _float32_converter():
+    """Round literals, arithmetic and math results like RP2040 floats.
+
+    This models numerical precision only, not the device or its heap.
+    Integer arithmetic stays exact, as it does in MicroPython.
+    """
+    def rounded(value):
+        if isinstance(value, float):
+            return struct.unpack("f", struct.pack("f", value))[0]
+        return value
+
+    class Float32(ast.NodeTransformer):
+        def wrap(self, node):
+            return ast.copy_location(
+                ast.Call(ast.Name("rounded", ast.Load()), [node], []), node
+            )
+
+        def visit_Constant(self, node):
+            return self.wrap(node) if isinstance(node.value, float) else node
+
+        def visit_BinOp(self, node):
+            return self.wrap(self.generic_visit(node))
+
+        def visit_Call(self, node):
+            return self.wrap(self.generic_visit(node))
+
+        def visit_Attribute(self, node):
+            return self.wrap(self.generic_visit(node))
+
+    tree = Float32().visit(ast.parse(LUNAR_PATH.read_text()))
+    namespace = {"rounded": rounded}
+    exec(compile(ast.fix_missing_locations(tree), str(LUNAR_PATH), "exec"), namespace)
+    return namespace["gregorian_to_lunar"]
+
+
+@pytest.mark.parametrize(
+    "date,expected",
+    [
+        # Vietnamese calendar, UTC+7: lunar month 8 has 29 days in 2026.
+        ((2026, 10, 9), (29, 8, False)),
+        ((2026, 10, 10), (1, 9, False)),
+        ((2026, 10, 11), (2, 9, False)),
+        ((2026, 2, 17), (1, 1, False)),
+        ((2025, 7, 25), (1, 6, True)),
+        ((1900, 1, 1), (1, 12, False)),
+        ((2100, 12, 31), (1, 12, False)),
+    ],
+)
+def test_vietnam_month_boundaries_with_pico_float_precision(date, expected):
+    assert gregorian_to_lunar(*date) == expected
+    assert _float32_converter()(*date) == expected

@@ -88,7 +88,7 @@ When current local time matches enabled Alert's time and recurrence, Device begi
 
 #### FR-5: Sound buzzer safely
 
-During Active alert, Device produces repeating `tut` pulses: GP15 is high for 180 ms, then low for 220 ms. Cadence repeats until user action or Auto-stop. Buzzer stops immediately when Active alert ends.
+During Active alert, Device produces repeating `tut` pulses: GP15 is high for 180 ms per pulse, with successive low gaps of 220, 650, 220, and 1,400 ms (`tut.tut...tut.tut......`). Cadence repeats until user action or Auto-stop. Buzzer stops immediately when Active alert ends.
 
 **Consequences (testable):**
 - Installed HW-508 board's controlling physical silkscreen is `S`, `VCC`, `GND`; it is connected as documented in `docs/hardware_configuration.md`: `S` to GP15, `VCC` to 3V3(OUT), and `GND` to common ground.

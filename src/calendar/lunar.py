@@ -20,24 +20,24 @@ def _floor(x):
 
 
 def _jd_from_date(dd, mm, yy):
-    a = _floor((14 - mm) / 12)
+    a = (14 - mm) // 12
     y = yy + 4800 - a
     m = mm + 12 * a - 3
     jd = (
         dd
-        + _floor((153 * m + 2) / 5)
+        + (153 * m + 2) // 5
         + 365 * y
-        + _floor(y / 4)
-        - _floor(y / 100)
-        + _floor(y / 400)
+        + y // 4
+        - y // 100
+        + y // 400
         - 32045
     )
     if jd < 2299161:
         jd = (
             dd
-            + _floor((153 * m + 2) / 5)
+            + (153 * m + 2) // 5
             + 365 * y
-            + _floor(y / 4)
+            + y // 4
             - 32083
         )
     return jd
@@ -48,7 +48,9 @@ def _new_moon_day(k, time_zone):
     t2 = t * t
     t3 = t2 * t
     dr = _PI / 180
-    jd1 = 2415020.75933 + 29.53058868 * k + 0.0001178 * t2 - 0.000000155 * t3
+    # RP2040 floats are binary32: at JD ~2.4 million their spacing is
+    # 0.25 day. Keep the epoch integer until AFTER rounding the civil day.
+    jd1 = 0.75933 + 29.53058868 * k + 0.0001178 * t2 - 0.000000155 * t3
     jd1 = jd1 + 0.00033 * math.sin((166.56 + 132.87 * t - 0.009173 * t2) * dr)
     m = 359.2242 + 29.10535608 * k - 0.0000333 * t2 - 0.00000347 * t3
     mpr = 306.0253 + 385.81691806 * k + 0.0107306 * t2 + 0.00001236 * t3
@@ -81,11 +83,11 @@ def _new_moon_day(k, time_zone):
     else:
         deltat = -0.000278 + 0.000265 * t + 0.000262 * t2
     jd_new = jd1 + c1 - deltat
-    return _floor(jd_new + 0.5 + time_zone / 24)
+    return 2415020 + _floor(jd_new + 0.5 + time_zone / 24)
 
 
 def _sun_longitude(jdn, time_zone):
-    t = (jdn - 2451545.5 - time_zone / 24) / 36525
+    t = ((jdn - 2451545) - 0.5 - time_zone / 24) / 36525
     t2 = t * t
     dr = _PI / 180
     m = 357.52910 + 35999.05030 * t - 0.0001559 * t2 - 0.00000048 * t * t2
@@ -108,7 +110,7 @@ def _lunar_month11(yy, time_zone):
 
 
 def _leap_month_offset(a11, time_zone):
-    k = _floor((a11 - 2415021.076998695) / 29.530588853 + 0.5)
+    k = _floor(((a11 - 2415021) - 0.076998695) / 29.530588853 + 0.5)
     i = 1
     arc = _sun_longitude(_new_moon_day(k + i, time_zone), time_zone)
     last = 0
@@ -140,7 +142,7 @@ def gregorian_to_lunar(year, month, day):
 
     time_zone = _TIME_ZONE
     day_number = _jd_from_date(day, month, year)
-    k = _floor((day_number - 2415021.076998695) / 29.530588853)
+    k = _floor(((day_number - 2415021) - 0.076998695) / 29.530588853)
     month_start = _new_moon_day(k + 1, time_zone)
     if month_start > day_number:
         month_start = _new_moon_day(k, time_zone)

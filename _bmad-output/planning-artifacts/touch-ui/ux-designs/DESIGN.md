@@ -36,7 +36,10 @@ spacing:
 components:
   - touch-bar
   - gear-icon
+  - alerts-icon
   - settings-view
+  - alert-list-view
+  - alert-state-control
   - reboot-button
 ---
 
@@ -44,7 +47,7 @@ components:
 
 Same instrument-panel register as the base Device (see `extends`): dark screen, green-and-amber glow, no chrome, no decoration, answers only to "is it readable in a half-second glance." The Touch UI adds exactly one new idea to that register — a single interactive surface — and nothing else. It must look like it was always part of the panel, not a UI bolted on top of it.
 
-This spine **amends** one rule from the base DESIGN.md: "Don't introduce any icon set" now reads **"No icon set beyond what Settings needs"** — a single gear glyph, added because Settings needs one scannable, thumb-legible symbol for its one control. No other icons follow from this without a new design decision.
+This spine **amends** one rule from the base DESIGN.md: "Don't introduce any icon set" now reads **"Use only icons required by touch controls"** — gear for Settings and clock for Alerts. Both are scannable, thumb-legible symbols in separate Bar buttons.
 
 ## Colors
 
@@ -52,6 +55,7 @@ Inherits the base palette in full — {colors.bg}, {colors.digit-primary}, {colo
 
 - **Bar Panel Background (`#141414`)** — a hair lighter than {colors.bg}, just enough to read the Bar as a distinct docked strip without introducing a shadow or elevation effect. This is the only new "surface" color in the system.
 - **Press Flash (`#ffe9b8`)** — a brief, lighter tint of {colors.digit-secondary}, shown only for the instant a tap registers on the gear icon or the Reboot button, then gone. It never appears as a resting color.
+- **Alert state colors** — enabled control uses existing green primary (`#3dff7a`); disabled control uses existing amber secondary (`#ffb238`). State is also written as `ON` or `OFF`; color is not the only signal. Red remains reserved for the unsynced badge.
 
 The Reboot button uses {colors.digit-secondary} (amber) at rest — explicitly **not** {colors.unsynced-bg} (red). Red stays reserved exclusively for the unsynced badge; Reboot is a normal, low-stakes action on this hobby device, not an alert.
 
@@ -67,7 +71,7 @@ Inherits the base type scale for anything unchanged (Clock/Calendar views untouc
 
 ## Layout & Spacing
 
-**Touch Bar** — a bottom-docked strip, {spacing.bar-height} tall (~15% of the 240px frame height), full width, {colors.bar-panel-bg}. Slides up from the bottom edge over 200–300ms. The gear icon sits centered in the strip. The Clock/Calendar view above it is completely unaffected — no resize, no dim, no scrim — it simply continues rendering as the Bar docks over its bottom edge.
+**Touch Bar** — a bottom-docked strip, {spacing.bar-height} tall (~15% of the 240px frame height), full width, {colors.bar-panel-bg}. Slides up from the bottom edge over 200–300ms. Two equal, separate icon-only buttons: gear on left, clock on right. Each has a 48×48 px target centered in its half; target extends 6 px beyond visible bar vertically. The Clock/Calendar view above it is completely unaffected — no resize, no dim, no scrim — it simply continues rendering as the Bar docks over its bottom edge.
 
 **Settings view** — full-screen (replaces Clock/Calendar entirely while open, per base full-bleed rule), stacked and top-aligned rather than centered:
 1. {spacing.settings-top-padding} top padding, then Settings status line.
@@ -75,6 +79,9 @@ Inherits the base type scale for anything unchanged (Clock/Calendar views untouc
 3. A larger gap below the guideline, then the Reboot button, positioned lower on the screen with clear separation from the status/guideline block above it — so Reboot reads as a distinct, deliberate action, not part of the informational block.
 
 No back/close icon anywhere: Settings and the Bar both close only via idle timeout or an outside tap, matching the rest of this spine's tap-target-minimalism (see EXPERIENCE.md Interaction Primitives).
+
+**Alert list view** — full-screen replacement view. Header `ALERTS`; each stored alert row shows local time, readable recurrence, and separate `ON`/`OFF` control. Enabled control is green; disabled control amber. Controls retain explicit state text for color-independent recognition. Tap control toggles only that alert's persisted enabled state. Screen closes through shared idle timeout or outside tap.
+Rows use compact 21px height so all ten supported alerts fit below the 23px header on the 240px display without scrolling. Each state control occupies a distinct 48×21px hit region; time and recurrence stay outside that region.
 
 ## Elevation & Depth
 
@@ -86,16 +93,21 @@ Unrounded, matching the base "panel with numbers on it" rule. The gear glyph is 
 
 ## Components
 
-- **Touch Bar** — {spacing.bar-height} bottom-docked strip, {colors.bar-panel-bg}, holds an icon list (one entry in v1: the gear). Built as a list container from the start so a second icon later is a data change, not a redesign.
-- **Gear icon** — single glyph, {colors.digit-secondary} at rest, {colors.press-flash} on touch-down, centered in the Bar. The device's first and only icon. See [mockups/bar-revealed.html](mockups/bar-revealed.html).
+- **Touch Bar** — {spacing.bar-height} bottom-docked strip, {colors.bar-panel-bg}, holds two equal icon buttons with distinct touch targets.
+- **Gear icon** — glyph, {colors.digit-secondary} at rest, {colors.press-flash} on touch-down, centered in left button. Opens Settings. See [mockups/bar-revealed.html](mockups/bar-revealed.html).
+- **Alerts clock icon** — glyph matching the clock face, {colors.digit-secondary} at rest, {colors.press-flash} on touch-down, centered in right button. Opens Alert list.
+- **Alert list view** — full-screen header and up to ten compact stored-alert rows; each row includes time, recurrence, and state control. See [mockups/alert-screen.html](mockups/alert-screen.html).
+- **Alert state control** — `ON` on {colors.digit-primary} when enabled; `OFF` on {colors.digit-secondary} when disabled. Preserve readable contrast and press feedback; never use unsynced red.
 - **Settings view** — full-screen replacement view: Settings status (16px, {colors.digit-primary}) + Settings guideline (13px, {colors.digit-secondary}) + Reboot button (14px, {colors.digit-secondary}), stacked top-down per Layout & Spacing above.
 - **Reboot button** — text control, "REBOOT", {colors.digit-secondary} at rest, {colors.press-flash} on touch-down, no confirmation step, no alert coloring. See [mockups/settings-view.html](mockups/settings-view.html).
 
 ## Do's and Don'ts
 
-- **Do** treat the gear glyph as the one and only permitted icon until a new feature explicitly earns another — the amended rule is "no icon set beyond what Settings needs," not "icons are now fine."
+- **Do** keep Bar buttons icon-only and separated into equal left/right tap targets; show no labels in the 36px strip.
+- **Do** show alert state in both control text and color: green `ON`, amber `OFF`.
 - **Do** keep {colors.bar-panel-bg} as the only new surface color — resist adding more panel shades as more UI gets added later.
 - **Do** give every tap target a Press Flash — this is the device's first interactive surface, and a resistive/XPT2046 touch panel needs immediate visual acknowledgment that a tap registered.
 - **Don't** use {colors.unsynced-bg} (red) for Reboot or any other new control — it stays exclusively the unsynced-state alert color.
 - **Don't** add a scrim/dim layer behind the Bar or Settings — this device has never had elevation, and one interactive surface isn't reason enough to start.
-- **Don't** add a back/close icon — timeout and outside-tap are the only exits, by design (keeps the icon count at one).
+- **Don't** use red for enabled/disabled state — red remains reserved for unsynced warning.
+- **Don't** add a back/close icon — timeout and outside-tap are the only exits.

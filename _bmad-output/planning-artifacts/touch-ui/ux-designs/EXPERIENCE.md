@@ -16,16 +16,20 @@ sources:
 
 ## Information Architecture
 
-Three surfaces, one always-active background state:
+Four surfaces, one always-active background state:
 
 ```
 Rotation (Clock view ⇄ Calendar view, timed auto-switch)
    │  any touch
    ▼
-Bar-Revealed (bottom strip, gear icon)
-   │  tap gear                    │  idle {idle-timeout} OR outside tap
+Bar-Revealed (bottom strip, gear + Alerts icons)
+   │  tap gear                    │  tap clock
    ▼                              ▼
-Settings (full-screen)     back to Rotation (resumes last-shown view)
+Settings (full-screen)       Alert list (full-screen)
+   │                              │
+   └──── idle {idle-timeout} OR outside tap ────┘
+                  ▼
+       back to Rotation (resumes last-shown view)
    │  idle {idle-timeout} OR outside-tap (not on Reboot)
    ▼
 back to Rotation (resumes last-shown view)
@@ -33,8 +37,9 @@ back to Rotation (resumes last-shown view)
 
 - **Rotation** is the default/rest state — unchanged from the base Device, now with no permanent status overlay (FR-1).
 - **Bar-Revealed** is reachable only from Rotation, via any touch.
-- **Settings** is reachable only from Bar-Revealed, via the gear icon.
-- There is no path from Settings back to Bar-Revealed — closing Settings always returns straight to Rotation.
+- **Settings** is reachable only from Bar-Revealed, via the left gear button.
+- **Alert list** is reachable only from Bar-Revealed, via the right clock button.
+- There is no path from Settings or Alert list back to Bar-Revealed — dismissing either returns straight to Rotation.
 - Every surface has exactly one way deeper (touch anywhere → Bar; tap gear → Settings) and two ways back (idle timeout; outside tap) — no surface is a dead end.
 
 ## Voice and Tone
@@ -60,6 +65,7 @@ Two lines of copy exist on this device, both instructional and terse, matching t
 | Rotation | default / after any timeout or outside-tap dismissal | Clock view or Calendar view, auto-switching, no status overlay | any touch → Bar-Revealed |
 | Bar-Revealed | any touch during Rotation | last-shown Clock/Calendar view (frozen, rotation timer paused) + Bar strip sliding up ([mockup](mockups/bar-revealed.html)) | tap gear → Settings; idle {idle-timeout}s → Rotation; outside-Bar tap → Rotation |
 | Settings | tap gear while Bar-Revealed | full-screen status + guideline + Reboot, Bar hidden, Clock/Calendar not drawing underneath ([mockup](mockups/settings-view.html)) | tap Reboot → device restarts (terminal); idle {idle-timeout}s → Rotation; outside-Reboot tap → Rotation |
+| Alert list | tap clock icon while Bar-Revealed | full-screen list of stored alerts; each row shows local time, readable recurrence, and explicit `ON`/`OFF` control. Enabled controls green; disabled controls amber ([mockup](mockups/alert-screen.html)) | tap a state control → persist that alert's enabled state; idle {idle-timeout}s → Rotation; outside tap → Rotation |
 
 Shared idle timeout constant: **15 seconds**, used identically by Bar-Revealed and Settings (single configured value, per Discovery decision — overrides the PRD's stated 5–8s range).
 
@@ -68,9 +74,10 @@ Rotation always **resumes from the view it was showing when interrupted** — it
 ## Interaction Primitives
 
 - **Reveal:** any touch, anywhere on screen, during Rotation → Bar slides up from the bottom edge, 200–300ms.
-- **Retract (Bar):** touch outside the Bar's own area (i.e., not on the gear icon) → Bar retracts immediately, no animation delay beyond the reverse of the reveal slide.
+- **Retract (Bar):** touch outside either Bar button → Bar retracts immediately, no animation delay beyond the reverse of the reveal slide. Gear and clock buttons have separate 48×48px hit targets centered in equal Bar halves.
 - **Retract (Settings):** touch outside the Reboot button's tap target → Settings closes immediately, same treatment.
-- **Tap feedback:** every tappable element (gear icon, Reboot button) shows a brief Press Flash (see `{colors.press-flash}` in DESIGN.md) on touch-down, before the resulting transition — confirms the tap registered on a resistive panel that may not be instantaneous.
+- **Alert toggle:** tap an alert's `ON`/`OFF` control to change its persisted enabled state. Enabled is green (`#3dff7a`); disabled is amber (`#ffb238`). State text remains visible, so color is not the sole signal. Disabled alerts stay listed.
+- **Tap feedback:** every tappable element (Bar icons, alert state controls, Reboot button) shows a brief Press Flash (see `{colors.press-flash}` in DESIGN.md) on touch-down, before the resulting transition — confirms the tap registered on a resistive panel that may not be instantaneous.
 - **Idle timeout:** no touch activity for 15s while Bar-Revealed or Settings is open → automatic return to Rotation (resumed view), identical mechanism for both surfaces.
 - **No gestures beyond single tap** — no swipe, no long-press, no multi-touch, anywhere in this spine.
 
@@ -78,7 +85,7 @@ Rotation always **resumes from the view it was showing when interrupted** — it
 
 Single-owner hobby device, not a general-audience product — the floor here is "reliable under real touch conditions," not WCAG conformance:
 
-- Gear icon and Reboot button both get generous tap targets sized for a fingertip, not the smaller glyph render size itself — the visible glyph can be smaller than its actual touch-detection area.
+- Bar icons, alert state controls, and Reboot button get generous tap targets sized for a fingertip, not the smaller glyph render size itself — visible marks can be smaller than actual touch-detection area.
 - Tap feedback (Press Flash) is mandatory on both interactive elements specifically because resistive touch panels can have inconsistent response latency; a tap with no visible acknowledgment reads as broken hardware, not working-but-slow.
 - Touch debounce / palm-rejection is explicitly **not** solved by this spine — flagged in the source PRD (§8) as an open risk with no owner. A false-triggering panel would make Bar-reveal read as broken even when this state machine is implemented correctly. [NOTE FOR PM: carried over from PRD — needs an owner before or during implementation.]
 

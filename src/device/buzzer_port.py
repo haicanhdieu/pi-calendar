@@ -17,6 +17,8 @@ class BuzzerPort:
         "_pin",
         "_high_ms",
         "_low_ms",
+        "_low_pattern_ms",
+        "_pulse_index",
         "_active_high",
         "_ticks",
         "_initialized",
@@ -33,6 +35,7 @@ class BuzzerPort:
         active_high=True,
         ticks_module=None,
         pin_factory=None,
+        low_pattern_ms=None,
     ):
         if pin_factory is None:
             pin_factory = Pin
@@ -42,6 +45,8 @@ class BuzzerPort:
             self._pin = pin_factory(signal_pin, Pin.OUT)
         self._high_ms = int(high_ms)
         self._low_ms = int(low_ms)
+        self._low_pattern_ms = low_pattern_ms or (self._low_ms,)
+        self._pulse_index = 0
         self._active_high = bool(active_high)
         if ticks_module is None:
             from src import ticks as ticks_module
@@ -71,6 +76,7 @@ class BuzzerPort:
             return DRIVE_HIGH_FAILED if high else DRIVE_LOW_FAILED
 
     def initialize(self):
+        self._pulse_index = 0
         self._initialized = False
         self._phase_high = False
         self._deadline = None
@@ -102,11 +108,16 @@ class BuzzerPort:
         if failure is not None:
             return failure
         self._phase_high = next_high
-        duration = self._high_ms if next_high else self._low_ms
+        if next_high:
+            duration = self._high_ms
+        else:
+            duration = self._low_pattern_ms[self._pulse_index]
+            self._pulse_index = (self._pulse_index + 1) % len(self._low_pattern_ms)
         self._deadline = self._ticks.ticks_add(now, duration)
         return LOW_ENDED if not next_high else HIGH_ENDED
 
     def silence(self):
+        self._pulse_index = 0
         if not self._initialized:
             return NOT_INITIALIZED
         if not self._phase_high:

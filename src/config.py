@@ -189,6 +189,8 @@ BUZZER_SIGNAL_PIN = 15
 BUZZER_ACTIVE_HIGH = True
 BUZZER_HIGH_MS = 180
 BUZZER_LOW_MS = 220
+# tut.tut...tut.tut......: silence after each successive 180 ms pulse.
+BUZZER_LOW_PATTERN_MS = (220, 650, 220, 1400)
 # Production App NTP retry cadence after each terminal sync consume (v1 = 1 h).
 NTP_RETRY_MS = 3_600_000
 

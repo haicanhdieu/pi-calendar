@@ -438,10 +438,10 @@
     "semantic_hash": "5ed40c06e26ebff72d3a2724a537b8e1"
   },
   "src/calendar/lunar.py": {
-    "mtime": 1788691632.4497044,
-    "seen": 1789399252.787294,
-    "ast_hash": "4f6258adf48ad29f6f1acc1e837a1dac",
-    "semantic_hash": "4f6258adf48ad29f6f1acc1e837a1dac"
+    "mtime": 1791608367.9737077,
+    "seen": 1791608407.516704,
+    "ast_hash": "843b98983fa3b12153e22b6c4ace6353",
+    "semantic_hash": ""
   },
   "src/calendar/models.py": {
     "mtime": 1788676982.8879452,
@@ -450,9 +450,9 @@
     "semantic_hash": "b3db16ad8d7a891d3eff583b7ae12b7f"
   },
   "src/config.py": {
-    "mtime": 1790138419.9684613,
-    "seen": 1790138516.345217,
-    "ast_hash": "ba9da951d0b06da50bbd172e7e5c99e3",
+    "mtime": 1791610287.3613734,
+    "seen": 1791610367.369716,
+    "ast_hash": "47aa829c992e28493a3a0209ce4bf07d",
     "semantic_hash": ""
   },
   "src/credentials.py": {
@@ -816,9 +816,9 @@
     "semantic_hash": "ec0e207588738df66db0cd0dbcb52428"
   },
   "tests/test_clock_view.py": {
-    "mtime": 1790156477.2402823,
-    "seen": 1790156825.014993,
-    "ast_hash": "a598e9240c59e539087d6d7ce12f1119",
+    "mtime": 1791608368.0230465,
+    "seen": 1791608407.5167701,
+    "ast_hash": "6b70a0a77331e09a90161d718fb453d6",
     "semantic_hash": ""
   },
   "tests/test_config_auth.py": {
@@ -858,10 +858,10 @@
     "semantic_hash": "eb5ed02bdb087954cf3480b7f915f34e"
   },
   "tests/test_lunar.py": {
-    "mtime": 1788692068.7001326,
-    "seen": 1789399252.7873359,
-    "ast_hash": "3a54497595e8d18bdf98ee7b3523d410",
-    "semantic_hash": "3a54497595e8d18bdf98ee7b3523d410"
+    "mtime": 1791608367.9976196,
+    "seen": 1791608407.5167758,
+    "ast_hash": "a2835ef46789a705ae97e4df766a4b73",
+    "semantic_hash": ""
   },
   "tests/test_mailbox.py": {
     "mtime": 1788673308.9330401,
@@ -12324,9 +12324,9 @@
     "semantic_hash": ""
   },
   "docs/hardware_configuration.md": {
-    "mtime": 1789976925.8715708,
-    "seen": 1789981042.868404,
-    "ast_hash": "b4f9f30830eb289660d327e348a669ca",
+    "mtime": 1791610324.5240831,
+    "seen": 1791610367.371438,
+    "ast_hash": "3b08a620e254e8ef8aa4dd1f2df27fa5",
     "semantic_hash": ""
   },
   "docs/heap_budget.md": {
@@ -12402,9 +12402,9 @@
     "semantic_hash": ""
   },
   "_bmad-output/planning-artifacts/alert-clock/architecture/ARCHITECTURE-SPINE.md": {
-    "mtime": 1789976925.8739119,
-    "seen": 1789981042.868331,
-    "ast_hash": "0af629fce87a6363f3bd5f7149a863fa",
+    "mtime": 1791610324.5225592,
+    "seen": 1791610367.371361,
+    "ast_hash": "55201bdbbcc881a656e1e1b79218a6ec",
     "semantic_hash": ""
   },
   "_bmad-output/planning-artifacts/alert-clock/architecture/reviews/review-rubric.md": {
@@ -12456,9 +12456,9 @@
     "semantic_hash": ""
   },
   "_bmad-output/planning-artifacts/alert-clock/prds/prd.md": {
-    "mtime": 1790156477.042332,
-    "seen": 1790156825.0227158,
-    "ast_hash": "421c0ce3c8f2ef57dcc834ffd7ad874a",
+    "mtime": 1791610324.5210855,
+    "seen": 1791610367.371368,
+    "ast_hash": "ab02d5dc7b424fcfce210f6da102f1a9",
     "semantic_hash": ""
   },
   "_bmad-output/planning-artifacts/alert-clock/prds/review-rubric.md": {
@@ -12564,15 +12564,15 @@
     "semantic_hash": ""
   },
   "src/device/buzzer_port.py": {
-    "mtime": 1789987035.4904473,
-    "seen": 1789987184.281236,
-    "ast_hash": "27ad419b4ab0309fce5aab0b4d37430c",
+    "mtime": 1791610287.3599446,
+    "seen": 1791610367.369719,
+    "ast_hash": "92e1c48b9efa1fe3b7eefbf6c25e6228",
     "semantic_hash": ""
   },
   "tests/test_buzzer_port.py": {
-    "mtime": 1789986871.9664156,
-    "seen": 1789987184.281282,
-    "ast_hash": "5894c2e944fa4cd816b2f5231a2d1ad5",
+    "mtime": 1791610301.5362554,
+    "seen": 1791610367.369775,
+    "ast_hash": "53275de4601a11fa447386b55bdf7176",
     "semantic_hash": ""
   },
   "_bmad-output/implementation-artifacts/alert-clock/epic-2-context.md": {
@@ -12702,9 +12702,9 @@
     "semantic_hash": ""
   },
   "src/device/clock_mode.py": {
-    "mtime": 1790147829.53744,
-    "seen": 1790149899.321734,
-    "ast_hash": "df8a37af890fd2a2e79de9a9c07f3d62",
+    "mtime": 1791610287.3624923,
+    "seen": 1791610367.36972,
+    "ast_hash": "12cb0bc97cb19851302bf52585f38a42",
     "semantic_hash": ""
   },
   "src/device/config_mode.py": {
@@ -12792,9 +12792,21 @@
     "semantic_hash": ""
   },
   "_bmad-output/implementation-artifacts/alert-clock/spec-mobile-settings-viewport.md": {
-    "mtime": 1790159117.9068964,
-    "seen": 1790159193.332835,
-    "ast_hash": "d3e5d8e05e865914670d7a72078e6ca4",
+    "mtime": 1790159356.0585365,
+    "seen": 1791608407.5182369,
+    "ast_hash": "c17f3fdd2edb1ab92e73d41ee39ee0af",
+    "semantic_hash": ""
+  },
+  "_bmad-output/implementation-artifacts/wifi-config/deployment-mobile-settings-viewport.md": {
+    "mtime": 1790159782.009346,
+    "seen": 1791608407.518284,
+    "ast_hash": "453bed671ec1a7bc2d3d5e730f97dfeb",
+    "semantic_hash": ""
+  },
+  "_bmad-output/test-artifacts/pico-w-calendar-clock/device-evidence/lunar-precision-deployment.md": {
+    "mtime": 1791609346.6593792,
+    "seen": 1791610367.3714309,
+    "ast_hash": "7c98d4b2bdae84ccdc0f30ed0c81054a",
     "semantic_hash": ""
   }
 }
