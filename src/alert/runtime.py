@@ -31,6 +31,7 @@ def toggle_enabled(app, alert_id):
             None,
         )
         if index is None:
+            app._log("alert_fail persist missing_alert")
             return False
         alerts[index]["enabled"] = not bool(alerts[index].get("enabled"))
         committed = store.commit(

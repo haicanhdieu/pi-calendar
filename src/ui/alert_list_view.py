@@ -10,6 +10,7 @@ ROWS_PER_PAGE = 5
 STATE_WIDTH = 80
 STATE_HEIGHT = 30
 STATE_X = 232
+STATE_HIT_X_MARGIN = 8
 PAGE_BUTTON_WIDTH = 72
 PAGE_PREV_X = 160
 PAGE_NEXT_X = 240
@@ -27,10 +28,20 @@ def state_rect(display, index):
 
 
 def state_index(display, alerts, x, y, page=0):
-    """Return visible alert index, or None outside a state control."""
+    """Return visible alert index, or None outside its forgiving row target."""
     start = max(0, int(page)) * ROWS_PER_PAGE
     for index in range(start, min(start + ROWS_PER_PAGE, len(alerts))):
-        if point_in_rect(x, y, state_rect(display, index)):
+        # Extend the target horizontally by 8 px and vertically to the row
+        # edges. Keeping it inside one row prevents a near-edge tap from
+        # selecting the alert above or below.
+        hit_rect = (
+            max(0, STATE_X - STATE_HIT_X_MARGIN),
+            HEADER_HEIGHT + (index % ROWS_PER_PAGE) * ROW_HEIGHT,
+            min(display.width, STATE_X + STATE_WIDTH + STATE_HIT_X_MARGIN)
+            - max(0, STATE_X - STATE_HIT_X_MARGIN),
+            ROW_HEIGHT,
+        )
+        if point_in_rect(x, y, hit_rect):
             return index
     return None
 
@@ -52,7 +63,7 @@ def page_action(display, alerts, page, x, y):
     return None
 
 
-def handle_touch(app, x, y):
+def handle_touch(app, x, y, now=None):
     """Apply a state-control touch and report (control_hit, valid_point)."""
     view = getattr(app, "_alert_list_view", None)
     if view is None:
@@ -64,14 +75,23 @@ def handle_touch(app, x, y):
     if index is not None:
         from src.alert.runtime import toggle_enabled
 
-        toggle_enabled(app, alerts[index].get("id"))
+        succeeded = toggle_enabled(app, alerts[index].get("id"))
+        view.feedback_alert_id = alerts[index].get("id")
+        view.feedback_color = (
+            config.COLOR_PRESS_FLASH if succeeded else config.COLOR_UNSYNCED
+        )
+        if now is None:
+            now = app._ticks.ticks_ms()
+        view.feedback_until = app._ticks.ticks_add(now, config.PRESS_FLASH_MS)
         return True, True
     action = page_action(app._view._display, alerts, view.page, x, y)
     if action == "previous":
         view.page -= 1
+        view.clear_feedback()
         return True, True
     if action == "next":
         view.page += 1
+        view.clear_feedback()
         return True, True
     try:
         int(x)
@@ -95,6 +115,14 @@ class AlertListView:
     def __init__(self, display):
         self._display = display
         self.page = 0
+        self.feedback_alert_id = None
+        self.feedback_color = None
+        self.feedback_until = None
+
+    def clear_feedback(self):
+        self.feedback_alert_id = None
+        self.feedback_color = None
+        self.feedback_until = None
 
     def state_index(self, alerts, x, y):
         return state_index(self._display, alerts, x, y, self.page)
@@ -134,6 +162,11 @@ class AlertListView:
             enabled = bool(alert.get("enabled"))
             rect = state_rect(display, index)
             color = config.COLOR_PRIMARY if enabled else config.COLOR_SECONDARY
+            if (
+                alert.get("id") == self.feedback_alert_id
+                and self.feedback_color is not None
+            ):
+                color = self.feedback_color
             label = "ON" if enabled else "OFF"
             display.fill_rect(*rect, color)
             text_w, text_h = display.measure_text(label, config.FONT_SETTINGS_STATUS)

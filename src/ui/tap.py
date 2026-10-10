@@ -26,7 +26,7 @@ def touch(app, surface, edge_down, x, y, now):
     elif surface == SURFACE_ALERTS and edge_down:
         from src.ui.alert_list_view import handle_touch
 
-        control_hit, valid_point = handle_touch(app, x, y)
+        control_hit, valid_point = handle_touch(app, x, y, now)
         control_pressed = control_hit
         if control_hit or not valid_point:
             surface_edge_down = False

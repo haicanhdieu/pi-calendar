@@ -64,9 +64,16 @@ def test_alert_surface_toggle_commits_only_selected_enabled_value():
     assert saved["color_scheme"] == "forest-amber"
     assert saved["postpone_delay_minutes"] == 12
     assert saved["pending_postponed_occurrence"] == pending
+    assert ("fill_rect", 232, 65, 80, 30, config.COLOR_PRESS_FLASH) in display.ops
+    assert any(op[0] == "draw_text" and op[1] == "ON" for op in display.ops)
     assert app.state.surface_deadline == ticks.ticks_add(
         ticks.ticks_ms(), config.ALERTS_IDLE_TIMEOUT_MS
     )
+    touch.samples.append((True, 10, 120))
+    ticks.advance(1)
+    app.step()
+    from src.ui.touch_state import SURFACE_ROTATION
+    assert app.state.active_surface == SURFACE_ROTATION
 
 
 def test_alert_toggle_follows_displayed_id_after_settings_reorder():
@@ -95,8 +102,11 @@ def test_alert_toggle_follows_displayed_id_after_settings_reorder():
     assert store.load()["alerts"][1]["enabled"] is False
 
     committed = store.load()
+    logs = []
+    app._log = logs.append
     assert toggle_enabled(app, "removed") is False
     assert store.load() == committed
+    assert logs == ["alert_fail persist missing_alert"]
 
 
 def test_alert_surface_toggle_commit_failure_keeps_saved_display_and_recovers():
@@ -143,7 +153,12 @@ def test_alert_surface_toggle_commit_failure_keeps_saved_display_and_recovers():
     assert app.state.active_surface == SURFACE_ALERTS
     assert store.load() == saved_before
     assert app._alert_cfg[2] == saved_before
-    assert display.ops == displayed_before
+    assert display.ops != displayed_before
+    assert (
+        "fill_rect", 232, 27, 80, 30, config.COLOR_UNSYNCED
+    ) in display.ops
+    off_draws = [i for i, op in enumerate(display.ops) if op[0] == "draw_text" and op[1] == "OFF"]
+    assert off_draws and off_draws[-1] >= len(displayed_before)
     assert "alert_fail persist write_fail" in logs
     assert not any(
         secret in line
@@ -151,12 +166,51 @@ def test_alert_surface_toggle_commit_failure_keeps_saved_display_and_recovers():
         for secret in ("password1", "admin-pass", saved_before["admin_salt"], saved_before["admin_verifier"])
     )
 
+    feedback_until = app._alert_list_view.feedback_until
+    assert ticks.ticks_diff(feedback_until, app.state.redraw_deadline) >= 0
+    ticks.advance(ticks.ticks_diff(feedback_until, ticks.ticks_ms()))
+    app.step()
+    assert app._alert_list_view.feedback_until is None
+    assert ("fill_rect", 232, 27, 80, 30, config.COLOR_SECONDARY) in display.ops
+
     fs.fail_write_path = None
     touch.samples.append((True, 288, 33))
     ticks.advance(1)
     app.step()
     assert store.load()["alerts"][0]["enabled"] is True
     assert app.state.active_surface == SURFACE_ALERTS
+
+
+def test_alert_feedback_clears_at_deadline_and_missing_id_is_logged():
+    from src.alert.runtime import toggle_enabled
+    from src.ui.alert_list_view import AlertListView
+    from src.ui.display_port import FakeDisplayPort
+    from types import SimpleNamespace
+
+    alerts = [{"id": "morning", "hour": 6, "minute": 30, "enabled": False, "weekdays": []}]
+    fs = FakeFS({".settings-v1": _record_bytes(
+        settings_version=2, alerts=alerts, postpone_delay_minutes=10,
+        pending_postponed_occurrence=None,
+    )})
+    store = _store(fs)
+    logs = []
+    app = SimpleNamespace(
+        _alert_cfg=(None, store, store.load()),
+        _log=logs.append,
+    )
+    assert toggle_enabled(app, "missing") is False
+    assert logs == ["alert_fail persist missing_alert"]
+
+    display = FakeDisplayPort()
+    view = AlertListView(display)
+    view.feedback_alert_id = "morning"
+    view.feedback_color = config.COLOR_PRESS_FLASH
+    view.render(alerts)
+    assert ("fill_rect", 232, 27, 80, 30, config.COLOR_PRESS_FLASH) in display.ops
+    view.clear_feedback()
+    display.ops.clear()
+    view.render(alerts)
+    assert ("fill_rect", 232, 27, 80, 30, config.COLOR_SECONDARY) in display.ops
 
 
 class FakeBuzzer:
