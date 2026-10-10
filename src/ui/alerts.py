@@ -12,6 +12,7 @@ def render_alert_surface(compositor, view, alerts):
          tuple(item.get("weekdays", [])), bool(item.get("enabled")))
         for item in alerts
     )
+    data = (data, getattr(view, "page", 0))
     if not compositor._prev_was_settings or data != _PREVIOUS_DATA:
         display = compositor._display
         display.fill_rect(0, 0, display.width, display.height, config.COLOR_BACKGROUND)

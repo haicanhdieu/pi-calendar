@@ -52,7 +52,7 @@ def test_alert_surface_toggle_commits_only_selected_enabled_value():
     assert app.state.active_surface == SURFACE_ALERTS
     ticks.advance(config.PRESS_FLASH_MS)
     app.step()
-    touch.samples.append((True, 288, 54))
+    touch.samples.append((True, 288, 80))
     ticks.advance(1)
     app.step()
 
@@ -64,6 +64,9 @@ def test_alert_surface_toggle_commits_only_selected_enabled_value():
     assert saved["color_scheme"] == "forest-amber"
     assert saved["postpone_delay_minutes"] == 12
     assert saved["pending_postponed_occurrence"] == pending
+    assert app.state.surface_deadline == ticks.ticks_add(
+        ticks.ticks_ms(), config.ALERTS_IDLE_TIMEOUT_MS
+    )
 
 
 def test_alert_toggle_follows_displayed_id_after_settings_reorder():

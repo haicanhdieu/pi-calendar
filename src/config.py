@@ -39,6 +39,8 @@ TOUCH_RAW_Y_MAX = 3698  # raw Y at screen x=SCREEN_WIDTH-1 (right)
 # Touch UI timing and geometry (consumed by later UI stories).
 # The Bar and Settings share this one timeout; neither surface owns a variant.
 TOUCH_IDLE_TIMEOUT_MS = 15_000
+# Alert controls need more reading and selection time than the Bar/Settings.
+ALERTS_IDLE_TIMEOUT_MS = 60_000
 BAR_SLIDE_DURATION_MS = 240
 BAR_ANIMATION_FRAME_MS = 33
 BAR_HEIGHT_PX = 36

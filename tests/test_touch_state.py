@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from src import ticks
-from src.config import TOUCH_IDLE_TIMEOUT_MS
+from src.config import ALERTS_IDLE_TIMEOUT_MS, TOUCH_IDLE_TIMEOUT_MS
 from src.ui.touch_state import (
     BAR_TARGET_GEAR,
     BAR_TARGET_IN_PANEL,
@@ -105,15 +105,20 @@ def test_bar_routes_gear_edge_to_settings_and_outside_edges_to_rotation():
     )
 
 
-def test_bar_alerts_target_enters_alerts_and_shared_dismissal_exits():
+def test_alerts_surface_gets_longer_idle_timeout_and_dismisses_to_rotation():
     now = 12345
     deadline = ticks.ticks_add(now, TOUCH_IDLE_TIMEOUT_MS)
     assert next_surface(SURFACE_BAR, deadline, True, now, SURFACE_ALERTS) == (
-        SURFACE_ALERTS, ticks.ticks_add(now, TOUCH_IDLE_TIMEOUT_MS)
+        SURFACE_ALERTS, ticks.ticks_add(now, ALERTS_IDLE_TIMEOUT_MS)
     )
-    assert next_surface(SURFACE_ALERTS, deadline, False, now) == (SURFACE_ALERTS, deadline)
+    alert_deadline = ticks.ticks_add(now, ALERTS_IDLE_TIMEOUT_MS)
+    assert next_surface(SURFACE_ALERTS, alert_deadline, False, now) == (
+        SURFACE_ALERTS, alert_deadline
+    )
     assert next_surface(SURFACE_ALERTS, deadline, True, now) == (SURFACE_ROTATION, None)
-    assert next_surface(SURFACE_ALERTS, deadline, False, deadline) == (SURFACE_ROTATION, None)
+    assert next_surface(
+        SURFACE_ALERTS, alert_deadline, False, alert_deadline
+    ) == (SURFACE_ROTATION, None)
 
 
 def test_bar_in_panel_edge_stays_on_bar():

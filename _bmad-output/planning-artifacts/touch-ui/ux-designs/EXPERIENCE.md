@@ -65,9 +65,9 @@ Two lines of copy exist on this device, both instructional and terse, matching t
 | Rotation | default / after any timeout or outside-tap dismissal | Clock view or Calendar view, auto-switching, no status overlay | any touch → Bar-Revealed |
 | Bar-Revealed | any touch during Rotation | last-shown Clock/Calendar view (frozen, rotation timer paused) + Bar strip sliding up ([mockup](mockups/bar-revealed.html)) | tap gear → Settings; idle {idle-timeout}s → Rotation; outside-Bar tap → Rotation |
 | Settings | tap gear while Bar-Revealed | full-screen status + guideline + Reboot, Bar hidden, Clock/Calendar not drawing underneath ([mockup](mockups/settings-view.html)) | tap Reboot → device restarts (terminal); idle {idle-timeout}s → Rotation; outside-Reboot tap → Rotation |
-| Alert list | tap clock icon while Bar-Revealed | full-screen list of stored alerts; each row shows local time, readable recurrence, and explicit `ON`/`OFF` control. Enabled controls green; disabled controls amber ([mockup](mockups/alert-screen.html)) | tap a state control → persist that alert's enabled state; idle {idle-timeout}s → Rotation; outside tap → Rotation |
+| Alert list | tap clock icon while Bar-Revealed | full-screen list of stored alerts; each row shows local time, readable recurrence, and explicit `ON`/`OFF` control. Enabled controls green; disabled controls amber ([mockup](mockups/alert-screen.html)) | tap a state control → persist that alert's enabled state and renew 60s timeout; page navigation → renew 60s timeout; idle 60s → Rotation; outside tap → Rotation |
 
-Shared idle timeout constant: **15 seconds**, used identically by Bar-Revealed and Settings (single configured value, per Discovery decision — overrides the PRD's stated 5–8s range).
+Shared idle timeout constant: **15 seconds**, used identically by Bar-Revealed and Settings. Alerts use a **60-second** idle timeout, renewed by successful toggles and page navigation (single configured value, per Discovery decision — overrides the PRD's stated 5–8s range).
 
 Rotation always **resumes from the view it was showing when interrupted** — it never restarts its own cycle from the beginning after a Bar/Settings interruption (resolves PRD Open Question #2).
 

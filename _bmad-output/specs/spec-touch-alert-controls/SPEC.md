@@ -29,7 +29,8 @@ A pain to solve: users must open the web settings page to enable or disable aler
 - Give each icon the existing amber resting color and brief press-flash feedback on touch-down.
 - Alert controls change the existing persisted enabled state. They do not delete alerts; disabled alerts remain visible.
 - Each alert's enable/disable control shows its current state by color: enabled uses existing green primary (`#3dff7a`); disabled uses existing amber secondary (`#ffb238`). Keep text/icon contrast readable against each control. Red remains reserved for the unsynced warning.
-- Alert screen returns to normal rotation using existing touch UI dismissal behavior.
+- Show five alert rows per page, with 80×30 px state controls and 8 px vertical gaps; use PREV/NEXT for up to ten stored alerts.
+- Keep Alerts open for 60 seconds of inactivity; successful toggles and page navigation renew this timeout. Outside taps dismiss to normal rotation.
 
 ## Non-goals
 
@@ -44,7 +45,7 @@ On the device, user can open the alert screen from the bottom bar, identify each
 ## Assumptions
 
 - Alert rows reuse existing time and recurrence details.
-- Outside tap or shared idle timeout closes the alert screen to normal rotation.
+- Outside tap closes Alerts; 60 seconds of inactivity closes it. Successful toggle and page taps renew the timeout.
 
 ## Touch Bar Mockup
 

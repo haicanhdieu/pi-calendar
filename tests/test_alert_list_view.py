@@ -17,20 +17,34 @@ def test_alert_list_draws_recurrence_and_explicit_state_controls():
     assert "ALERTS" in texts
     assert "07:05" in texts and "Mo We Fr" in texts and "ON" in texts
     assert "08:30" in texts and "Once" in texts and "OFF" in texts
-    assert ("fill_rect", 264, 23, 48, 21, config.COLOR_PRIMARY) in display.ops
-    assert ("fill_rect", 264, 44, 48, 21, config.COLOR_SECONDARY) in display.ops
+    assert ("fill_rect", 232, 27, 80, 30, config.COLOR_PRIMARY) in display.ops
+    assert ("fill_rect", 232, 65, 80, 30, config.COLOR_SECONDARY) in display.ops
 
 
-def test_state_controls_have_distinct_48_by_21_hit_regions_and_empty_state():
+def test_state_controls_are_spaced_and_paged_and_empty_state_is_bounded():
     display = FakeDisplayPort()
     view = AlertListView(display)
-    alerts = [{"hour": 7, "minute": 0, "weekdays": [], "enabled": True}]
+    alerts = [
+        {"id": str(index), "hour": 7, "minute": index, "weekdays": [], "enabled": True}
+        for index in range(6)
+    ]
 
-    assert view.state_index(alerts, 264, 23) == 0
-    assert view.state_index(alerts, 311, 43) == 0
+    assert view.state_index(alerts, 232, 27) == 0
+    assert view.state_index(alerts, 311, 56) == 0
     assert view.state_index(alerts, 312, 30) is None
-    assert view.state_index(alerts, 263, 30) is None
-    assert view.state_index(alerts, 280, 44) is None
+    assert view.state_index(alerts, 231, 30) is None
+    assert view.state_index(alerts, 280, 57) is None
+    assert view.state_index(alerts, 280, 65) == 1
+    assert view.state_index(alerts, 280, 175) == 4
+    assert view.state_index(alerts, 280, 213) is None
+
+    view.render(alerts)
+    assert any(op[0] == "draw_text" and op[1] == "1/2" for op in display.ops)
+    view.page = 1
+    assert view.state_index(alerts, 280, 27) == 5
+    view.render(alerts)
+    assert any(op[0] == "draw_text" and op[1] == "NEXT" for op in display.ops) is False
+    assert any(op[0] == "draw_text" and op[1] == "PREV" for op in display.ops)
 
     view.render([])
     assert any(op[0] == "draw_text" and op[1] == "No alerts stored" for op in display.ops)

@@ -29,7 +29,7 @@ deferred:
 
 ## Boundaries & Constraints
 
-**Always:** Preserve 320×240 display and 36 px bar. Split bar into equal, separate icon-only Settings and Alerts buttons, in that order; each has a centered 48×48 px target (centers at x=80 and x=240 on 320 px display), extending 6 px beyond visible bar vertically. Icons rest amber and flash briefly on touch-down. Alert state controls show explicit `ON`/`OFF` and use green when enabled, amber when disabled; preserve readable contrast. Disabled alerts remain visible. Use 23 px header and 21 px rows so ten alerts fit without scrolling; each state control has a distinct 48×21 px hit region. Persist changes through existing settings authority so scheduler follows saved state. Dismiss Alerts to normal rotation via shared outside-tap and 15-second idle behavior.
+**Always:** Preserve 320×240 display and 36 px bar. Split bar into equal, separate icon-only Settings and Alerts buttons, in that order; each has a centered 48×48 px target (centers at x=80 and x=240 on 320 px display), extending 6 px beyond visible bar vertically. Icons rest amber and flash briefly on touch-down. Alert state controls show explicit `ON`/`OFF` and use green when enabled, amber when disabled; preserve readable contrast. Disabled alerts remain visible. Use 23 px header, five 38 px rows per page, 80×30 px state controls, and 8 px vertical gaps; page through up to ten alerts with PREV/NEXT. Persist changes through existing settings authority so scheduler follows saved state. Alerts dismiss to rotation on outside tap or 60 seconds idle; successful toggle and page taps renew timeout.
 
 **Never:** Add touchscreen alert creation, editing, or deletion. Change recurrence, scheduling, sound, active-alert behavior, or web administration. Use red for alert state; red stays reserved for unsynced warning.
 
@@ -71,10 +71,15 @@ deferred:
 - Given an enabled or disabled row, when user taps its state control and persistence succeeds, then only that alert's saved enabled value changes and the list shows the new state.
 - Given a committed toggle, when scheduler evaluates a later due minute, then disabled alert cannot trigger and enabled alert remains eligible under existing recurrence rules.
 - Given persistence failure during toggle, when commit fails, then prior saved and displayed state remains, list stays usable, and a secret-free diagnostic is emitted.
-- Given Alerts is open, when user taps outside a state-control target or remains idle for 15 seconds, then view returns to normal rotation using existing touch dismissal behavior.
+- Given Alerts is open, when user taps outside a control or remains idle for 60 seconds, then view returns to normal rotation; successful toggle and page taps renew timeout.
 - Given an active alert is sounding, when user touches the display, then existing active-alert behavior consumes the touch, no Alerts list opens, and alert configuration remains unchanged.
 
 ## Spec Change Log
+
+### User feedback follow-up (2026-10-10)
+- Enlarged alert toggles to 80×30 px with 8 px gaps; show five alerts per page with PREV/NEXT navigation.
+- Extended Alerts idle timeout to 60 seconds and renew it after toggle or page navigation.
+- Treat any valid touch on a toggle as handled; missed target behavior remains outside-tap dismissal.
 
 ## Review Triage Log
 

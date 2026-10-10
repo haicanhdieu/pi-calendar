@@ -1,6 +1,6 @@
 """Touch surface transitions."""
 
-from src.config import TOUCH_IDLE_TIMEOUT_MS
+from src.config import ALERTS_IDLE_TIMEOUT_MS, TOUCH_IDLE_TIMEOUT_MS
 from src.ticks import ticks_add, ticks_diff
 
 SURFACE_ROTATION = "rotation"
@@ -37,7 +37,12 @@ def next_surface(
                 if bar_target == BAR_TARGET_GEAR
                 else SURFACE_ALERTS
             )
-            return surface, ticks_add(now, TOUCH_IDLE_TIMEOUT_MS)
+            timeout = (
+                ALERTS_IDLE_TIMEOUT_MS
+                if surface == SURFACE_ALERTS
+                else TOUCH_IDLE_TIMEOUT_MS
+            )
+            return surface, ticks_add(now, timeout)
         if edge_down and bar_target == BAR_TARGET_IN_PANEL:
             return SURFACE_BAR, surface_deadline
         if surface_deadline is not None and ticks_diff(surface_deadline, now) <= 0:

@@ -420,9 +420,9 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "src/app.py": {
-    "mtime": 1791612570.6841474,
-    "seen": 1791612613.272407,
-    "ast_hash": "86fe45fde026a45bb72583c8e90e4263",
+    "mtime": 1791614190.6967134,
+    "seen": 1791614411.166081,
+    "ast_hash": "80407379c84c9f9310d7fe45988c0e5c",
     "semantic_hash": ""
   },
   "src/calendar/__init__.py": {
@@ -450,9 +450,9 @@
     "semantic_hash": "b3db16ad8d7a891d3eff583b7ae12b7f"
   },
   "src/config.py": {
-    "mtime": 1791610287.3613734,
-    "seen": 1791610367.369716,
-    "ast_hash": "47aa829c992e28493a3a0209ce4bf07d",
+    "mtime": 1791614190.6927552,
+    "seen": 1791614411.166086,
+    "ast_hash": "ba0785876950ab1bea1b5ec3c7b06972",
     "semantic_hash": ""
   },
   "src/credentials.py": {
@@ -774,9 +774,9 @@
     "semantic_hash": "98572b99b22be9c2dfcef4405177bd9c"
   },
   "src/ui/touch_state.py": {
-    "mtime": 1791612624.8151786,
-    "seen": 1791612908.974688,
-    "ast_hash": "66ceac31594e16fbe732da834360c402",
+    "mtime": 1791614190.6949306,
+    "seen": 1791614411.166153,
+    "ast_hash": "a20e087571fb2b61f4f1cf13a60b6d8a",
     "semantic_hash": ""
   },
   "src/ui/view_state.py": {
@@ -966,9 +966,9 @@
     "semantic_hash": ""
   },
   "tests/test_touch_state.py": {
-    "mtime": 1791612394.64854,
-    "seen": 1791612475.111722,
-    "ast_hash": "c0bd54f1f4e5ea017c8005d9e314fdbb",
+    "mtime": 1791614258.7916021,
+    "seen": 1791614411.166185,
+    "ast_hash": "107091eb9940f30090098f2521b9f948",
     "semantic_hash": ""
   },
   "tests/test_view_state.py": {
@@ -12114,15 +12114,15 @@
     "semantic_hash": ""
   },
   "_bmad-output/planning-artifacts/touch-ui/ux-designs/DESIGN.md": {
-    "mtime": 1791611253.267492,
-    "seen": 1791611724.130795,
-    "ast_hash": "1f02dd7de9ed2272957797492eac132d",
+    "mtime": 1791614371.1299572,
+    "seen": 1791614411.167812,
+    "ast_hash": "2e5fc4fcf30ed8efbdcc82977a5fc7f7",
     "semantic_hash": ""
   },
   "_bmad-output/planning-artifacts/touch-ui/ux-designs/EXPERIENCE.md": {
-    "mtime": 1791611235.0306551,
-    "seen": 1791611724.130796,
-    "ast_hash": "5ed04ad15d640b2a0d84a6a864533390",
+    "mtime": 1791614371.1309314,
+    "seen": 1791614411.167813,
+    "ast_hash": "e618786606e59b2edc0da11e7cb62a26",
     "semantic_hash": ""
   },
   "_bmad-output/planning-artifacts/touch-ui/ux-designs/mockups/bar-revealed.html": {
@@ -12618,9 +12618,9 @@
     "semantic_hash": ""
   },
   "tests/test_alert_app.py": {
-    "mtime": 1791612873.2656968,
-    "seen": 1791612908.974689,
-    "ast_hash": "469abc4a7121525e39caba6e93f3cf75",
+    "mtime": 1791614258.792867,
+    "seen": 1791614411.166155,
+    "ast_hash": "2eccc0af5c68637a6f39b02792ff06ca",
     "semantic_hash": ""
   },
   "tests/test_alert_scheduler.py": {
@@ -12810,21 +12810,21 @@
     "semantic_hash": ""
   },
   "src/ui/alert_list_view.py": {
-    "mtime": 1791612826.4173987,
-    "seen": 1791612908.974677,
-    "ast_hash": "37295c29deea4eb76e3b099720c4fc6d",
+    "mtime": 1791614190.6987934,
+    "seen": 1791614411.166143,
+    "ast_hash": "d4b4c618a5832cdf1b20cc39aa6a9628",
     "semantic_hash": ""
   },
   "_bmad-output/implementation-artifacts/alert-clock/spec-touch-alert-controls.md": {
-    "mtime": 1791613375.2263315,
-    "seen": 1791613419.8416371,
-    "ast_hash": "d64934a828a3a461ed30998be440dc55",
+    "mtime": 1791614371.133575,
+    "seen": 1791614411.167704,
+    "ast_hash": "4430a8f8a785ba4790c16e44f915e6cb",
     "semantic_hash": ""
   },
   "_bmad-output/planning-artifacts/touch-ui/ux-designs/mockups/alert-screen.html": {
-    "mtime": 1791611256.1884844,
-    "seen": 1791611724.1307971,
-    "ast_hash": "a7182b661e92e9858641547f353ace6f",
+    "mtime": 1791614371.1346743,
+    "seen": 1791614411.1678138,
+    "ast_hash": "84e02eee0259753600ecae8d1ed2772d",
     "semantic_hash": ""
   },
   "_bmad-output/specs/spec-touch-alert-controls/.memlog.md": {
@@ -12834,9 +12834,9 @@
     "semantic_hash": ""
   },
   "_bmad-output/specs/spec-touch-alert-controls/SPEC.md": {
-    "mtime": 1791611408.0023527,
-    "seen": 1791611724.1308181,
-    "ast_hash": "bda422407bd2d8ddace4b80b437f4e41",
+    "mtime": 1791614371.1323485,
+    "seen": 1791614411.167837,
+    "ast_hash": "dbab9234b3978d74512f7a4c9cd930e6",
     "semantic_hash": ""
   },
   "_bmad-output/test-artifacts/alert-clock/test-reviews/paired-buzzer-cadence.md": {
@@ -12846,9 +12846,9 @@
     "semantic_hash": ""
   },
   "src/ui/alerts.py": {
-    "mtime": 1791612311.9695742,
-    "seen": 1791612475.111687,
-    "ast_hash": "7693bca88e1619da5d85faf1dae577e3",
+    "mtime": 1791614190.698074,
+    "seen": 1791614411.166146,
+    "ast_hash": "439e59f1ca88f8444c69c4eb2d14c65e",
     "semantic_hash": ""
   },
   "src/ui/bar_controls.py": {
@@ -12864,9 +12864,9 @@
     "semantic_hash": ""
   },
   "tests/test_alert_list_view.py": {
-    "mtime": 1791612428.197828,
-    "seen": 1791612475.111697,
-    "ast_hash": "7f7f7384549da8268cef9b085cfd94a1",
+    "mtime": 1791614258.7899976,
+    "seen": 1791614411.166156,
+    "ast_hash": "7b66ab33136391ab136459c4b75ac19e",
     "semantic_hash": ""
   }
 }

@@ -277,6 +277,11 @@ class App:
                 surface_edge_down = False
         if reboot_pressed or control_pressed:
             surface, deadline = previous, self.state.surface_deadline
+            if previous == SURFACE_ALERTS and control_pressed:
+                self.state.surface_deadline = self._ticks.ticks_add(
+                    now, config.ALERTS_IDLE_TIMEOUT_MS
+                )
+                deadline = self.state.surface_deadline
         else:
             surface, deadline = next_surface(
                 previous,

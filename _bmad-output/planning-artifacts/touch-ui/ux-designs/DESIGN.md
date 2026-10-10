@@ -80,8 +80,7 @@ Inherits the base type scale for anything unchanged (Clock/Calendar views untouc
 
 No back/close icon anywhere: Settings and the Bar both close only via idle timeout or an outside tap, matching the rest of this spine's tap-target-minimalism (see EXPERIENCE.md Interaction Primitives).
 
-**Alert list view** — full-screen replacement view. Header `ALERTS`; each stored alert row shows local time, readable recurrence, and separate `ON`/`OFF` control. Enabled control is green; disabled control amber. Controls retain explicit state text for color-independent recognition. Tap control toggles only that alert's persisted enabled state. Screen closes through shared idle timeout or outside tap.
-Rows use compact 21px height so all ten supported alerts fit below the 23px header on the 240px display without scrolling. Each state control occupies a distinct 48×21px hit region; time and recurrence stay outside that region.
+**Alert list view** — full-screen replacement view. Header `ALERTS`; each stored alert row shows local time, readable recurrence, and separate `ON`/`OFF` control. Enabled control is green; disabled control amber. Controls retain explicit state text for color-independent recognition. Tap control toggles only that alert's persisted enabled state. Screen closes through a 60-second idle timeout or outside tap. Successful control and page-navigation taps renew the timeout. Show five alerts per page with PREV/NEXT navigation for up to ten stored alerts. Each row is 38px high; state controls are 80×30px with 8px vertical gaps. Time and recurrence stay outside state-control hit regions.
 
 ## Elevation & Depth
 
@@ -96,7 +95,7 @@ Unrounded, matching the base "panel with numbers on it" rule. The gear glyph is 
 - **Touch Bar** — {spacing.bar-height} bottom-docked strip, {colors.bar-panel-bg}, holds two equal icon buttons with distinct touch targets.
 - **Gear icon** — glyph, {colors.digit-secondary} at rest, {colors.press-flash} on touch-down, centered in left button. Opens Settings. See [mockups/bar-revealed.html](mockups/bar-revealed.html).
 - **Alerts clock icon** — glyph matching the clock face, {colors.digit-secondary} at rest, {colors.press-flash} on touch-down, centered in right button. Opens Alert list.
-- **Alert list view** — full-screen header and up to ten compact stored-alert rows; each row includes time, recurrence, and state control. See [mockups/alert-screen.html](mockups/alert-screen.html).
+- **Alert list view** — full-screen header and five spacious rows per page, with paging for up to ten stored alerts; each row includes time, recurrence, and 80×30px state control. See [mockups/alert-screen.html](mockups/alert-screen.html).
 - **Alert state control** — `ON` on {colors.digit-primary} when enabled; `OFF` on {colors.digit-secondary} when disabled. Preserve readable contrast and press feedback; never use unsynced red.
 - **Settings view** — full-screen replacement view: Settings status (16px, {colors.digit-primary}) + Settings guideline (13px, {colors.digit-secondary}) + Reboot button (14px, {colors.digit-secondary}), stacked top-down per Layout & Spacing above.
 - **Reboot button** — text control, "REBOOT", {colors.digit-secondary} at rest, {colors.press-flash} on touch-down, no confirmation step, no alert coloring. See [mockups/settings-view.html](mockups/settings-view.html).
