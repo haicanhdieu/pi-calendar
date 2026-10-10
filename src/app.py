@@ -351,15 +351,7 @@ class App:
             elapsed = self._ticks.ticks_diff(now, self._bar_retract_started)
             if elapsed < config.BAR_SLIDE_DURATION_MS:
                 return self._ticks.ticks_add(now, config.BAR_ANIMATION_FRAME_MS)
-        deadline = self._ticks.ticks_add(now, config.CLOCK_REDRAW_MS)
-        if self.state.active_surface == SURFACE_ALERTS:
-            view = getattr(self, "_alert_list_view", None)
-            feedback_until = getattr(view, "feedback_until", None)
-            if feedback_until is not None and self._ticks.ticks_diff(
-                feedback_until, now
-            ) > 0 and self._ticks.ticks_diff(feedback_until, deadline) < 0:
-                deadline = feedback_until
-        return deadline
+        return self._ticks.ticks_add(now, config.CLOCK_REDRAW_MS)
 
     def _drain_network_events(self, now):
         events = self._network_events

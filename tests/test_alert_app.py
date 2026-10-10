@@ -167,7 +167,7 @@ def test_alert_surface_toggle_commit_failure_keeps_saved_display_and_recovers():
     )
 
     feedback_until = app._alert_list_view.feedback_until
-    assert ticks.ticks_diff(feedback_until, app.state.redraw_deadline) >= 0
+    assert ticks.ticks_diff(feedback_until, ticks.ticks_ms()) > 0
     ticks.advance(ticks.ticks_diff(feedback_until, ticks.ticks_ms()))
     app.step()
     assert app._alert_list_view.feedback_until is None
@@ -181,7 +181,7 @@ def test_alert_surface_toggle_commit_failure_keeps_saved_display_and_recovers():
     assert app.state.active_surface == SURFACE_ALERTS
 
 
-def test_alert_feedback_clears_at_deadline_and_missing_id_is_logged():
+def test_alert_feedback_clears_at_next_redraw_and_missing_id_is_logged():
     from src.alert.runtime import toggle_enabled
     from src.ui.alert_list_view import AlertListView
     from src.ui.display_port import FakeDisplayPort
