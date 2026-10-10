@@ -155,7 +155,7 @@ def test_alert_surface_toggle_commit_failure_keeps_saved_display_and_recovers():
     assert app._alert_cfg[2] == saved_before
     assert display.ops != displayed_before
     assert (
-        "fill_rect", 232, 27, 80, 30, config.COLOR_UNSYNCED
+        "fill_rect", 232, 27, 80, 30, config.COLOR_PRESS_FLASH
     ) in display.ops
     off_draws = [i for i, op in enumerate(display.ops) if op[0] == "draw_text" and op[1] == "OFF"]
     assert off_draws and off_draws[-1] >= len(displayed_before)

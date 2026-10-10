@@ -75,11 +75,11 @@ def handle_touch(app, x, y, now=None):
     if index is not None:
         from src.alert.runtime import toggle_enabled
 
-        succeeded = toggle_enabled(app, alerts[index].get("id"))
+        toggle_enabled(app, alerts[index].get("id"))
         view.feedback_alert_id = alerts[index].get("id")
-        view.feedback_color = (
-            config.COLOR_PRESS_FLASH if succeeded else config.COLOR_UNSYNCED
-        )
+        # Same amber press acknowledgement on failure: red is reserved for
+        # the unsynced badge. Saved state and ON/OFF text remain authoritative.
+        view.feedback_color = config.COLOR_PRESS_FLASH
         if now is None:
             now = app._ticks.ticks_ms()
         view.feedback_until = app._ticks.ticks_add(now, config.PRESS_FLASH_MS)
