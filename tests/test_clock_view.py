@@ -16,6 +16,7 @@ from src.ui.components import (
     bar_gear_item_rect,
     bar_rect,
     badge_rect,
+    draw_bar,
     draw_unsynced_badge,
     point_in_rect,
     settings_guideline_rect,
@@ -25,6 +26,7 @@ from src.ui.components import (
 from src.ui.compositor import UiCompositor
 from src.ui.settings_view import SettingsView
 from src.ui.display_port import FakeDisplayPort
+from src.ui.bar_controls import alerts_rect
 
 ROOT = Path(__file__).resolve().parents[1]
 UI_DIR = ROOT / "src" / "ui"
@@ -725,6 +727,34 @@ def test_bar_is_a_bounded_draw_last_overlay_and_visibility_restores_base():
     assert ix + iw // 2 == display.width // 4
     assert iy + ih // 2 == by + bh // 2
     assert iw == ih == config.TAP_TARGET_SIZE_PX
+    ax, ay, aw, ah = alerts_rect(display)
+    assert ax + aw // 2 == display.width * 3 // 4
+    assert ay + ah // 2 == by + bh // 2
+
+    def icon_ink(rect, ops):
+        x, y, w, h = rect
+        return {
+            op[5]
+            for op in ops
+            if op[0] == "fill_rect"
+            and x <= op[1]
+            and y <= op[2]
+            and op[1] + op[3] <= x + w
+            and op[2] + op[4] <= y + h
+            and op[5] != config.COLOR_BAR_PANEL
+        }
+
+    assert icon_ink((ix, iy, iw, ih), display.ops) == {config.COLOR_SECONDARY}
+    assert icon_ink((ax, ay, aw, ah), display.ops) == {config.COLOR_SECONDARY}
+
+    for pressed, gear_color, alerts_color in (
+        ("gear", config.COLOR_PRESS_FLASH, config.COLOR_SECONDARY),
+        ("alerts", config.COLOR_SECONDARY, config.COLOR_PRESS_FLASH),
+    ):
+        flash_display = FakeDisplayPort()
+        draw_bar(flash_display, True, config.BAR_HEIGHT_PX, pressed_target=pressed)
+        assert icon_ink((ix, iy, iw, ih), flash_display.ops) == {gear_color}
+        assert icon_ink((ax, ay, aw, ah), flash_display.ops) == {alerts_color}
 
     display.clear_ops()
     compositor.render(view, snapshot, active_surface="rotation")
