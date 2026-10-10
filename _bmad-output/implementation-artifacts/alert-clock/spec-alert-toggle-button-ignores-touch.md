@@ -60,7 +60,7 @@ deferred: []
 ## Review Triage Log
 
 ### 2026-10-10 — Review pass
-- verdicts: 12 findings — high 0, medium 0, low 10, false 2, maybe-false 0
+- verdicts: 13 findings — high 0, medium 0, low 11, false 2, maybe-false 0
 - findings:
   - `[low]` `[patch]` Feedback used row index — changed to alert ID; renderer now follows the same alert if list order changes.
   - `[low]` `[patch]` Paging retained short-lived feedback — page changes now clear feedback and its deadline.
@@ -74,6 +74,7 @@ deferred: []
   - `[low]` `[patch]` Auto Run Result and frontmatter status conflicted — result and final frontmatter now both report `done`.
   - `[low]` `[patch]` Feedback expiry lacked independent verification — same expiry integration test proves deadline wakeup and clearing; this duplicates the blind-hunter coverage gap.
   - `[false]` `[reject]` Report might refer to web/admin or another alert surface — invocation says touch, and active alert-clock artifacts define the ON/OFF Alerts-list control; code and tests match that surface.
+  - `[low]` `[patch]` Failure feedback used red contrary to palette rule — changed both outcomes to amber press flash; ON/OFF text and saved record remain authoritative.
 
 ## Design Notes
 
@@ -107,7 +108,7 @@ Files changed:
 - `graphify-out/` -- refresh root code graph.
 - `_bmad-output/implementation-artifacts/alert-clock/spec-alert-toggle-button-ignores-touch.md` -- record scope, implementation, review, and verification.
 
-Review findings: 10 low findings patched; 0 deferred; 2 false findings rejected with evidence in Review Triage Log. Patched counts: high 0, medium 0, low 10. Follow-up review recommendation: false.
+Review findings: 11 low findings patched; 0 deferred; 2 false findings rejected with evidence in Review Triage Log. Patched counts: high 0, medium 0, low 11. Follow-up review recommendation: false.
 
 Verification: `uv run pytest tests/test_alert_app.py tests/test_alert_list_view.py tests/test_touch_calibration.py tests/test_touch_state.py` passed (60 tests). `git diff --check` passed. `graphify update .` completed. Pico W physical touch, display, and reboot-persistence checks remain unverified; host tests cannot measure actual calibrated tap coordinates.
 
@@ -118,3 +119,6 @@ Verification: `uv run pytest tests/test_alert_app.py tests/test_alert_list_view.
 - Deployment memory gate passed: clock-mode boot allocation 114,880 bytes (115,000 budget); all contiguous probes passed.
 - Read-only import check passed for `src.app`, `src.alert.runtime`, `src.ui.alert_list_view`, `src.ui.alerts`, and `src.ui.tap`; board reset after check.
 - Actual touchscreen tap, display feedback, and reboot persistence remain for manual confirmation; host tests do not prove physical calibration.
+
+- Latest deployment: revision `934be4201fedeee296d704cb31c699e9725373c3` redeployed to `/dev/cu.usbmodem101` on 2026-10-10 with `uv run --with mpy-cross==1.20.0 tools/deploy.py --port /dev/cu.usbmodem101` after switching failure feedback to amber.
+- Latest deployment memory gate passed at 114,880 clock-mode boot bytes; module imports passed on MicroPython 1.20.0 (`_mpy=4358`), then board reset.
