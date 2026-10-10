@@ -186,3 +186,11 @@ Follow-up review recommendation: false. Patched counts: high 0, medium 1, low 0.
 Verification: `uv run pytest` passed (713 tests); `python3 -m tools.hostsim` passed memory budgets; `git diff --check` passed. Review patch check: `uv run pytest tests/test_clock_view.py` passed (37 tests). Graph refreshed with `graphify update .`. Device manual checks were not performed; flash Pico W to verify visual legibility, touch calibration, toggle persistence after reboot, scheduler eligibility, and active-alert preservation.
 
 Residual risk: physical display legibility, touch calibration, persistence after reboot, and scheduler response remain unverified on hardware.
+
+
+## Deployment Record
+
+- Deployed revision `bf6d673a768f6d2c9718858a45f0f1739ac881f4` to `/dev/cu.usbmodem101` on 2026-10-10 with `uv run --with mpy-cross==1.20.0 tools/deploy.py --port /dev/cu.usbmodem101`.
+- Target reported MicroPython 1.20.0, Raspberry Pi Pico W RP2040, `_mpy=4358`; matching compiler reported MicroPython v1.20.0 / mpy v6.1.
+- Post-deploy read-only import check passed for `src.app`, `src.alert.runtime`, `src.ui.alert_list_view`, `src.ui.alerts`, `src.ui.bar_controls`, and `src.ui.tap`.
+- Touch-screen legibility, physical calibration, reboot persistence, and scheduler behavior still require manual device checks; no behavior claim recorded.
